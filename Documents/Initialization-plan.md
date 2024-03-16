@@ -43,7 +43,7 @@
 
         * C. __Velocity__
 
-            * Always less than or equal to MAX_VELOCITY. Would likely be fixed to minimum of `OPTIMAL_VELOCITY` and `MAX_VELOCITY`. 
+            * Always less than or equal to `MAX_VELOCITY`. Would likely be fixed to minimum of `OPTIMAL_VELOCITY` and `MAX_VELOCITY`. 
 
         * D. __Source to Destination Path__
 
@@ -57,5 +57,5 @@
 
 4. Incorporate no-fly zones 
 
-    * Let all no-fly zones be convex polygons on the geographical region of consideration. For all edges (u, v) of Gd , if u or v lies in any one of the polygons, then remove this edge from Gd . If u or v become isolated, remove the vertex from Gd as well. 
+    * Let all no-fly zones be convex polygons on the geographical region of consideration. For all edges ($u$, $v$) of $G_d$ , if $u$ or $v$ lies in any one of the polygons, then remove this edge from $G_d$. If $u$ or $v$ become isolated, remove the vertex from $G_d$ as well. 
  
