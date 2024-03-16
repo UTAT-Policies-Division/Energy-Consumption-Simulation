@@ -19,6 +19,9 @@ This repository holds the code for simulating drones along with trucks in last-m
 ## Contributors
 
 Parth Singh
+
 Tafia Mehbuba Islam
+
 Kevin Caldwell
+
 Sofiya P'yavka
