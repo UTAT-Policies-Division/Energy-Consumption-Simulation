@@ -36,13 +36,13 @@ OSM_CRS_EPSG = "EPSG:4326" # OSM EPSG
                            # https://spatialreference.org/ref/epsg/?search={place_name}&srtext=Search
 
 def get_place_area_km2(place_name, epsg):
-    area = osmnx.geocode_to_gdf(place_name)
+    data = osmnx.geocode_to_gdf(place_name)
 
-    return (area["geometry"].to_crs(epsg).area.values[0]) / 10**6
+    return (data["geometry"].to_crs(epsg).area.values[0]) / 10**6
                                     # area in km^2 of place
-            # area.at[0, "geometry"].to_crs(epsg).area / 10**6
+            # data.at[0, "geometry"].to_crs(epsg).area / 10**6
 
-def show_place_nodes_edges_data(place_name, epsg = "", boundary_buffer_length = 0):
+def get_place_nodes_edges(place_name, epsg = "", boundary_buffer_length = 0):
     """
     boundary_buffer_length : distance around place's polygon to add, useful for
                              getting shortest paths that may take routes outside
@@ -50,8 +50,16 @@ def show_place_nodes_edges_data(place_name, epsg = "", boundary_buffer_length = 
 
     either both epsg and boundary_buffer_length must be set explicitly, or both default
     """
-    nodes, edges = osmnx.graph_to_gdfs(get_place_graph(place_name, epsg, boundary_buffer_length))
+    return osmnx.graph_to_gdfs(get_place_graph(place_name, epsg, boundary_buffer_length))
 
+def show_place_nodes_edges(nodes, edges):
+    """
+    boundary_buffer_length : distance around place's polygon to add, useful for
+                             getting shortest paths that may take routes outside
+                             the region of interest
+
+    either both epsg and boundary_buffer_length must be set explicitly, or both default
+    """
     print(nodes[NODE_COLUMNS].head())
     print(edges[EDGE_COLUMNS].head())
 
@@ -61,19 +69,19 @@ def get_place_graph(place_name, epsg = "", boundary_buffer_length = 0):
     """
     if(boundary_buffer_length > 0):
         return osmnx.graph_from_polygon(
-                        get_place_area(place_name, epsg, boundary_buffer_length).at[0, "geometry"],
+                        get_place_polygon(place_name, epsg, boundary_buffer_length).at[0, "geometry"],
                         network_type="bike"
                         )
     else:
         return osmnx.graph_from_place(place_name)
 
-def get_place_area(place_name, epsg, boundary_buffer_length):
+def get_place_polygon(place_name, epsg, boundary_buffer_length):
     place_polygon = osmnx.geocode_to_gdf(place_name).to_crs(epsg)
     place_polygon["geometry"] = place_polygon.buffer(boundary_buffer_length)
     place_polygon = place_polygon.to_crs(OSM_CRS_EPSG)
     return place_polygon
 
-def show_place_basic(place_name):
+def show_place(place_name):
     area = osmnx.geocode_to_gdf(place_name)
 
     parks = osmnx.features_from_place(
@@ -110,7 +118,7 @@ def show_place_basic(place_name):
 
     plt.show()
 
-def network_stats(place_name, epsg):
+def show_place_network_stats(place_name, epsg):
     graph = osmnx.project_graph(get_place_graph(place_name, 200), epsg) # converting to target CRS for network analysis
 
     # figure, ax = osmnx.plot_graph(graph)
@@ -177,14 +185,17 @@ but taylored to analyses of large areas. While OSMnx reads the data from the Ove
 # amazon['simplegeom'] = amazon.simplify(tolerance=20000)
 # amazon = amazon.set_geometry('simplegeom')
 
-PLACE_NAME = "University of Toronto"
-TARGET_CRS_EPSG = "EPSG:3348" # Canadian EPSG
-BOUNDARY_BUFFER_LENGTH = 200
+# PLACE_NAME = "University of Toronto"
+# TARGET_CRS_EPSG = "EPSG:3348" # Canadian EPSG
+# BOUNDARY_BUFFER_LENGTH = 200
 
 # ax, graph = show_place_adv(PLACE_NAME, TARGET_CRS_EPSG, BOUNDARY_BUFFER_LENGTH)
 # nodes, edges = osmnx.graph_to_gdfs(graph)
 
 # cycle_roads = edges.loc[edges["highway"] == "cycleway", :]
+
+"""
+# shortest path union between multiple places sample:
 
 places = ["Sidney Smith Hall",
           "Riverdale farm",
@@ -275,8 +286,10 @@ for i in range(len(places)):
         ).to_crs(OSM_CRS_EPSG)
         route_geom.plot(ax=ax, linewidth=2, linestyle='solid', color='red', alpha=0.45)
 plt.show()
+"""
 
 """
+# Experimenting with custom weight to shortest path fucntion
 
 origin_place = osmnx.geocode_to_gdf("Sidney Smith Hall")
 destination_place = osmnx.geocode_to_gdf("Health Sciences Building, University of Toronto")
@@ -336,6 +349,7 @@ route_geom.plot(ax=ax, linewidth=2, linestyle='solid', color='red', alpha=0.45)
 
 plt.show()
 """
+
 """
 Can use pandana library for more efficient network analysis
 https://pyrosm.readthedocs.io/en/latest/graphs.html#working-with-graphs
