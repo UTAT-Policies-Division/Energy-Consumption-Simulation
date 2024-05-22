@@ -184,7 +184,11 @@ def get_avaliable_building_data(place_name, epsg, boundary_buffer_length):
 
 def get_decomposed_network(place_name, epsg, boundary_buffer_length, type, simplification_tolerance=0, safety_check=False):
     """
-    returns (nodes, edges) = ({uid: (x,y) ...}, {u: [(v,length) ...]})
+    returns (nodes, edges, UID_to_ind, ind_to_UID) := 
+    ([index -> (x,y) ...], 
+     [u -> [(v,length) ...]], 
+     {UID: index ...}, 
+     [index -> UID ...])
     for given place name, epsg, boundary buffer length, and shifts
     coordinate system to the centroid for nodes.
 
@@ -230,16 +234,23 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, type, simpl
         xl[i] = round((xl[i] - avg_x) * 10**3, max(D_PRES - 3, 0))
     for i in range(yl.size):
         yl[i] = round((yl[i] - avg_y) * 10**3, max(D_PRES - 3, 0))
-    nodesl = {}
-    edgesl = {}
+    UID_to_ind = {}
+    ind_to_UID = []
+    nodesl = []
+    gc = 0
     for i in range(xl.size):
-        nodesl[uidl[i]] = (xl[i], yl[i])
+        UID_to_ind[uidl[i]] = gc
+        ind_to_UID.append(uidl[i])
+        nodesl.append((xl[i], yl[i]))
+        gc += 1
+    edgesl = []
+    while gc > 0:
+        edgesl.append([])
+        gc -= 1
     for i in range(uvl.size):
-        if uvl[i][0] not in edgesl:
-            edgesl[uvl[i][0]] = []
-        edgesl[uvl[i][0]].append((uvl[i][1], round(lenl[i], max(D_PRES - 3, 0))))
+        edgesl[UID_to_ind[uvl[i][0]]].append((UID_to_ind[uvl[i][1]], round(lenl[i], max(D_PRES - 3, 0))))
     print("Graph network decomposed!")
-    return (nodesl, edgesl)
+    return (nodesl, edgesl, UID_to_ind, ind_to_UID)
 
 
 """

@@ -72,6 +72,8 @@ class EnergyHelper:
   def edge_exists(self, u, v):
     """
     get whether there exists an edge between u and v.
+    based on the fact that if two vertices have distance 0,
+    they must be the same vertex.
     """
     return self.get_edge_length(u, v) > 0
   
@@ -79,10 +81,10 @@ class EnergyHelper:
     """
     generate edges visited tracker.
     """
-    edt = {}
-    for k in self.edges.keys():
+    edt = []
+    for k in range(len(self.edges)):
       # hold the valid last index.
-      edt[k] = [len(self.edges[k]) - 1,[]]
+      edt.append([len(self.edges[k]) - 1,[]])
       for _ in self.edges[k]:
         edt[k][1].append(0)
     return edt
@@ -106,14 +108,14 @@ class EnergyHelper:
     print("Generating line segement cover for network...")
     segs_x, segs_y = [], []
     edt = self.gen_edges_tracker()
-    keys = list(edt.keys())
-    min_index = 0
+    N = len(self.edges)
     cnt = 0
-    cr = -1
+    min_index = 0
+    cr = 0
     c_x, c_y = -1, -1
     cl_x, cl_y = [], []
-    while min_index < len(keys):
-      cr = keys[min_index]
+    while min_index < N:
+      cr = min_index
       nbs = edt[cr]
       c_x, c_y = self.nodes[cr]
       cl_x, cl_y = [c_x], [c_y]
@@ -124,8 +126,6 @@ class EnergyHelper:
           nbs[1][nbs[0]] = 1
           nb_uid = self.edges[cr][nbs[0]][0]
           nbs[0] -= 1
-          if nb_uid not in self.edges:
-            continue
           cnt = 0
           for p in self.edges[nb_uid]:
             if p[0] == cr:
@@ -148,7 +148,7 @@ class EnergyHelper:
     """
     x = []
     y = []
-    for p in self.nodes.values():
+    for p in self.nodes:
       x.append(p[0])
       y.append(p[1])
     if self.line_cover is None:
