@@ -39,6 +39,12 @@ def wind_func(sx, sy, dx, dy):
     return (V_w_hd, V_w_lt)
 
 # gl.show_place_adv(PLACE_NAME, TARGET_CRS_EPSG, BOUNDARY_BUFFER_LENGTH)
+nodes, edges = gl.get_decomposed_network(PLACE_NAME, TARGET_CRS_EPSG, BOUNDARY_BUFFER_LENGTH, TYPE, 
+                                         safety_check=True, simplification_tolerance=5)
+
+# nodes = {0: (0,0), 1: (1,0), 2: (1,1), 3: (5,0)}
+# edges = {0: [(1, 10.0)], 1: [(0, 10.0), (2, 10.0), (3, 40.0)], 2: [(1, 10.0)], 3: [(1, 40.0)]}
+eh = el.EnergyHelper(nodes, edges, 10**(-2), gen_plot_data=True)
 nodes, edges, dedges, UID_to_ind, ind_to_UID = gl.get_decomposed_network(PLACE_NAME, 
                                                                  TARGET_CRS_EPSG, 
                                                                  BOUNDARY_BUFFER_LENGTH, 
