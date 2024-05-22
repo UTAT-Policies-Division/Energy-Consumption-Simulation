@@ -155,5 +155,5 @@ class EnergyHelper:
       self.line_cover = self.gen_network_line_cover()
     llx, lly = self.line_cover
     for i in range(len(llx)):
-      plt.plot(llx[i], lly[i], marker="")
-    plt.scatter(x, y, c="red", s=2)
+      plt.plot(llx[i], lly[i], "b", marker="")
+    plt.scatter(x, y, c="red", s=10)
