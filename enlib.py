@@ -365,6 +365,8 @@ class EnergyHelper:
     get whether there exists an edge between u and v.
     based on the fact that if two vertices have distance 0,
     they must be the same vertex.
+    based on the fact that if two vertices have distance 0,
+    they must be the same vertex.
     """
     return self.get_edge_length(u, v) > 0
   
@@ -388,9 +390,8 @@ class EnergyHelper:
     """
     edt = []
     for k in range(len(self.edges)):
-    edt = []
-    for k in range(len(edge_data)):
       # hold the valid last index.
+      edt.append([len(self.edges[k]) - 1,[]])
       edt.append([len(self.edges[k]) - 1,[]])
       for _ in self.edges[k]:
       edt.append([len(edge_data[k]) - 1,[]])
@@ -419,16 +420,10 @@ class EnergyHelper:
     edt = self.gen_edges_tracker()
     N = len(self.edges)
     cnt = 0
-    edt = self.gen_edges_tracker(edge_data)
-    N = len(edge_data)
-    cnt = 0
     min_index = 0
-    cr = 0
     cr = 0
     c_x, c_y = -1, -1
     cl_x, cl_y = [], []
-    while min_index < N:
-      cr = min_index
     while min_index < N:
       cr = min_index
       nbs = edt[cr]
@@ -461,19 +456,11 @@ class EnergyHelper:
     """
     plot given graph network
     """
-    print("Plotting network...\nGreen: drone only, Blue: all, Red: node, Magenta: demand node (larger).")
-    got = [0 for _ in range(len(self.nodes))]
-    nx, dx = [], []
-    ny, dy = [], []
-    for p in self.demand:
-      got[p[0]] = 1
-      dx.append(self.nodes[p[0]][0])
-      dy.append(self.nodes[p[0]][1])
-    for i in range(len(self.nodes)):
-      if got[i] == 1:
-        continue
-      nx.append(self.nodes[i][0])
-      ny.append(self.nodes[i][1])
+    x = []
+    y = []
+    for p in self.nodes:
+      x.append(p[0])
+      y.append(p[1])
     if self.line_cover is None:
       self.line_cover = self.gen_network_line_cover(self.edges)
     if self.line_cover_d is None:
