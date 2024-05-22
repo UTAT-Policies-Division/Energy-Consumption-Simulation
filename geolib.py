@@ -191,6 +191,11 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, simplificat
      [u -> [(v,length) ...]], 
      {UID: index ...}, 
      [index -> UID ...])
+    returns (nodes, edges, UID_to_ind, ind_to_UID) := 
+    ([index -> (x,y) ...], 
+     [u -> [(v,length) ...]], 
+     {UID: index ...}, 
+     [index -> UID ...])
     for given place name, epsg, boundary buffer length, and shifts
     coordinate system to the centroid for nodes.
 
@@ -265,143 +270,24 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, simplificat
         min_x = min(min_x, xl[i])
     for i in range(len(yl)):
         yl[i] = round((yl[i] - avg_y) * 10**3, max(D_PRES - 3, 0))
-        max_y = max(max_y, yl[i])
-        min_y = min(min_y, yl[i])
-    ulb = edgesB["u_original"].values   # directional edges
-    vlb = edgesB["v_original"].values
-    lenlb = edgesB["length"].values
-    uld = edgesD["u_original"].values
-    vld = edgesD["v_original"].values
-    lenld = edgesD["length"].values
-    print("Graph network decomposed!\nBuilding internal nodes structure...")
     UID_to_ind = {}
     ind_to_UID = []
     nodesl = []
     gc = 0
-    for i in range(len(xl)):
-        if type(uidl[i]) == list:
-            for id in uidl[i]:
-                UID_to_ind[id] = gc
-        else:
-            UID_to_ind[uidl[i]] = gc
+    for i in range(xl.size):
+        UID_to_ind[uidl[i]] = gc
         ind_to_UID.append(uidl[i])
         nodesl.append((xl[i], yl[i]))
         gc += 1
-    print("Internal nodes structure built!\nBuilding internal edges structure & calibrating winds...")
-    edgesl, dedges = [], []
+    edgesl = []
     while gc > 0:
         edgesl.append([])
-        dedges.append([])
         gc -= 1
-    hash = {}
-    u_ind, v_ind, length = -1, -1, -1
-    sx, sy, dx, dy = 0, 0, 0, 0
-    x_coeff = 30 / max(abs(max_x), abs(min_x))
-    y_coeff = 30 / max(abs(max_y), abs(min_y))
-    EDGE_WORK, DEDGE_WORK = [], []
-    fsx, fsy, fdx, fdy = 0, 0, 0, 0
-    delta_x, delta_y, delta_norm = 0, 0, 0
-    fx, fy, fnorm = 0, 0, 0
-    V_w_hd, V_w_lt = 0, 0
-    x, y, mul_y, mul_x = 0, 0, 0, 0
-    truck_speed, truck_epm, T, Pv, rho = 0, 0, 0, 0, 0
-    MAX_TRUCK_SPEED, BASE_TRUCK_SPEED = el.MAX_TRUCK_SPEED, el.BASE_TRUCK_SPEED
-    BASE_TEMP, TEMP_FLUC_COEFF, REL_HUMIDITY = el.BASE_TEMP, el.TEMP_FLUC_COEFF, el.REL_HUMIDITY
-    QUAD_A, QUAD_B, QUAD_C = el.QUAD_A, el.QUAD_B, el.QUAD_C
-    for i in range(len(uld)):
-        if not ((uld[i] in UID_to_ind) and (vld[i] in UID_to_ind)):
-            continue
-        u_ind = UID_to_ind[uld[i]]
-        v_ind = UID_to_ind[vld[i]]
-        if u_ind == v_ind:    # removing cyclic edges.
-            continue
-        if u_ind not in hash:
-            hash[u_ind] = {}
-        hash[u_ind][v_ind] = 1
-        length = round(lenld[i], max(D_PRES - 3, 0))
-        sx, sy = nodesl[u_ind]
-        dx, dy = nodesl[v_ind]
-        # ---------------------------
-        # Change head wind vector field below only.
-        # ---------------------------
-        fsx = (sx - 100) / 50
-        fsy = sx + sy
-        fdx = (dx - 100) / 50
-        fdy = dx + dy
-        # ---------------------------
-        delta_x = dx - sx
-        delta_y = dy - sy
-        delta_norm = sqrt(delta_x * delta_x + delta_y * delta_y)
-        fx = (fsx + fdx) / 2
-        fy = (fsy + fdy) / 2
-        fnorm = sqrt(fx * fx + fy * fy)
-        # max head wind speed: 7 m/s.
-        # print(delta_norm, fnorm)
-        V_w_hd = 7 * (fx * delta_x + fy * delta_y) / (delta_norm * fnorm)
-        # max lateral wind speed: 2 m/s.
-        V_w_lt = sin(sx + sy + dx + dy) * 2
-        x = x_coeff * (sx + dx)
-        y = y_coeff * (sy + dy)
-        # ---------------------------
-        # Change truck velocity vector field below only.
-        # ---------------------------
-        mul_y = abs(cos(3+(y/6)))
-        mul_x = abs(cos(5+(x/6)))
-        truck_speed = round(BASE_TRUCK_SPEED + MAX_TRUCK_SPEED * 0.0003 * (mul_y * x * x + mul_x * y * y), 2)
-        # ---------------------------
-        truck_epm = QUAD_A * truck_speed + QUAD_B
-        truck_epm *= truck_epm
-        truck_epm = (truck_epm + QUAD_C) / 1000   # J/m
-        T = BASE_TEMP + TEMP_FLUC_COEFF * (sin(x) + sin(y))
-        Pv = REL_HUMIDITY * 1610.78 * exp((17.27 * T) / (T + 237.3))
-        rho = ((101325 - Pv) * 0.0034837139 + Pv * 0.0021668274) / (T + 273.15)
-        EDGE_WORK.append((u_ind, len(edgesl[u_ind]), rho, V_w_hd, V_w_lt))
-        edgesl[u_ind].append((v_ind, length, truck_epm * length))
-    num_extra = 0
-    found = False
-    for j in range(len(ulb)):
-        if not ((ulb[j] in UID_to_ind) and (vlb[j] in UID_to_ind)):
-            continue
-        u_ind = UID_to_ind[ulb[j]]
-        v_ind = UID_to_ind[vlb[j]]
-        if u_ind == v_ind:    # removing cyclic edges.
-            continue
-        if (u_ind in hash) and (v_ind in hash[u_ind]):
-            continue
-        num_extra += 1
-        length = round(lenlb[j], max(D_PRES - 3, 0))
-        sx, sy = nodesl[u_ind]
-        dx, dy = nodesl[v_ind]
-        # ---------------------------
-        # Change head wind vector field below only.
-        # ---------------------------
-        fsx = (sx - 100) / 50
-        fsy = sx + sy
-        fdx = (dx - 100) / 50
-        fdy = dx + dy
-        # ---------------------------
-        delta_x = dx - sx
-        delta_y = dy - sy
-        delta_norm = sqrt(delta_x * delta_x + delta_y * delta_y)
-        fx = (fsx + fdx) / 2
-        fy = (fsy + fdy) / 2
-        fnorm = sqrt(fx * fx + fy * fy)
-        # max head wind speed: 7 m/s.
-        # print(delta_norm, fnorm)
-        V_w_hd = 7 * (fx * delta_x + fy * delta_y) / (delta_norm * fnorm)
-        # max lateral wind speed: 2 m/s.
-        V_w_lt = sin(sx + sy + dx + dy) * 2
-        x = x_coeff * (sx + dx)
-        y = y_coeff * (sy + dy)
-        T = BASE_TEMP + TEMP_FLUC_COEFF * (sin(x) + sin(y))
-        Pv = REL_HUMIDITY * 1610.78 * exp((17.27 * T) / (T + 237.3))
-        rho = ((101325 - Pv) * 0.0034837139 + Pv * 0.0021668274) / (T + 273.15)
-        DEDGE_WORK.append((u_ind, len(dedges[u_ind]), rho, V_w_hd, V_w_lt))
-        dedges[u_ind].append((v_ind, length))
-    print("Found", int(num_extra*100/len(ulb)), "percent extra edges in bike network.")
-    el.fill_edge_data(edgesl, dedges, EDGE_WORK, DEDGE_WORK)
-    print("Built internal edges structure & calibrated winds!")
-    return (nodesl, edgesl, dedges, UID_to_ind, ind_to_UID)
+    for i in range(uvl.size):
+        edgesl[UID_to_ind[uvl[i][0]]].append((UID_to_ind[uvl[i][1]], round(lenl[i], max(D_PRES - 3, 0))))
+    print("Graph network decomposed!")
+    return (nodesl, edgesl, UID_to_ind, ind_to_UID)
+
 
 """
 To analyse OpenStreetMap data over large areas, it is often more efficient and meaningful to download the data all at once,

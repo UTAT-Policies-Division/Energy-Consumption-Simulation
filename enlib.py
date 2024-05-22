@@ -436,6 +436,12 @@ class EnergyHelper:
   def edge_exists(self, u, v):
     """
     get whether there exists an edge between u and v.
+    based on the fact that if two vertices have distance 0,
+    they must be the same vertex.
+    """
+    return self.get_edge_length(u, v) > 0
+  
+  def gen_edges_tracker(self):
     
     returns -1 is not found
              0 if in drive network
@@ -454,8 +460,12 @@ class EnergyHelper:
     generate edges visited tracker.
     """
     edt = []
+    for k in range(len(self.edges)):
+    edt = []
     for k in range(len(edge_data)):
       # hold the valid last index.
+      edt.append([len(self.edges[k]) - 1,[]])
+      for _ in self.edges[k]:
       edt.append([len(edge_data[k]) - 1,[]])
       for _ in edge_data[k]:
         edt[k][1].append(0)
@@ -479,13 +489,19 @@ class EnergyHelper:
     """
     print("Generating line segement cover for one network...")
     segs_x, segs_y = [], []
+    edt = self.gen_edges_tracker()
+    N = len(self.edges)
+    cnt = 0
     edt = self.gen_edges_tracker(edge_data)
     N = len(edge_data)
     cnt = 0
     min_index = 0
     cr = 0
+    cr = 0
     c_x, c_y = -1, -1
     cl_x, cl_y = [], []
+    while min_index < N:
+      cr = min_index
     while min_index < N:
       cr = min_index
       nbs = edt[cr]
@@ -518,6 +534,11 @@ class EnergyHelper:
     """
     plot given graph network
     """
+    x = []
+    y = []
+    for p in self.nodes:
+      x.append(p[0])
+      y.append(p[1])
     print("Plotting network...\nGreen: drone only, Blue: all, Red: node, Crimson: demand node (larger).")
     got = [0 for _ in range(len(self.nodes))]
     nx, dx = [], []
