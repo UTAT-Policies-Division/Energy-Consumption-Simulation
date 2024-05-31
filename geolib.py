@@ -113,6 +113,8 @@ def show_place_basic(place_name):
 def show_network_stats(place_name, epsg, boundary_buffer_length):
     # converting to target CRS for network analysis
     graph = osmnx.project_graph(get_place_graph(place_name, boundary_buffer_length), epsg)
+    # converting to target CRS for network analysis
+    graph = osmnx.project_graph(get_place_graph(place_name, boundary_buffer_length), epsg)
 
     # figure, ax = osmnx.plot_graph(graph)
 
@@ -184,7 +186,8 @@ def get_avaliable_building_data(place_name, epsg, boundary_buffer_length):
     print("WARNING: building data may contain inconsistent units.")
     return result
 
-def get_decomposed_network(place_name, epsg, boundary_buffer_length, simplification_tolerance=1):
+def get_decomposed_network(place_name, epsg, boundary_buffer_length, type, 
+                           simplification_tolerance=0, safety_check=False):
     """
     returns (nodes, edges, UID_to_ind, ind_to_UID) := 
     ([index -> (x,y) ...], 
