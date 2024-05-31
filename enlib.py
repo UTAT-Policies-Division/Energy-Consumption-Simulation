@@ -1,5 +1,86 @@
-from math import sqrt, acos, pi
+from math import sqrt, acos, pi, cos, exp, atan2
 import matplotlib.pyplot as plt
+
+
+half_pi = pi / 2
+three_half_pi = 3 * (pi / 2)
+two_pi = 2 * pi
+RPM_coeff = two_pi / 60
+tmp = 0
+tmp1 = 0
+
+
+def inner_product(d1, d2):
+  """
+  get 2D inner product of two vectors.
+  """
+  return (d1[0] * d2[0]) + (d1[1] * d2[1])
+
+def vector_norm(d):
+  """
+  get norm of 2D vector.
+  """
+  return sqrt((d[0] * d[0]) + (d[1] * d[1]))
+
+def RPM_to_omega(rpm):
+  """
+  RPM to theta / sec
+  """
+  return rpm * RPM_coeff
+
+def omega_to_RPM(omega):
+  """
+  theta / sec to RPM
+  """
+  return omega / RPM_coeff
+
+def c(r):
+  """
+  chord lengths for 1 <= r <= 11 inches, 
+  result in mm.
+  assumes safe use for efficiency.
+  """
+  if r <= 4:
+    r -= 4
+    tmp = r
+    r *= r
+    tmp1 = 0.652444*cos(3.14425*tmp) + 50.6977 - \
+           1.20882*tmp + (1.58523 + 3.23691*tmp)*r
+    r *= r
+    return tmp1 - 0.208061*r*tmp
+  elif r <= 7:
+    r -= 4
+    tmp = r
+    r *= r
+    return 0.114129*cos(2.41374*tmp) + 51.2251 - \
+           0.253086*tmp - (1.00919 - 0.0548433*tmp)*r
+  else:
+    tmp = r
+    r *= r
+    return -1*exp(-143.87179093 + 13.3561*tmp) + \
+           63.8221 - (0.55019 - 0.0178557*tmp)*r
+
+def l(rho, V_T, phi, r):
+  """
+  r in inches.
+  lift curve slope, 2D, taken 2 pi.
+  beta = arctan(P / 2 pi r), for 22x8
+  since fixed pitch.
+  """
+  return rho * pi * V_T * V_T * \
+         c(r) * 0.001 * (atan2(8, two_pi*r) - phi)
+
+def draw_function(s_x, e_x, f):
+  """
+  draw function f between s_x and e_x.
+  """
+  lx = [s_x]
+  ly = [c(s_x)]
+  for i in range(s_x*100, (e_x*100)+1, 1):
+      lx.append(i/100)
+      ly.append(f(i/100))
+  plt.plot(lx, ly)
+
 
 class EnergyHelper:
   """
@@ -10,9 +91,6 @@ class EnergyHelper:
     self.nodes = nodes
     self.edges = edges
     self.ang_tol = angle_tolerance
-    self.half_pi = pi / 2
-    self.three_half_pi = 3 * (pi / 2)
-    self.two_pi = 2 * pi
     self.line_cover = None
     if gen_plot_data:
       self.line_cover = self.gen_network_line_cover()
@@ -24,18 +102,6 @@ class EnergyHelper:
     ux, uy = self.nodes[u]
     vx, vy = self.nodes[v]
     return (vx - ux, vy - uy)
-  
-  def get_inner_product(self, d1, d2):
-    """
-    get 2D inner product of two vectors.
-    """
-    return (d1[0] * d2[0]) + (d1[1] * d2[1])
-
-  def get_vector_norm(self, d):
-    """
-    get norm of 2D vector.
-    """
-    return sqrt((d[0] * d[0]) + (d[1] * d[1]))
 
   def get_turn_angle(self, u, v, w):
     """
@@ -43,8 +109,8 @@ class EnergyHelper:
     """
     dvu = self.get_displacement_vector(v, u)
     dvw = self.get_displacement_vector(v, w)
-    return acos(self.get_inner_product(dvu, dvw) / 
-                (self.get_vector_norm(dvu) * self.get_vector_norm(dvw)))
+    return acos(inner_product(dvu, dvw) / 
+                (vector_norm(dvu) * vector_norm(dvw)))
 
   def classify_turn_angle(self, u, v, w):
     """
@@ -53,7 +119,7 @@ class EnergyHelper:
     angle = self.get_turn_angle(u, v, w)
     if angle < self.ang_tol:
       return "U-turn"
-    elif abs(self.half_pi - angle) < self.ang_tol:
+    elif abs(half_pi - angle) < self.ang_tol:
       return "90*-turn"
     elif abs(pi - angle) < self.ang_tol:
       return "straight_road"
@@ -157,3 +223,29 @@ class EnergyHelper:
     for i in range(len(llx)):
       plt.plot(llx[i], lly[i], marker="")
     plt.scatter(x, y, c="red", s=2)
+
+class EnergyFunction:
+  """
+  General BET (Blade Element Theory) with Coleman Inflow Model.
+
+  rho: density of surrounding air
+  V: forward speed
+
+  S_ref: reference area, usually drone front area
+  C_D_alph0: drag force coefficient when alpha_D = 0
+    D_f = 0.5 * C_D_alph0 * S_ref * rho * V^2
+
+  V_w_hd: wind speed counter V (head) component
+  V_w_lt: wind speed lateral downwards component
+
+  """
+  def __init__(self, C_D_alph0, S_ref):
+    self.C_D_alph0 = C_D_alph0
+    self.S_ref = S_ref
+  
+  def D_f(self, rho, V):
+    """
+    Drag force.
+    TODO: include effect of having a package.
+    """
+    return 0.5 * self.C_D_alph0 * self.S_ref * rho * V * V
