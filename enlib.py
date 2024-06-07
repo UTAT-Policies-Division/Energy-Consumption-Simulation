@@ -1,8 +1,8 @@
 from math import sqrt, acos, atan2, pi, \
                  sin, cos, tan, exp, \
                  floor, ceil
+from random import randrange, randint
 import matplotlib.pyplot as plt
-
 
 half_pi = pi / 2
 three_half_pi = 3 * (pi / 2)
@@ -15,17 +15,11 @@ kgs_coeff = 9.81
 deg_coeff = pi / 180
 PROP_START = 1  # inches
 PROP_END = 11   # inches
-REF_ANG_DEC = 2
-REF_ANG = 10**(-REF_ANG_DEC)
-ANG_INT = [x*REF_ANG for x in range(0, ceil(two_pi / REF_ANG))]
-ANG_INT_ITER = list(range(len(ANG_INT)))
-CHORD_DATA = [-1 for _ in range(PROP_START*100, (PROP_END*100)+1)]
-CHORD_DATA_ITER = list(range(len(CHORD_DATA)))
-ANG_SIN_DATA = [sin(psi) for psi in ANG_INT]
-ANG_COS_DATA = [cos(psi) for psi in ANG_INT]
 DRAW_PREC = 100 # power of 10, larger => more precise
 AREA = pi * (11 / meter_coeff)**2
 NEWT_PREC = 10**(-5)
+BATTERY_RESERVE_MARGIN = 0.2
+BATTERY_CAPACITY = 17.0 * 48 * 3600 * (1 - BATTERY_RESERVE_MARGIN)  # J
 
 def inner_product(d1, d2):
   """
@@ -306,13 +300,25 @@ class EnergyHelper:
   stores nodes and edges globally.
   """
 
-  def __init__(self, nodes, edges, angle_tolerance, gen_plot_data=False):
+  def __init__(self, nodes: list, edges: list, angle_tolerance, gen_plot_data=False):
     self.nodes = nodes
     self.edges = edges
     self.ang_tol = angle_tolerance
+    self.demand = []
     self.line_cover = None
     if gen_plot_data:
       self.line_cover = self.gen_network_line_cover()
+  
+  def add_demand_node(self, index, weight):
+    if index < 0 or index >= len(self.nodes):
+      raise IndexError("Demand Index out of bounds.")
+    elif weight < 0:
+      raise ValueError("Demand Weight cannot be negative.")
+    self.demand.append((index, weight))
+
+  def add_demand_list(self, lst):
+    for i, w in lst:
+      self.add_demand_node(i, w)
 
   def get_displacement_vector(self, u, v):
     """
@@ -431,17 +437,93 @@ class EnergyHelper:
     """
     plot given graph network
     """
-    x = []
-    y = []
-    for p in self.nodes:
-      x.append(p[0])
-      y.append(p[1])
+    got = [0 for _ in range(len(self.nodes))]
+    nx, dx = [], []
+    ny, dy = [], []
+    for p in self.demand:
+      got[p[0]] = 1
+      dx.append(self.nodes[p[0]][0])
+      dy.append(self.nodes[p[0]][1])
+    for i in range(len(self.nodes)):
+      if got[i] == 1:
+        continue
+      nx.append(self.nodes[i][0])
+      ny.append(self.nodes[i][1])
     if self.line_cover is None:
       self.line_cover = self.gen_network_line_cover()
     llx, lly = self.line_cover
+    plt.scatter(dx, dy, c="blue", s=12)
+    plt.scatter(nx, ny, c="red", s=4)
     for i in range(len(llx)):
-      plt.plot(llx[i], lly[i], marker="")
-    plt.scatter(x, y, c="red", s=2)
+      plt.plot(llx[i], lly[i], marker="", c="gray")
+
+  def gen_random_demand(self, num, w_min, w_max, cluster_num = 0, CLUSTER_JUMP = 0):
+    print("Generating random demand...")
+    w_min = round(w_min * 100)
+    w_max = round(w_max * 100)
+    N = len(self.nodes)
+    a = 0
+    b = N - 1
+    got = [0 for _ in range(N)]
+    n = 0
+    if cluster_num <= 0:
+      while num > 0:
+        n = randint(a, b)
+        if got[n] > 0:
+          while got[n] != 0:
+            n = (n + 1) % N
+        got[n] = 1
+        self.demand.append((n, randint(w_min, w_max) * 0.01))
+        num -= 1
+    else:
+      # CLUSTER_JUMP = 0 implies immediate neighbors
+      num = floor(num / cluster_num)
+      to_add = 0
+      q = [-1 for _ in range(N)]
+      end = -1
+      lv = -1
+      for _ in range(cluster_num):
+        n = randint(a, b)
+        if got[n] > 0:
+          while got[n] != 0:
+            n = (n + 1) % N
+        end = 0
+        q[end] = (n, 0)
+        to_add = num
+        to_swap = -1
+        tmp = -1
+        while end >= 0:
+          n, lv = q[end]
+          end -= 1
+          if lv == 0:
+            got[n] = 1
+            self.demand.append((n, randint(w_min, w_max) * 0.01))
+            if to_add == 1:
+              break
+            else:
+              to_add -= 1
+              for t,_ in self.edges[n]:
+                if got[t] == 0:
+                  to_swap = randint(0, max(0, end))
+                  end += 1
+                  q[end] = (t, CLUSTER_JUMP)
+                  tmp = q[to_swap]
+                  q[to_swap] = q[end]
+                  q[end] = tmp
+          else:
+            got[n] = 2
+            lv -= 1
+            for t,_ in self.edges[n]:
+              if got[t] == 0:
+                to_swap = randint(0, max(0, end))
+                end += 1
+                q[end] = (t, lv)
+                tmp = q[to_swap]
+                q[to_swap] = q[end]
+                q[end] = tmp
+        if to_add > (num >> 2):
+          print("WARNING: cluster generation suppressed in area.")
+    print("Random demand generated!")
 
 class EnergyFunction:
   """
@@ -469,7 +551,7 @@ class EnergyFunction:
     """
     return 0.5 * self.C_D_alph0 * self.S_ref * rho * V * V
 
-  def thrust(self, rho, V, W, V_w_hd, V_w_lt, CHORD, BETA, SINPSI, COSPSI):
+  def power(self, rho, V, W, V_w_hd, V_w_lt, CHORD, BETA, SINPSI, COSPSI):
     W += kgs_to_W(13)    # needs update, drone base weight
     Df = 0.5 * self.C_D_alph0 * self.S_ref * rho * V * V
     T0, H0 = W / 6, 0.015 * W
