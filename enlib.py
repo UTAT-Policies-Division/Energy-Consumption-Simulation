@@ -478,6 +478,7 @@ class EnergyHelper:
     else:
       # CLUSTER_JUMP = 0 implies immediate neighbors
       num = floor(num / cluster_num)
+      threshold = 1 + (num >> 2)
       to_add = 0
       q = [-1 for _ in range(N)]
       end = -1
@@ -501,27 +502,29 @@ class EnergyHelper:
             if to_add == 1:
               break
             else:
-              to_add -= 1
-              for t,_ in self.edges[n]:
-                if got[t] == 0:
+              for j in range(min(len(self.edges[n]), to_add + 1)):
+                tmp = self.edges[n][j][0]
+                if got[tmp] == 0:
                   to_swap = randint(0, max(0, end))
                   end += 1
-                  q[end] = (t, CLUSTER_JUMP)
+                  q[end] = (tmp, CLUSTER_JUMP)
                   tmp = q[to_swap]
                   q[to_swap] = q[end]
                   q[end] = tmp
+              to_add -= 1
           else:
             got[n] = 2
             lv -= 1
-            for t,_ in self.edges[n]:
-              if got[t] == 0:
+            for j in range(min(len(self.edges[n]), to_add + 1)):
+              tmp = self.edges[n][j][0]
+              if got[tmp] == 0:
                 to_swap = randint(0, max(0, end))
                 end += 1
-                q[end] = (t, lv)
+                q[end] = (tmp, lv)
                 tmp = q[to_swap]
                 q[to_swap] = q[end]
                 q[end] = tmp
-        if to_add > (num >> 2):
+        if to_add > threshold:
           print("WARNING: cluster generation suppressed in area.")
     print("Random demand generated!")
 
