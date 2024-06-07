@@ -30,7 +30,7 @@ nodes, edges, UID_to_ind, ind_to_UID = gl.get_decomposed_network(PLACE_NAME,
 #          [(1, 40.0)], 
 #          [(2, 30.5)]]
 eh = el.EnergyHelper(nodes, edges, 10**(-2), gen_plot_data=True)
-eh.gen_random_demand(50, 0.5, 3.5, 10, 2)
+eh.gen_random_demand(100, 0.5, 3.5, 25, 5)
 # print(eh.classify_turn_angle(0, 1, 3))
 # print(eh.edge_exists(0, 3))
 eh.plot_network()
