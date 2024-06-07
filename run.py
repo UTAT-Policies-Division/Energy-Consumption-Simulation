@@ -7,46 +7,51 @@ import shapely.geometry as shp
 import shapely
 import networkx as nx
 
-PLACE_NAME = "University of Toronto"
-TARGET_CRS_EPSG = "EPSG:3348" # Canadian EPSG
+UOFT = "University of Toronto"
+MANHATTAN = "Manhattan"
+PLACE_NAME = UOFT
+TORONTO_CRS_EPSG = "EPSG:3348"
+LONG_ISLAND_CRS_EPSG = "EPSG:32118"
+TARGET_CRS_EPSG = TORONTO_CRS_EPSG
 BOUNDARY_BUFFER_LENGTH = 500  # default boundary buffer
 TYPE = "bike" # "drive"
 
 # gl.show_place_adv(PLACE_NAME, TARGET_CRS_EPSG, BOUNDARY_BUFFER_LENGTH)
-# nodes, edges, UID_to_ind, ind_to_UID = gl.get_decomposed_network(PLACE_NAME, 
-#                                                                  TARGET_CRS_EPSG, 
-#                                                                  BOUNDARY_BUFFER_LENGTH, 
-#                                                                  TYPE, 
-#                                                                  safety_check=True, 
-#                                                                  simplification_tolerance=5)
+nodes, edges, UID_to_ind, ind_to_UID = gl.get_decomposed_network(PLACE_NAME, 
+                                                                 TARGET_CRS_EPSG, 
+                                                                 BOUNDARY_BUFFER_LENGTH, 
+                                                                 TYPE, 
+                                                                 safety_check=True, 
+                                                                 simplification_tolerance=5)
 # nodes = [(0,0), (1,0), (1,1), (5,0), (2,3)]
 # edges = [[(1, 10.0)], 
 #          [(0, 10.0), (2, 10.0), (3, 40.0)], 
 #          [(1, 10.0), (4, 30.5)], 
 #          [(1, 40.0)], 
 #          [(2, 30.5)]]
-# eh = el.EnergyHelper(nodes, edges, 10**(-2), gen_plot_data=True)
+eh = el.EnergyHelper(nodes, edges, 10**(-2), gen_plot_data=True)
+eh.gen_random_demand(50, 0.5, 3.5, 10, 2)
 # print(eh.classify_turn_angle(0, 1, 3))
 # print(eh.edge_exists(0, 3))
-# eh.plot_network()
-ef = el.EnergyFunction(0.5, 0.05)
-CHORD, BETA, SINPSI, COSPSI = el.get_init_data()
-# print(ef.thrust(el.rho_air_std,
+eh.plot_network()
+# ef = el.EnergyFunction(0.5, 0.05)
+# CHORD, BETA, SINPSI, COSPSI = el.get_init_data()
+# print(ef.power(el.rho_air_std,
 #                 el.kph_to_mps(60),
 #                 el.kgs_to_W(2.5),
 #                 el.kph_to_mps(15),
 #                 el.kph_to_mps(5), CHORD, BETA, SINPSI, COSPSI))
-def func(V):
-    return ef.thrust(el.rho_air_std,
-                el.kph_to_mps(V),
-                el.kgs_to_W(2.5),
-                el.kph_to_mps(15),
-                el.kph_to_mps(5), CHORD, BETA, SINPSI, COSPSI)
-el.draw_function(60,80,1,func)
+# def func(V, HPS):
+#     return ef.power(el.rho_air_std,
+#                 el.kph_to_mps(V),
+#                 el.kgs_to_W(2.5),
+#                 el.kph_to_mps(HPS),
+#                 el.kph_to_mps(5), CHORD, BETA, SINPSI, COSPSI)
+# el.draw_functions(30,50,5,func,-5,5,3)
 # def func(rpm):
 #   return el.TH_BET(el.rho_air_std, 2.43, 23.0, 4.25, el.RPM_to_omega(rpm), CHORD, BETA, SINPSI, COSPSI)[1]
 # el.draw_function(0,12000,1000,func)
-plt.legend(loc='best')
+# plt.legend(loc='best')
 plt.show()
 
 
