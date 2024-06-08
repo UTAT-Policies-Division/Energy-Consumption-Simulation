@@ -146,4 +146,14 @@ def tsp_krusal_solve(vertices, adj_list, start, energy):
     t = preorder_traversal(mst, start, len(vertices))
     return t
 
+def tsp_mst_odd_vertices(adj_list):
+    odd_vertices = []
+    for vertex_ind, adjacent_vertices in enumerate(adj_list):
+        if len(adjacent_vertices) % 2 == 1:
+            odd_vertices.append(vertex_ind)
+    
+    return odd_vertices
 
+
+def calculate_perfect_matching(adj_list, seed=0):
+    pass
