@@ -184,7 +184,7 @@ def get_avaliable_building_data(place_name, epsg, boundary_buffer_length):
     return result
 
 def get_decomposed_network(place_name, epsg, boundary_buffer_length, 
-                           network_type, wind_func,simplification_tolerance=0):
+                           wind_func,simplification_tolerance=0):
     """
     returns (nodes, edges, UID_to_ind, ind_to_UID) := 
     ([index -> (x,y) ...], 
@@ -200,67 +200,133 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length,
     simplification_tolerance accepts integral number to simplify graph under.
     """
     print("Getting data from server...")
-    graph = osmnx.graph_from_polygon(
+    graphB = osmnx.graph_from_polygon(
                     get_place_area(place_name, epsg, boundary_buffer_length).at[0, "geometry"], 
-                    network_type=network_type)
+                    network_type="bike")
+    graphD = osmnx.graph_from_polygon(
+                    get_place_area(place_name, epsg, boundary_buffer_length).at[0, "geometry"], 
+                    network_type="drive")
     if simplification_tolerance > 0:
-        graph = osmnx.project_graph(
+        graphB = osmnx.project_graph(
                     osmnx.simplification.consolidate_intersections(
-                        osmnx.project_graph(graph, epsg), tolerance=simplification_tolerance), 
+                        osmnx.project_graph(graphB, epsg), tolerance=simplification_tolerance), 
                     OSM_CRS_EPSG)
-    nodes, edges = osmnx.graph_to_gdfs(graph)
+        graphD = osmnx.project_graph(
+                    osmnx.simplification.consolidate_intersections(
+                        osmnx.project_graph(graphD, epsg), tolerance=simplification_tolerance), 
+                    OSM_CRS_EPSG)
+    nodesB, edgesB = osmnx.graph_to_gdfs(graphB)
+    nodesD, edgesD = osmnx.graph_to_gdfs(graphD)
     print("Got data from server!\nDecomposing graph network...")
-    xl = nodes["x"].values
-    yl = nodes["y"].values
-    uidl = nodes["osmid_original"].values
-    rel_idl = nodes.axes[0].values
-    uvl = edges.axes[0].values      # directional edges
-    lenl = edges["length"].values
+    xl = list(nodesB["x"].values)
+    yl = list(nodesB["y"].values)
+    uidl = list(nodesB["osmid_original"].values)
+    hash = {}
+    for id in uidl:
+        if type(id) == list:
+            for i in id:
+                hash[i] = 1
+        else:
+            hash[id] = 1
+    exl = list(nodesD["x"].values)
+    eyl = list(nodesD["y"].values)
+    euidl = list(nodesD["osmid_original"].values)
+    num_extra = 0
+    found = False
+    j = 0
+    for id in euidl:
+        found = False
+        if type(id) == list:
+            for i in id:
+                if i in hash:
+                    found = True
+                    break
+        else:
+            found = id in hash
+        if not found:
+            num_extra += 1
+            xl.append(exl[j])
+            yl.append(eyl[j])
+            uidl.append(euidl[j])
+        j += 1
+    print("Found", num_extra, "extra verticies from drive network")
     avg_x, avg_y = 0, 0
     for x in xl:
         avg_x += x
     for y in yl:
         avg_y += y
-    avg_x = round(avg_x / xl.size, D_PRES)
-    avg_y = round(avg_y / yl.size, D_PRES)
-    for i in range(xl.size):
+    avg_x = round(avg_x / len(xl), D_PRES)
+    avg_y = round(avg_y / len(yl), D_PRES)
+    for i in range(len(xl)):
         xl[i] = round((xl[i] - avg_x) * 10**3, max(D_PRES - 3, 0))
-    for i in range(yl.size):
+    for i in range(len(yl)):
         yl[i] = round((yl[i] - avg_y) * 10**3, max(D_PRES - 3, 0))
-    print("Graph network decomposed!\nBuilding internal structures & calibrating winds...")
+    ulb = edgesB["u_original"].values   # directional edges
+    vlb = edgesB["v_original"].values
+    lenlb = edgesB["length"].values
+    uld = edgesD["u_original"].values
+    vld = edgesD["v_original"].values
+    lenld = edgesD["length"].values
+    print("Graph network decomposed!\nBuilding internal nodes structure...")
     UID_to_ind = {}
-    relID_to_ind = {}
     ind_to_UID = []
     nodesl = []
     gc = 0
-    for i in range(xl.size):
+    for i in range(len(xl)):
         if type(uidl[i]) == list:
             for id in uidl[i]:
                 UID_to_ind[id] = gc
         else:
             UID_to_ind[uidl[i]] = gc
-        relID_to_ind[rel_idl[i]] = gc
         ind_to_UID.append(uidl[i])
         nodesl.append((xl[i], yl[i]))
         gc += 1
+    print("Internal nodes structure built!\nBuilding internal edges structure & calibrating winds...")
     edgesl = []
+    dedges = []
     while gc > 0:
         edgesl.append([])
+        dedges.append([])
         gc -= 1
+    hash = {}
     u_ind, v_ind = -1, -1
-    for i in range(uvl.size):
-        u_ind = relID_to_ind[uvl[i][0]]
-        v_ind = relID_to_ind[uvl[i][1]]
+    for i in range(len(uld)):
+        if not ((uld[i] in UID_to_ind) and (vld[i] in UID_to_ind)):
+            continue
+        u_ind = UID_to_ind[uld[i]]
+        v_ind = UID_to_ind[vld[i]]
         if u_ind == v_ind:    # removing cyclic edges.
             continue
+        if u_ind not in hash:
+            hash[u_ind] = {}
+        hash[u_ind][v_ind] = 1
         edgesl[u_ind].append((v_ind, 
-                              round(lenl[i], max(D_PRES - 3, 0)),
+                              round(lenld[i], max(D_PRES - 3, 0)),
                               wind_func(nodesl[u_ind][0],
                                         nodesl[u_ind][1],
                                         nodesl[v_ind][0],
                                         nodesl[v_ind][1])))
-    print("Built internal structures & calibrated winds!")
-    return (nodesl, edgesl, UID_to_ind, ind_to_UID)
+    num_extra = 0
+    found = False
+    for j in range(len(ulb)):
+        if not ((ulb[j] in UID_to_ind) and (vlb[j] in UID_to_ind)):
+            continue
+        u_ind = UID_to_ind[ulb[j]]
+        v_ind = UID_to_ind[vlb[j]]
+        if u_ind == v_ind:    # removing cyclic edges.
+            continue
+        if (u_ind in hash) and (v_ind in hash[u_ind]):
+            continue
+        num_extra += 1
+        dedges[u_ind].append((v_ind, 
+                              round(lenlb[j], max(D_PRES - 3, 0)),
+                              wind_func(nodesl[u_ind][0],
+                                        nodesl[u_ind][1],
+                                        nodesl[v_ind][0],
+                                        nodesl[v_ind][1])))
+    print("Found", int(num_extra*100/len(ulb)), "percent extra edges in bike network.")
+    print("Built internal edges structure & calibrated winds!")
+    return (nodesl, edgesl, dedges, UID_to_ind, ind_to_UID)
 
 
 """
