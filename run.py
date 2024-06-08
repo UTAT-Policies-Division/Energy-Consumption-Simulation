@@ -15,7 +15,7 @@ TORONTO_CRS_EPSG = "EPSG:3348"
 LONG_ISLAND_CRS_EPSG = "EPSG:32118"
 TARGET_CRS_EPSG = TORONTO_CRS_EPSG
 BOUNDARY_BUFFER_LENGTH = 500  # default boundary buffer
-TYPE = "bike" # "drive"
+TYPE = "drive" # "drive"
 
 def wind_func(sx, sy, dx, dy):
     # ---------------------------
@@ -45,7 +45,6 @@ nodes, edges, UID_to_ind, ind_to_UID = gl.get_decomposed_network(PLACE_NAME,
                                                                  BOUNDARY_BUFFER_LENGTH, 
                                                                  TYPE,
                                                                  wind_func,
-                                                                 safety_check=True, 
                                                                  simplification_tolerance=5)
 # nodes = [(0,0), (1,0), (1,1), (5,0), (2,3)]
 # edges = [[(1, 10.0)], 
@@ -53,10 +52,13 @@ nodes, edges, UID_to_ind, ind_to_UID = gl.get_decomposed_network(PLACE_NAME,
 #          [(1, 10.0), (4, 30.5)], 
 #          [(1, 40.0)], 
 #          [(2, 30.5)]]
-eh = el.EnergyHelper(nodes, edges, 10**(-2), gen_plot_data=True)
-eh.gen_random_demand(100, 0.5, 3.5, 25, 5)
+eh = el.EnergyHelper(nodes, edges, UID_to_ind, ind_to_UID,
+                     10**(-2), gen_plot_data=True, demand=[])
+# eh.gen_random_demand(100, 0.5, 3.5, 25, 5)
 # print(eh.classify_turn_angle(0, 1, 3))
 # print(eh.edge_exists(0, 3))
+# eh.save("manhattan.pkl")
+# eh = el.EnergyHelper.load("manhattan.pkl")
 eh.plot_network()
 # ef = el.EnergyFunction(0.5, 0.05)
 # CHORD, BETA, SINPSI, COSPSI = el.get_init_data()
