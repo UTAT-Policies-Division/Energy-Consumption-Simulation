@@ -3,6 +3,7 @@ from math import sqrt, acos, atan2, pi, \
                  floor, ceil
 from random import randrange, randint
 import matplotlib.pyplot as plt
+import pickle
 
 half_pi = pi / 2
 three_half_pi = 3 * (pi / 2)
@@ -300,12 +301,14 @@ class EnergyHelper:
   stores nodes and edges globally.
   """
 
-  def __init__(self, nodes: list, edges: list, angle_tolerance, gen_plot_data=False):
+  def __init__(self, nodes: list, edges: list, UID_to_ind, ind_to_UID,
+               angle_tolerance, gen_plot_data=False, demand=[]):
     self.nodes = nodes
     self.edges = edges
     self.ang_tol = angle_tolerance
-    self.demand = []
-    self.winds = [0 for _ in range(len(nodes))]
+    self.UID_to_ind = UID_to_ind
+    self.ind_to_UID = ind_to_UID
+    self.demand = demand
     self.line_cover = None
     if gen_plot_data:
       self.line_cover = self.gen_network_line_cover()
@@ -528,6 +531,50 @@ class EnergyHelper:
         if to_add > threshold:
           print("WARNING: cluster generation suppressed in area.")
     print("Random demand generated!")
+
+  def calibrate_winds(self, wind_func):
+    print("Calibrating winds...")
+    new_edges = -1
+    dn, l = -1, -1
+    sx, sy, dx, dy = -1, -1, -1, -1
+    for i in range(len(self.nodes)):
+      sx, sy = self.nodes[i]
+      new_edges = []
+      for j in range(len(self.edges[i])):
+        dn, l, _ = self.edges[i][j]
+        dx, dy = self.nodes[dn]
+        new_edges.append((dn, l, wind_func(sx, sy, dx, dy)))
+      self.edges[i] = new_edges
+    print("Winds calibrated!")
+  
+  def save(self, filename='network_data.pkl'):
+    print("Saving Energy Helper object...")
+    output = open(filename, 'wb')
+    pickle.dump(self, output, 2)
+    output.close()
+    print("Energy Helper object saved!")
+  
+  def load(filename='network_data.pkl'):
+    print("Loading Energy Helper object...")
+    input = open(filename, 'rb')
+    obj = pickle.load(input)
+    input.close()
+    print("Energy Helper object loaded!")
+    ehobj = EnergyHelper(obj.nodes, 
+                         obj.edges,
+                         obj.UID_to_ind,
+                         obj.ind_to_UID,
+                         obj.ang_tol,
+                         False,
+                         obj.demand)
+    ehobj.line_cover = obj.line_cover
+    return ehobj
+
+  def get_local_node_index(self, original_osmid):
+    return self.UID_to_ind[original_osmid]
+  
+  def get_node_osmid(self, local_index):
+    return self.ind_to_UID[local_index]
 
 class EnergyFunction:
   """

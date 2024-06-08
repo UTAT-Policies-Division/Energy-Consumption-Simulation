@@ -183,8 +183,8 @@ def get_avaliable_building_data(place_name, epsg, boundary_buffer_length):
     print("WARNING: building data may contain inconsistent units.")
     return result
 
-def get_decomposed_network(place_name, epsg, boundary_buffer_length, network_type, wind_func,
-                           simplification_tolerance=0, safety_check=False):
+def get_decomposed_network(place_name, epsg, boundary_buffer_length, 
+                           network_type, wind_func,simplification_tolerance=0):
     """
     returns (nodes, edges, UID_to_ind, ind_to_UID) := 
     ([index -> (x,y) ...], 
@@ -214,19 +214,6 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, network_typ
     yl = nodes["y"].values
     uidl = nodes["osmid_original"].values
     rel_idl = nodes.axes[0].values
-    if safety_check:
-        lst = sort(xl)
-        lc = round(lst[1], D_PRES) - round(lst[0], D_PRES)
-        for j in range(1,lst.size):
-            lc = min(lc, round(lst[j], D_PRES) - round(lst[j-1], D_PRES))
-        if lc == 0:
-            print("WARNING: X coordinates lost uniqueness due truncation")
-        lst = sort(yl)
-        lc = round(lst[1], D_PRES) - round(lst[0], D_PRES)
-        for j in range(1,lst.size):
-            lc = min(lc, round(lst[j], D_PRES) - round(lst[j-1], D_PRES))
-        if lc == 0:
-            print("WARNING: Y coordinates lost uniqueness due truncation")
     uvl = edges.axes[0].values      # directional edges
     lenl = edges["length"].values
     avg_x, avg_y = 0, 0
