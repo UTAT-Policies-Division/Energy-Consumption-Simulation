@@ -6,6 +6,7 @@ import geopandas
 import shapely.geometry as shp
 import shapely
 import networkx as nx
+from math import sqrt, sin
 
 UOFT = "University of Toronto"
 MANHATTAN = "Manhattan"
@@ -16,11 +17,34 @@ TARGET_CRS_EPSG = TORONTO_CRS_EPSG
 BOUNDARY_BUFFER_LENGTH = 500  # default boundary buffer
 TYPE = "bike" # "drive"
 
+def wind_func(sx, sy, dx, dy):
+    # ---------------------------
+    # Change head wind vector field below only.
+    # ---------------------------
+    fsx = (sx - 100) / 50
+    fsy = sx + sy
+    fdx = (dx - 100) / 50
+    fdy = dx + dy
+    # ---------------------------
+    delta_x = dx - sx
+    delta_y = dy - sy
+    delta_norm = sqrt(delta_x * delta_x + delta_y * delta_y)
+    fx = (fsx + fdx) / 2
+    fy = (fsy + fdy) / 2
+    fnorm = sqrt(fx * fx + fy * fy)
+    # max head wind speed: 7 m/s.
+    # print(delta_norm, fnorm)
+    V_w_hd = 7 * (fx * delta_x + fy * delta_y) / (delta_norm * fnorm)
+    # max lateral wind speed: 2 m/s.
+    V_w_lt = sin(sx + sy + dx + dy) * 2
+    return (V_w_hd, V_w_lt)
+
 # gl.show_place_adv(PLACE_NAME, TARGET_CRS_EPSG, BOUNDARY_BUFFER_LENGTH)
 nodes, edges, UID_to_ind, ind_to_UID = gl.get_decomposed_network(PLACE_NAME, 
                                                                  TARGET_CRS_EPSG, 
                                                                  BOUNDARY_BUFFER_LENGTH, 
-                                                                 TYPE, 
+                                                                 TYPE,
+                                                                 wind_func,
                                                                  safety_check=True, 
                                                                  simplification_tolerance=5)
 # nodes = [(0,0), (1,0), (1,1), (5,0), (2,3)]

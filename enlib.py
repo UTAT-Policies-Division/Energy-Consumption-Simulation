@@ -305,6 +305,7 @@ class EnergyHelper:
     self.edges = edges
     self.ang_tol = angle_tolerance
     self.demand = []
+    self.winds = [0 for _ in range(len(nodes))]
     self.line_cover = None
     if gen_plot_data:
       self.line_cover = self.gen_network_line_cover()

@@ -183,7 +183,7 @@ def get_avaliable_building_data(place_name, epsg, boundary_buffer_length):
     print("WARNING: building data may contain inconsistent units.")
     return result
 
-def get_decomposed_network(place_name, epsg, boundary_buffer_length, type, 
+def get_decomposed_network(place_name, epsg, boundary_buffer_length, network_type, wind_func,
                            simplification_tolerance=0, safety_check=False):
     """
     returns (nodes, edges, UID_to_ind, ind_to_UID) := 
@@ -194,12 +194,15 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, type,
     for given place name, epsg, boundary buffer length, and shifts
     coordinate system to the centroid for nodes.
 
+    need to pass a wind calibration function:
+      wind_func(sx, sy, dx, dy) -> (V_w_hd, V_w_lt)
     safety check flag ensures uniqueness is preserved in the process.
+    simplification_tolerance accepts integral number to simplify graph under.
     """
     print("Getting data from server...")
     graph = osmnx.graph_from_polygon(
                     get_place_area(place_name, epsg, boundary_buffer_length).at[0, "geometry"], 
-                    network_type=type)
+                    network_type=network_type)
     if simplification_tolerance > 0:
         graph = osmnx.project_graph(
                     osmnx.simplification.consolidate_intersections(
@@ -207,9 +210,10 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, type,
                     OSM_CRS_EPSG)
     nodes, edges = osmnx.graph_to_gdfs(graph)
     print("Got data from server!\nDecomposing graph network...")
-    uidl = nodes.axes[0].values
     xl = nodes["x"].values
     yl = nodes["y"].values
+    uidl = nodes["osmid_original"].values
+    rel_idl = nodes.axes[0].values
     if safety_check:
         lst = sort(xl)
         lc = round(lst[1], D_PRES) - round(lst[0], D_PRES)
@@ -236,12 +240,19 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, type,
         xl[i] = round((xl[i] - avg_x) * 10**3, max(D_PRES - 3, 0))
     for i in range(yl.size):
         yl[i] = round((yl[i] - avg_y) * 10**3, max(D_PRES - 3, 0))
+    print("Graph network decomposed!\nBuilding internal structures & calibrating winds...")
     UID_to_ind = {}
+    relID_to_ind = {}
     ind_to_UID = []
     nodesl = []
     gc = 0
     for i in range(xl.size):
-        UID_to_ind[uidl[i]] = gc
+        if type(uidl[i]) == list:
+            for id in uidl[i]:
+                UID_to_ind[id] = gc
+        else:
+            UID_to_ind[uidl[i]] = gc
+        relID_to_ind[rel_idl[i]] = gc
         ind_to_UID.append(uidl[i])
         nodesl.append((xl[i], yl[i]))
         gc += 1
@@ -249,9 +260,19 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, type,
     while gc > 0:
         edgesl.append([])
         gc -= 1
+    u_ind, v_ind = -1, -1
     for i in range(uvl.size):
-        edgesl[UID_to_ind[uvl[i][0]]].append((UID_to_ind[uvl[i][1]], round(lenl[i], max(D_PRES - 3, 0))))
-    print("Graph network decomposed!")
+        u_ind = relID_to_ind[uvl[i][0]]
+        v_ind = relID_to_ind[uvl[i][1]]
+        if u_ind == v_ind:    # removing cyclic edges.
+            continue
+        edgesl[u_ind].append((v_ind, 
+                              round(lenl[i], max(D_PRES - 3, 0)),
+                              wind_func(nodesl[u_ind][0],
+                                        nodesl[u_ind][1],
+                                        nodesl[v_ind][0],
+                                        nodesl[v_ind][1])))
+    print("Built internal structures & calibrated winds!")
     return (nodesl, edgesl, UID_to_ind, ind_to_UID)
 
 
