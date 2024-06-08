@@ -10,12 +10,11 @@ from math import sqrt, sin
 
 UOFT = "University of Toronto"
 MANHATTAN = "Manhattan"
-PLACE_NAME = UOFT
+PLACE_NAME = MANHATTAN
 TORONTO_CRS_EPSG = "EPSG:3348"
 LONG_ISLAND_CRS_EPSG = "EPSG:32118"
-TARGET_CRS_EPSG = TORONTO_CRS_EPSG
+TARGET_CRS_EPSG = LONG_ISLAND_CRS_EPSG
 BOUNDARY_BUFFER_LENGTH = 500  # default boundary buffer
-TYPE = "drive" # "drive"
 
 def wind_func(sx, sy, dx, dy):
     # ---------------------------
@@ -40,25 +39,25 @@ def wind_func(sx, sy, dx, dy):
     return (V_w_hd, V_w_lt)
 
 # gl.show_place_adv(PLACE_NAME, TARGET_CRS_EPSG, BOUNDARY_BUFFER_LENGTH)
-nodes, edges, UID_to_ind, ind_to_UID = gl.get_decomposed_network(PLACE_NAME, 
-                                                                 TARGET_CRS_EPSG, 
-                                                                 BOUNDARY_BUFFER_LENGTH, 
-                                                                 TYPE,
-                                                                 wind_func,
-                                                                 simplification_tolerance=5)
+# nodes, edges, dedges, UID_to_ind, ind_to_UID = gl.get_decomposed_network(PLACE_NAME, 
+#                                                                  TARGET_CRS_EPSG, 
+#                                                                  BOUNDARY_BUFFER_LENGTH, 
+#                                                                  wind_func,
+#                                                                  simplification_tolerance=1)
 # nodes = [(0,0), (1,0), (1,1), (5,0), (2,3)]
 # edges = [[(1, 10.0)], 
 #          [(0, 10.0), (2, 10.0), (3, 40.0)], 
 #          [(1, 10.0), (4, 30.5)], 
 #          [(1, 40.0)], 
 #          [(2, 30.5)]]
-eh = el.EnergyHelper(nodes, edges, UID_to_ind, ind_to_UID,
-                     10**(-2), gen_plot_data=True, demand=[])
+# eh = el.EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID,
+#                      10**(-2), gen_plot_data=True, demand=[])
 # eh.gen_random_demand(100, 0.5, 3.5, 25, 5)
 # print(eh.classify_turn_angle(0, 1, 3))
 # print(eh.edge_exists(0, 3))
 # eh.save("manhattan.pkl")
-# eh = el.EnergyHelper.load("manhattan.pkl")
+# eh = el.EnergyHelper.load("uoft.pkl")
+eh = el.EnergyHelper.load("manhattan.pkl")
 eh.plot_network()
 # ef = el.EnergyFunction(0.5, 0.05)
 # CHORD, BETA, SINPSI, COSPSI = el.get_init_data()

@@ -67,13 +67,31 @@ def deg_to_rad(deg):
 def rad_to_deg(rad):
   return rad / deg_coeff
 
-def c(r):   # O(1) via lookup table, correct, but prefer not used
+def c(r):   # correct, but prefer not used
   """
   chord lengths for 1 <= r <= 11 inches, 
   result in mm, for 22x8 propeller
   assumes safe use for efficiency.
   """
-  return CHORD_DATA[int((r-1) * 100)]
+  if r <= 4:
+    r -= 4
+    tmp = r
+    r *= r
+    tmp1 = 0.652444*cos(3.14425*tmp) + 50.6977 - \
+           1.20882*tmp + (1.58523 + 3.23691*tmp)*r
+    r *= r
+    return tmp1 - 0.208061*r*tmp
+  elif r <= 7:
+    r -= 4
+    tmp = r
+    r *= r
+    return 0.114129*cos(2.41374*tmp) + 51.2251 - \
+                 0.253086*tmp - (1.00919 - 0.0548433*tmp)*r
+  else:
+    tmp = r
+    r *= r
+    return -1*exp(-143.87179093 + 13.3561*tmp) + \
+                 63.8221 - (0.55019 - 0.0178557*tmp)*r
 
 def l(rho, V_T_sq, phi, r):   # correct, but prefer not used
   """
@@ -152,26 +170,7 @@ def get_init_data():
   d = 0.1
   tmp, tmp1 = 0, 0
   for _ in range(0, 100):
-    r = _r
-    if r <= 4:
-      r -= 4
-      tmp = r
-      r *= r
-      tmp1 = 0.652444*cos(3.14425*tmp) + 50.6977 - \
-             1.20882*tmp + (1.58523 + 3.23691*tmp)*r
-      r *= r
-      CHORD.append(tmp1 - 0.208061*r*tmp)
-    elif r <= 7:
-      r -= 4
-      tmp = r
-      r *= r
-      CHORD.append(0.114129*cos(2.41374*tmp) + 51.2251 - \
-                   0.253086*tmp - (1.00919 - 0.0548433*tmp)*r)
-    else:
-      tmp = r
-      r *= r
-      CHORD.append(-1*exp(-143.87179093 + 13.3561*tmp) + \
-                   63.8221 - (0.55019 - 0.0178557*tmp)*r)
+    CHORD.append(c(_r))
     BETA.append(atan2(8, 2 * pi * _r))
     _r += d
   SINPSI = []
@@ -301,17 +300,20 @@ class EnergyHelper:
   stores nodes and edges globally.
   """
 
-  def __init__(self, nodes: list, edges: list, UID_to_ind, ind_to_UID,
-               angle_tolerance, gen_plot_data=False, demand=[]):
+  def __init__(self, nodes: list, edges: list, dedges: list, UID_to_ind, 
+               ind_to_UID, angle_tolerance, gen_plot_data=False, demand=[]):
     self.nodes = nodes
     self.edges = edges
+    self.dedges = dedges
     self.ang_tol = angle_tolerance
     self.UID_to_ind = UID_to_ind
     self.ind_to_UID = ind_to_UID
     self.demand = demand
     self.line_cover = None
+    self.line_cover_d = None
     if gen_plot_data:
-      self.line_cover = self.gen_network_line_cover()
+      self.line_cover = self.gen_network_line_cover(self.edges)
+      self.line_cover_d = self.gen_network_line_cover(self.dedges)
   
   def add_demand_node(self, index, weight):
     if index < 0 or index >= len(self.nodes):
@@ -354,7 +356,7 @@ class EnergyHelper:
       return "straight_road"
     return "ERR: could not classify turn"
   
-  def get_edge_length(self, u, v):
+  def get_edge_length_drive(self, u, v):
     """
     get the length of the road connecting u and v,
     -1 if no road found.
@@ -363,24 +365,45 @@ class EnergyHelper:
       if nbrs[0] == v:
         return nbrs[1]
     return -1
-  
+
+  def get_edge_length_bike(self, u, v):
+    """
+    get the length of the road connecting u and v,
+    -1 if no road found.
+    """
+    for nbrs in self.edges[u]:
+      if nbrs[0] == v:
+        return nbrs[1]
+    for nbrs in self.dedges[u]:
+      if nbrs[0] == v:
+        return nbrs[1]
+    return -1
+
   def edge_exists(self, u, v):
     """
     get whether there exists an edge between u and v.
-    based on the fact that if two vertices have distance 0,
-    they must be the same vertex.
+    
+    returns -1 is not found
+             0 if in drive network
+             1 if in bike newtork
     """
-    return self.get_edge_length(u, v) > 0
-  
-  def gen_edges_tracker(self):
+    for nbrs in self.edges[u]:
+      if nbrs[0] == v:
+        return 0
+    for nbrs in self.dedges[u]:
+      if nbrs[0] == v:
+        return 1
+    return -1
+
+  def gen_edges_tracker(self, edge_data):
     """
     generate edges visited tracker.
     """
     edt = []
-    for k in range(len(self.edges)):
+    for k in range(len(edge_data)):
       # hold the valid last index.
-      edt.append([len(self.edges[k]) - 1,[]])
-      for _ in self.edges[k]:
+      edt.append([len(edge_data[k]) - 1,[]])
+      for _ in edge_data[k]:
         edt[k][1].append(0)
     return edt
 
@@ -395,15 +418,15 @@ class EnergyHelper:
     # some unvisited neighbor!
     return nbs[0] >= 0
 
-  def gen_network_line_cover(self):
+  def gen_network_line_cover(self, edge_data):
     """
     returns tuple of x and y component
     of line segments covering the network.
     """
     print("Generating line segement cover for network...")
     segs_x, segs_y = [], []
-    edt = self.gen_edges_tracker()
-    N = len(self.edges)
+    edt = self.gen_edges_tracker(edge_data)
+    N = len(edge_data)
     cnt = 0
     min_index = 0
     cr = 0
@@ -419,10 +442,10 @@ class EnergyHelper:
       else:
         while EnergyHelper._exists_neighbor(cr, nbs):
           nbs[1][nbs[0]] = 1
-          nb_uid = self.edges[cr][nbs[0]][0]
+          nb_uid = edge_data[cr][nbs[0]][0]
           nbs[0] -= 1
           cnt = 0
-          for p in self.edges[nb_uid]:
+          for p in edge_data[nb_uid]:
             if p[0] == cr:
               edt[nb_uid][1][cnt] = 1
               break
@@ -441,6 +464,7 @@ class EnergyHelper:
     """
     plot given graph network
     """
+    print("Plotting network...\nGreen is drone only, blue is all.")
     got = [0 for _ in range(len(self.nodes))]
     nx, dx = [], []
     ny, dy = [], []
@@ -454,18 +478,29 @@ class EnergyHelper:
       nx.append(self.nodes[i][0])
       ny.append(self.nodes[i][1])
     if self.line_cover is None:
-      self.line_cover = self.gen_network_line_cover()
-    llx, lly = self.line_cover
+      self.line_cover = self.gen_network_line_cover(self.edges)
+    if self.line_cover_d is None:
+      self.line_cover_d = self.gen_network_line_cover(self.dedges)
     plt.scatter(dx, dy, c="blue", s=12)
     plt.scatter(nx, ny, c="red", s=4)
+    llx, lly = self.line_cover
     for i in range(len(llx)):
-      plt.plot(llx[i], lly[i], marker="", c="gray")
+      plt.plot(llx[i], lly[i], marker="", c="mediumblue")
+    llx, lly = self.line_cover_d
+    for i in range(len(llx)):
+      plt.plot(llx[i], lly[i], marker="", c="limegreen")
+    print("Plotted network!")
 
   def gen_random_demand(self, num, w_min, w_max, cluster_num = 0, CLUSTER_JUMP = 0):
+    """
+    Demand generated ALWAYS corresponds
+    to nodes reachable by the truck.
+    """
     print("Generating random demand...")
     w_min = round(w_min * 100)
     w_max = round(w_max * 100)
     N = len(self.nodes)
+    LIM = N * N
     a = 0
     b = N - 1
     got = [0 for _ in range(N)]
@@ -473,9 +508,14 @@ class EnergyHelper:
     if cluster_num <= 0:
       while num > 0:
         n = randint(a, b)
-        if got[n] > 0:
-          while got[n] != 0:
-            n = (n + 1) % N
+        while (got[n] > 0) or (len(self.edges[n]) + len(self.dedges[n]) == 0):
+          n = (n + 1) % N
+          if LIM == 1:
+            self.demand = []
+            print("ERROR: could not find suitable node for demand.")
+            return
+          else:
+            LIM -= 1
         got[n] = 1
         self.demand.append((n, randint(w_min, w_max) * 0.01))
         num -= 1
@@ -489,9 +529,14 @@ class EnergyHelper:
       lv = -1
       for _ in range(cluster_num):
         n = randint(a, b)
-        if got[n] > 0:
-          while got[n] != 0:
-            n = (n + 1) % N
+        while (got[n] > 0) or (len(self.edges[n]) + len(self.dedges[n]) == 0):
+          n = (n + 1) % N
+          if LIM == 1:
+            self.demand = []
+            print("ERROR: could not find suitable node for demand.")
+            return
+          else:
+            LIM -= 1
         end = 0
         q[end] = (n, 0)
         to_add = num
@@ -545,8 +590,14 @@ class EnergyHelper:
         dx, dy = self.nodes[dn]
         new_edges.append((dn, l, wind_func(sx, sy, dx, dy)))
       self.edges[i] = new_edges
+      new_edges = []
+      for j in range(len(self.dedges[i])):
+        dn, l, _ = self.dedges[i][j]
+        dx, dy = self.nodes[dn]
+        new_edges.append((dn, l, wind_func(sx, sy, dx, dy)))
+      self.dedges[i] = new_edges
     print("Winds calibrated!")
-  
+
   def save(self, filename='network_data.pkl'):
     print("Saving Energy Helper object...")
     output = open(filename, 'wb')
@@ -562,12 +613,14 @@ class EnergyHelper:
     print("Energy Helper object loaded!")
     ehobj = EnergyHelper(obj.nodes, 
                          obj.edges,
+                         obj.dedges,
                          obj.UID_to_ind,
                          obj.ind_to_UID,
                          obj.ang_tol,
                          False,
                          obj.demand)
     ehobj.line_cover = obj.line_cover
+    ehobj.line_cover_d = obj.line_cover_d
     return ehobj
 
   def get_local_node_index(self, original_osmid):
