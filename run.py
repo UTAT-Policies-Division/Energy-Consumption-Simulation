@@ -57,10 +57,10 @@ def wind_func(sx, sy, dx, dy):
 # print(eh.edge_exists(0, 3))
 # eh.save("manhattan.pkl")
 # eh = el.EnergyHelper.load("uoft.pkl")
-eh = el.EnergyHelper.load("manhattan.pkl")
-eh.plot_network()
-# ef = el.EnergyFunction(0.5, 0.05)
-# CHORD, BETA, SINPSI, COSPSI = el.get_init_data()
+# eh = el.EnergyHelper.load("manhattan.pkl")
+# eh.plot_network()
+ef = el.EnergyFunction(0.5, 0.05)
+CHORD, BETA, SINPSI, COSPSI = el.get_init_data()
 # print(ef.power(el.rho_air_std,
 #                 el.kph_to_mps(60),
 #                 el.kgs_to_W(2.5),
@@ -73,6 +73,13 @@ eh.plot_network()
 #                 el.kph_to_mps(HPS),
 #                 el.kph_to_mps(5), CHORD, BETA, SINPSI, COSPSI)
 # el.draw_functions(30,50,5,func,-5,5,3)
+def func(V):
+    return ef.power(el.rho_air_std,
+                el.kph_to_mps(V),
+                el.kgs_to_W(1.0),
+                el.kph_to_mps(5.44),
+                el.kph_to_mps(5), CHORD, BETA, SINPSI, COSPSI)
+el.draw_function(0,17.5,0.5,func)
 # def func(rpm):
 #   return el.TH_BET(el.rho_air_std, 2.43, 23.0, 4.25, el.RPM_to_omega(rpm), CHORD, BETA, SINPSI, COSPSI)[1]
 # el.draw_function(0,12000,1000,func)
