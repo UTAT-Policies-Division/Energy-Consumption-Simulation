@@ -6,7 +6,6 @@ import geopandas
 import shapely.geometry as shp
 import shapely
 import networkx as nx
-from math import sqrt, sin, cos
 
 UOFT = "University of Toronto"
 MANHATTAN = "Manhattan"
@@ -15,38 +14,88 @@ TORONTO_CRS_EPSG = "EPSG:3348"
 LONG_ISLAND_CRS_EPSG = "EPSG:32118"
 TARGET_CRS_EPSG = TORONTO_CRS_EPSG
 BOUNDARY_BUFFER_LENGTH = 500  # default boundary buffer
+WEIGHTS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
+NUM_STOPS = 200
+GET_MONTH_INDEX = {"January":0,
+                   "February":1,
+                   "March":2,
+                   "April":3,
+                   "May":4,
+                   "June":5,
+                   "July":6,
+                   "August":7,
+                   "September":8,
+                   "October":9,
+                   "November":10,
+                   "December":11}
 
-def wind_func(sx, sy, dx, dy):
-    # ---------------------------
-    # Change head wind vector field below only.
-    # ---------------------------
-    fsx = (sx - 100) / 50
-    fsy = sx + sy
-    fdx = (dx - 100) / 50
-    fdy = dx + dy
-    # ---------------------------
-    delta_x = dx - sx
-    delta_y = dy - sy
-    delta_norm = sqrt(delta_x * delta_x + delta_y * delta_y)
-    fx = (fsx + fdx) / 2
-    fy = (fsy + fdy) / 2
-    fnorm = sqrt(fx * fx + fy * fy)
-    # max head wind speed: 7 m/s.
-    # print(delta_norm, fnorm)
-    V_w_hd = 7 * (fx * delta_x + fy * delta_y) / (delta_norm * fnorm)
-    # max lateral wind speed: 2 m/s.
-    V_w_lt = sin(sx + sy + dx + dy) * 2
-    return (V_w_hd, V_w_lt)
+def RH(isMorning, month):
+    if isMorning:
+        if month == 0:
+            return 0.66
+        elif month == 1:
+            return 0.65
+        elif month == 2:
+            return 0.64
+        elif month == 3:
+            return 0.64
+        elif month == 4:
+            return 0.73
+        elif month == 5:
+            return 0.76
+        elif month == 6:
+            return 0.75
+        elif month == 7:
+            return 0.77
+        elif month == 8:
+            return 0.78
+        elif month == 9:
+            return 0.74
+        elif month == 10:
+            return 0.71
+        else:
+            return 0.69
+    else:
+        if month == 0:
+            return 0.55
+        elif month == 1:
+            return 0.53
+        elif month == 2:
+            return 0.50
+        elif month == 3:
+            return 0.45
+        elif month == 4:
+            return 0.52
+        elif month == 5:
+            return 0.55
+        elif month == 6:
+            return 0.53
+        elif month == 7:
+            return 0.54
+        elif month == 8:
+            return 0.56
+        elif month == 9:
+            return 0.55
+        elif month == 10:
+            return 0.57
+        else:
+            return 0.59
 
 # gl.show_place_adv(PLACE_NAME, TARGET_CRS_EPSG, BOUNDARY_BUFFER_LENGTH)
+isMorning = False
+Month = "March"
 nodes, edges, dedges, UID_to_ind, ind_to_UID = gl.get_decomposed_network(PLACE_NAME, 
                                                                  TARGET_CRS_EPSG, 
-                                                                 BOUNDARY_BUFFER_LENGTH, 
-                                                                 wind_func,
+                                                                 BOUNDARY_BUFFER_LENGTH,
+                                                                 WEIGHTS,
                                                                  simplification_tolerance=1,
                                                                  max_truck_speed=12,
                                                                  base_truck_speed=1.4,
-                                                                 truck_city_mpg=24)
+                                                                 truck_city_mpg=24,
+                                                                 base_temperature=20,
+                                                                 temp_flucts_coeff=3,
+                                                                 relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]),
+                                                                 drone_velocity=18)
 # nodes = [(0,0), (1,0), (1,1), (5,0), (2,3)]
 # edges = [[(1, 10.0)], 
 #          [(0, 10.0), (2, 10.0), (3, 40.0)], 
@@ -55,22 +104,25 @@ nodes, edges, dedges, UID_to_ind, ind_to_UID = gl.get_decomposed_network(PLACE_N
 #          [(2, 30.5)]]
 eh = el.EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID,
                      10**(-2), gen_plot_data=True, demand=[])
-# eh.gen_random_demand(100, 0.5, 3.5, 25, 5)
+eh.gen_random_demand(NUM_STOPS,
+                     WEIGHTS,
+                     cluster_num=25,
+                     CLUSTER_JUMP=2)
+print(eh.total_weight)
 # print(eh.classify_turn_angle(0, 1, 3))
 # print(eh.edge_exists(0, 3))
 # eh.save("manhattan.pkl")
 # eh = el.EnergyHelper.load("uoft.pkl")
 # eh = el.EnergyHelper.load("manhattan.pkl")
 eh.plot_network()
-# ef = el.EnergyFunction(0.5, 0.05)
-# CHORD, BETA, SINPSI, COSPSI = el.get_init_data()
-# print(ef.power(el.rho_air_std,
-#                 el.kph_to_mps(60),
-#                 el.kgs_to_W(2.5),
-#                 el.kph_to_mps(15),
-#                 el.kph_to_mps(5), CHORD, BETA, SINPSI, COSPSI))
+# C_D_ALPHA0, S_REF, CHORD, BETA, SINPSI, COSPSI = el.get_init_data()
+# print(el.power(el.rho_air_std,
+#                el.kph_to_mps(60),
+#                el.kgs_to_W(2.5),
+#                el.kph_to_mps(15),
+#                el.kph_to_mps(5), C_D_ALPHA0, S_REF, CHORD, BETA, SINPSI, COSPSI))
 # def func(V, HPS):
-#     return ef.power(el.rho_air_std,
+#     return el.power(el.rho_air_std,
 #                 el.kph_to_mps(V),
 #                 el.kgs_to_W(2.5),
 #                 el.kph_to_mps(HPS),
@@ -81,7 +133,7 @@ climb/descent speed range: -30 kmh to 25 kmh including wind.
 forward ground speed range: 0 kmh to 170 kmh including wind. 
 """
 # def func(V):
-#     return ef.power(el.rho_air_std,
+#     return el.power(el.rho_air_std,
 #                 el.kph_to_mps(V),
 #                 el.kgs_to_W(1.0),
 #                 el.kph_to_mps(5.44),
