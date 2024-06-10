@@ -81,6 +81,7 @@ def RH(isMorning, month):
         else:
             return 0.59
 
+<<<<<<< HEAD
 if __name__ == '__main__':
   isMorning = False
   Month = "March"
@@ -140,6 +141,71 @@ if __name__ == '__main__':
 #   el.draw_function(0,12000,1000,func)
 #   plt.legend(loc='best')
   plt.show()
+=======
+# gl.show_place_adv(PLACE_NAME, TARGET_CRS_EPSG, BOUNDARY_BUFFER_LENGTH)
+isMorning = False
+Month = "March"
+nodes, edges, dedges, UID_to_ind, ind_to_UID = gl.get_decomposed_network(PLACE_NAME, 
+                                                                 TARGET_CRS_EPSG, 
+                                                                 BOUNDARY_BUFFER_LENGTH,
+                                                                 WEIGHTS,
+                                                                 simplification_tolerance=1,
+                                                                 max_truck_speed=12,
+                                                                 base_truck_speed=1.4,
+                                                                 truck_city_mpg=24,
+                                                                 base_temperature=20,
+                                                                 temp_flucts_coeff=3,
+                                                                 relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]),
+                                                                 drone_velocity=18)
+# nodes = [(0,0), (1,0), (1,1), (5,0), (2,3)]
+# edges = [[(1, 10.0)], 
+#          [(0, 10.0), (2, 10.0), (3, 40.0)], 
+#          [(1, 10.0), (4, 30.5)], 
+#          [(1, 40.0)], 
+#          [(2, 30.5)]]
+eh = el.EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID,
+                     10**(-2), gen_plot_data=True, demand=[])
+eh.gen_random_demand(NUM_STOPS,
+                     WEIGHTS,
+                     cluster_num=25,
+                     CLUSTER_JUMP=2)
+print(eh.total_weight)
+# print(eh.classify_turn_angle(0, 1, 3))
+# print(eh.edge_exists(0, 3))
+# eh.save("manhattan.pkl")
+# eh = el.EnergyHelper.load("uoft.pkl")
+# eh = el.EnergyHelper.load("manhattan.pkl")
+eh.plot_network()
+# C_D_ALPHA0, S_REF, CHORD, BETA, SINPSI, COSPSI = el.get_init_data()
+# print(el.power(el.rho_air_std,
+#                el.kph_to_mps(60),
+#                el.kgs_to_W(2.5),
+#                el.kph_to_mps(15),
+#                el.kph_to_mps(5), C_D_ALPHA0, S_REF, CHORD, BETA, SINPSI, COSPSI))
+# def func(V, HPS):
+#     return el.power(el.rho_air_std,
+#                 el.kph_to_mps(V),
+#                 el.kgs_to_W(2.5),
+#                 el.kph_to_mps(HPS),
+#                 el.kph_to_mps(5), CHORD, BETA, SINPSI, COSPSI)
+# el.draw_functions(30,50,5,func,-5,5,3)
+"""
+climb/descent speed range: -30 kmh to 25 kmh including wind.
+forward ground speed range: 0 kmh to 170 kmh including wind. 
+"""
+# def func(V):
+#     return el.power(el.rho_air_std,
+#                 el.kph_to_mps(V),
+#                 el.kgs_to_W(1.0),
+#                 el.kph_to_mps(5.44),
+#                 el.kph_to_mps(5), CHORD, BETA, SINPSI, COSPSI)
+# el.draw_function(0,50,10,func)
+# def func(rpm):
+#   return el.TH_BET(el.rho_air_std, 2.43, 23.0, 4.25, el.RPM_to_omega(rpm), CHORD, BETA, SINPSI, COSPSI)[1]
+# el.draw_function(0,12000,1000,func)
+# plt.legend(loc='best')
+plt.show()
+>>>>>>> f512be3 (weight initiaization for drones, rho calibration, brought wind function inside decomposer, shifted power function out of scope)
 
 
 """

@@ -1,11 +1,17 @@
 import copy
 import enlib as el
+<<<<<<< HEAD
 import enlib as el
+=======
+>>>>>>> f512be3 (weight initiaization for drones, rho calibration, brought wind function inside decomposer, shifted power function out of scope)
 import osmnx
 import matplotlib.pyplot as plt
 import osmnx.simplification
 from math import sin, cos, sqrt, exp
+<<<<<<< HEAD
 from math import sin, cos, sqrt, exp
+=======
+>>>>>>> f512be3 (weight initiaization for drones, rho calibration, brought wind function inside decomposer, shifted power function out of scope)
 
 D_PRES = 7
 PLACE_NAME = "University of Toronto"  # default place

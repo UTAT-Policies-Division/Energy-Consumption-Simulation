@@ -295,9 +295,12 @@ class EnergyHelper:
     self.total_weight += weight
     if self.total_weight >= 4500:
       print("WARNING: Total demand weight exceeds 4500kg critical point.")
+<<<<<<< HEAD
     self.total_weight += weight
     if self.total_weight >= 4500:
       print("WARNING: Total demand weight exceeds 4500kg critical point.")
+=======
+>>>>>>> f512be3 (weight initiaization for drones, rho calibration, brought wind function inside decomposer, shifted power function out of scope)
     self.demand.append((index, weight))
 
   def add_demand_list(self, lst):
@@ -456,11 +459,27 @@ class EnergyHelper:
     """
     plot given graph network
     """
+<<<<<<< HEAD
     x = []
     y = []
     for p in self.nodes:
       x.append(p[0])
       y.append(p[1])
+=======
+    print("Plotting network...\nGreen: drone only, Blue: all, Red: node, Magenta: demand node (larger).")
+    got = [0 for _ in range(len(self.nodes))]
+    nx, dx = [], []
+    ny, dy = [], []
+    for p in self.demand:
+      got[p[0]] = 1
+      dx.append(self.nodes[p[0]][0])
+      dy.append(self.nodes[p[0]][1])
+    for i in range(len(self.nodes)):
+      if got[i] == 1:
+        continue
+      nx.append(self.nodes[i][0])
+      ny.append(self.nodes[i][1])
+>>>>>>> f512be3 (weight initiaization for drones, rho calibration, brought wind function inside decomposer, shifted power function out of scope)
     if self.line_cover is None:
       self.line_cover = self.gen_network_line_cover(self.edges)
     if self.line_cover_d is None:
