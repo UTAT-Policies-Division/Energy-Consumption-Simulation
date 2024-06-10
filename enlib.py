@@ -295,6 +295,9 @@ def draw_functions(s_x, e_x, dx, f, p_s, p_e, dp):
     ly.clear()
     p += dp
 
+def default_truck_power_func(W):
+  return 
+
 class EnergyHelper:
   """
   stores nodes and edges globally.
@@ -628,6 +631,17 @@ class EnergyHelper:
   
   def get_node_osmid(self, local_index):
     return self.ind_to_UID[local_index]
+  
+  def gen_weights(self, drone_velocity, truck_power_func):
+    """
+    init weights.
+      need drone velocity to init drone time taken.
+    use floyd marshall cause switch point.
+      need seperate for drone and truck.
+    use ACO on top.
+    """
+
+    return 0
 
 class EnergyFunction:
   """
