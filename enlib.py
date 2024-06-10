@@ -181,7 +181,9 @@ def get_init_data():
     SINPSI.append(sin(psi))
     COSPSI.append(cos(psi))
     psi += d
-  return (CHORD, BETA, SINPSI, COSPSI)
+  C_D_ALPHA0 = 0.5
+  S_REF = 0.05
+  return (C_D_ALPHA0, S_REF, CHORD, BETA, SINPSI, COSPSI)
 
 def TH_BET(rho, v0, Vx, Vc, omega, CHORD, BETA, SINPSI, COSPSI):   # correct, but prefer not used
   resT, resH = 0, 0
@@ -295,9 +297,6 @@ def draw_functions(s_x, e_x, dx, f, p_s, p_e, dp):
     ly.clear()
     p += dp
 
-def default_truck_power_func(W):
-  return 
-
 class EnergyHelper:
   """
   stores nodes and edges globally.
@@ -312,6 +311,9 @@ class EnergyHelper:
     self.UID_to_ind = UID_to_ind
     self.ind_to_UID = ind_to_UID
     self.demand = demand
+    self.total_weight = 0
+    for dat in demand:
+      self.total_weight += dat[1]
     self.line_cover = None
     self.line_cover_d = None
     if gen_plot_data:
@@ -323,6 +325,9 @@ class EnergyHelper:
       raise IndexError("Demand Index out of bounds.")
     elif weight < 0:
       raise ValueError("Demand Weight cannot be negative.")
+    self.total_weight += weight
+    if self.total_weight >= 4500:
+      print("WARNING: Total demand weight exceeds 4500kg critical point.")
     self.demand.append((index, weight))
 
   def add_demand_list(self, lst):
@@ -467,7 +472,7 @@ class EnergyHelper:
     """
     plot given graph network
     """
-    print("Plotting network...\nGreen is drone only, blue is all.")
+    print("Plotting network...\nGreen: drone only, Blue: all, Red: node, Magenta: demand node (larger).")
     got = [0 for _ in range(len(self.nodes))]
     nx, dx = [], []
     ny, dy = [], []
@@ -484,7 +489,7 @@ class EnergyHelper:
       self.line_cover = self.gen_network_line_cover(self.edges)
     if self.line_cover_d is None:
       self.line_cover_d = self.gen_network_line_cover(self.dedges)
-    plt.scatter(dx, dy, c="blue", s=12)
+    plt.scatter(dx, dy, c="magenta", s=12)
     plt.scatter(nx, ny, c="red", s=4)
     llx, lly = self.line_cover
     for i in range(len(llx)):
@@ -494,18 +499,20 @@ class EnergyHelper:
       plt.plot(llx[i], lly[i], marker="", c="limegreen")
     print("Plotted network!")
 
-  def gen_random_demand(self, num, w_min, w_max, cluster_num = 0, CLUSTER_JUMP = 0):
+  def gen_random_demand(self, num, WEIGHTS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2], cluster_num = 0, CLUSTER_JUMP = 0):
     """
     Demand generated ALWAYS corresponds
     to nodes reachable by the truck.
+
+    returns total weight allocated.
     """
     print("Generating random demand...")
-    w_min = round(w_min * 100)
-    w_max = round(w_max * 100)
     N = len(self.nodes)
     LIM = N * N
-    a = 0
-    b = N - 1
+    a, w_a = 0, 0
+    b, w_b = N - 1, len(WEIGHTS) - 1
+    w = -1
+    w_total = 0
     got = [0 for _ in range(N)]
     n = 0
     if cluster_num <= 0:
@@ -515,12 +522,15 @@ class EnergyHelper:
           n = (n + 1) % N
           if LIM == 1:
             self.demand = []
+            self.total_weight = 0
             print("ERROR: could not find suitable node for demand.")
             return
           else:
             LIM -= 1
         got[n] = 1
-        self.demand.append((n, randint(w_min, w_max) * 0.01))
+        w = WEIGHTS[randint(w_a, w_b)]
+        self.demand.append((n, w))
+        w_total += w
         num -= 1
     else:
       # CLUSTER_JUMP = 0 implies immediate neighbors
@@ -536,6 +546,7 @@ class EnergyHelper:
           n = (n + 1) % N
           if LIM == 1:
             self.demand = []
+            self.total_weight = 0
             print("ERROR: could not find suitable node for demand.")
             return
           else:
@@ -550,7 +561,9 @@ class EnergyHelper:
           end -= 1
           if lv == 0:
             got[n] = 1
-            self.demand.append((n, randint(w_min, w_max) * 0.01))
+            w = WEIGHTS[randint(w_a, w_b)]
+            self.demand.append((n, w))
+            w_total += w
             if to_add == 1:
               break
             else:
@@ -578,6 +591,9 @@ class EnergyHelper:
                 q[end] = tmp
         if to_add > threshold:
           print("WARNING: cluster generation suppressed in area.")
+    self.total_weight = w_total
+    if self.total_weight >= 4500:
+      print("WARNING: Total demand weight exceeds 4500kg critical point.")
     print("Random demand generated!")
 
   def calibrate_winds(self, wind_func):
@@ -624,6 +640,8 @@ class EnergyHelper:
                          obj.demand)
     ehobj.line_cover = obj.line_cover
     ehobj.line_cover_d = obj.line_cover_d
+    if (obj.total_weight - ehobj.total_weight) > 0.0001:
+      print("WARNING: total weight not consistent between actual demand and storage.")
     return ehobj
 
   def get_local_node_index(self, original_osmid):
@@ -632,7 +650,7 @@ class EnergyHelper:
   def get_node_osmid(self, local_index):
     return self.ind_to_UID[local_index]
   
-  def gen_weights(self, drone_velocity, truck_power_func):
+  def gen_weights(self, drone_velocity):
     """
     init weights.
       need drone velocity to init drone time taken.
@@ -640,141 +658,138 @@ class EnergyHelper:
       need seperate for drone and truck.
     use ACO on top.
     """
+    # 1% decrease in mpg for every 100 pounds
+    # implies 1 / (1 - 0.01 * num_pounds) multiplier. 
+    truck_coeff = 1 / (1 - (0.01 * self.total_weight / 45.359237))
 
     return 0
 
-class EnergyFunction:
+def D_f(rho, V):   # correct, but prefer not used
   """
-  General BET (Blade Element Theory) with Coleman Inflow Model.
-
-  rho: density of surrounding air
-  V: forward speed
-
-  S_ref: reference area, usually drone front area
-  C_D_alph0: drag force coefficient when alpha_D = 0
-    D_f = 0.5 * C_D_alph0 * S_ref * rho * V^2
-
-  V_w_hd: wind speed counter V (head) component
-  V_w_lt: wind speed lateral downwards component
-
+  Drag force.
+  TODO: include effect of having a package.
   """
-  def __init__(self, C_D_alph0, S_ref):
-    self.C_D_alph0 = C_D_alph0
-    self.S_ref = S_ref
-  
-  def D_f(self, rho, V):   # correct, but prefer not used
-    """
-    Drag force.
-    TODO: include effect of having a package.
-    """
-    return 0.5 * self.C_D_alph0 * self.S_ref * rho * V * V
+  return 0.5 * self.C_D_alph0 * self.S_ref * rho * V * V
 
-  def power(self, rho, V, W, V_w_hd, V_w_lt, CHORD, BETA, SINPSI, COSPSI):
-    W += kgs_to_W(13)    # needs update, drone base weight
-    Df = 0.5 * self.C_D_alph0 * self.S_ref * rho * V * V
-    T0, H0 = W / 6, 0.015 * W
-    T_OLD, alpha_D, COSALPHD, SINALPHD = 0, 0, 0, 0
-    omega0, omegaN = 350, 350
-    TBET, HBET, QBET = 0, 0, 0
-    Vx, Vc = 0, 0
-    # print("Weight:", W)
-    resT, resH, resQ = 0, 0, 0
-    T, H, Q, x, rdr_SI = 0, 0, 0, 0, 0
-    dr_SI = 0.00254
-    dr_SI_sq = 0.0000064516
-    dx = 0.009090909091
-    dv, vCOEFF, vCOEFF_INIT = 0, 0, 0
-    Vc_v_sum1, Vc_v_sum2 = 0, 0
-    omega_r, d_omega_r = 0, 0
-    i, j = 0, 0
-    SUM, fx = 0, 0
-    phi = 0
-    VTsq_c = 0
-    l, d = 0, 0
-    lCOEFF = rho * 0.00285
-    dCOEFF = rho * 0.0000225
-    cosphi, sinphi = 0, 0
-    HCOEFF = 0
-    C, k_v, fv, dv, Vxsq, VAR1 = 0, 0, 0, 0, 0, 0
-    while abs(T0 - T_OLD) / T0 > 0.000001:
-      T_OLD = T0
-      alpha_D = atan2(Df, W) + atan2(H0, sqrt(Df*Df + W*W))
-      T0 = sqrt(W*W + Df*Df - H0*H0) / 6
-      TBET = T0 / 2
-      COSALPHD = cos(alpha_D)
-      SINALPHD = sin(alpha_D)
-      Vx = (V + V_w_hd) * COSALPHD + V_w_lt * SINALPHD
-      Vxsq = Vx * Vx
-      Vc = (V + V_w_hd) * SINALPHD + V_w_lt * COSALPHD
-      C = T0 / (2 * rho * AREA)
-      C *= C
-      k_v = 2
+"""
+General BET (Blade Element Theory) with Coleman Inflow Model.
+
+rho: density of surrounding air
+V: forward speed
+
+S_ref: reference area, usually drone front area
+C_D_alph0: drag force coefficient when alpha_D = 0
+  D_f = 0.5 * C_D_alph0 * S_ref * rho * V^2
+
+V_w_hd: wind speed counter V (head) component
+V_w_lt: wind speed lateral downwards component
+"""
+def power(rho, V, W, V_w_hd, V_w_lt, C_D_ALPHA0, S_REF, CHORD, BETA, SINPSI, COSPSI):
+  W += kgs_to_W(13)    # needs update, drone base weight
+  Df = 0.5 * C_D_ALPHA0 * S_REF * rho * V * V
+  T0, H0 = W / 6, 0.015 * W
+  T_OLD, alpha_D, COSALPHD, SINALPHD = 0, 0, 0, 0
+  omega0, omegaN = 350, 350
+  TBET, HBET, QBET = 0, 0, 0
+  Vx, Vc = 0, 0
+  # print("Weight:", W)
+  resT, resH, resQ = 0, 0, 0
+  T, H, Q, x, rdr_SI = 0, 0, 0, 0, 0
+  dr_SI = 0.00254
+  dr_SI_sq = 0.0000064516
+  dx = 0.009090909091
+  dv, vCOEFF, vCOEFF_INIT = 0, 0, 0
+  Vc_v_sum1, Vc_v_sum2 = 0, 0
+  omega_r, d_omega_r = 0, 0
+  i, j = 0, 0
+  SUM, fx = 0, 0
+  phi = 0
+  VTsq_c = 0
+  l, d = 0, 0
+  lCOEFF = rho * 0.00285
+  dCOEFF = rho * 0.0000225
+  cosphi, sinphi = 0, 0
+  HCOEFF = 0
+  C, k_v, fv, dv, Vxsq, VAR1 = 0, 0, 0, 0, 0, 0
+  while abs(T0 - T_OLD) / T0 > 0.000001:
+    T_OLD = T0
+    alpha_D = atan2(Df, W) + atan2(H0, sqrt(Df*Df + W*W))
+    T0 = sqrt(W*W + Df*Df - H0*H0) / 6
+    TBET = T0 / 2
+    COSALPHD = cos(alpha_D)
+    SINALPHD = sin(alpha_D)
+    Vx = (V + V_w_hd) * COSALPHD + V_w_lt * SINALPHD
+    Vxsq = Vx * Vx
+    Vc = (V + V_w_hd) * SINALPHD + V_w_lt * COSALPHD
+    C = T0 / (2 * rho * AREA)
+    C *= C
+    k_v = 2
+    VAR1 = k_v + Vc
+    fv = ((k_v * k_v * (VAR1 * VAR1 + Vxsq)) - C)
+    dv = fv / (2 * k_v * ((VAR1 * (VAR1 + k_v)) + Vxsq))
+    while abs(fv) > NEWT_PREC:
+      k_v -= dv
       VAR1 = k_v + Vc
       fv = ((k_v * k_v * (VAR1 * VAR1 + Vxsq)) - C)
       dv = fv / (2 * k_v * ((VAR1 * (VAR1 + k_v)) + Vxsq))
-      while abs(fv) > NEWT_PREC:
-        k_v -= dv
-        VAR1 = k_v + Vc
-        fv = ((k_v * k_v * (VAR1 * VAR1 + Vxsq)) - C)
-        dv = fv / (2 * k_v * ((VAR1 * (VAR1 + k_v)) + Vxsq))
-      # print("alpha_d:",rad_to_deg(alpha_D),"T0:",T0,"v0:",k_v,"Vx:",Vx,"Vc:",Vc)
-      while abs(TBET - T0) / T0 > 0.000001:
-        resT, resH, resQ = 0, 0, 0
-        i = 0
-        vCOEFF_INIT = tan(atan2(Vx, k_v + Vc) / 2)
-        d_omega_r = omega0 * dr_SI
-        while i < 100:
-          T, H, Q, j = 0, 0, 0, 0
-          x = 0.09090909091
-          rdr_SI = 0.000064516
-          omega_r = omega0 * 0.0254
-          vCOEFF = vCOEFF_INIT * COSPSI[i]
-          dv = k_v * dx * vCOEFF
-          SUM = x * vCOEFF
-          Vc_v_sum1 = Vc + k_v * (1 + SUM)
-          Vc_v_sum2 = Vc + k_v * (1 - SUM)
-          Vx_sinpsi = Vx * SINPSI[i]
-          HCOEFF = SINPSI[i] * dr_SI
-          while j < 100:
-            SUM = omega_r + Vx_sinpsi
-            if SUM > 0:
-              phi = atan2(Vc_v_sum1, SUM)
-              VTsq_c = (Vc_v_sum1 * Vc_v_sum1 + SUM * SUM) * CHORD[j]
-              l = lCOEFF * min(0.2, max(BETA[j] - phi, -0.2)) * VTsq_c
-              d = dCOEFF * VTsq_c
-              cosphi, sinphi = cos(phi), sin(phi)
-              T += (l*cosphi - d*sinphi) * dr_SI
-              fx = (l*sinphi + d*cosphi)
-              H += fx * HCOEFF
-              Q += fx * rdr_SI
-            SUM = omega_r - Vx_sinpsi
-            if SUM > 0:
-              phi = atan2(Vc_v_sum2, SUM)
-              VTsq_c = (Vc_v_sum2 * Vc_v_sum2 + SUM * SUM) * CHORD[j]
-              l = lCOEFF * min(0.2, max(BETA[j] - phi, -0.2)) * VTsq_c
-              d = dCOEFF * VTsq_c
-              cosphi, sinphi = cos(phi), sin(phi)
-              T += (l*cosphi - d*sinphi) * dr_SI
-              fx = (l*sinphi + d*cosphi)
-              H -= fx * HCOEFF
-              Q += fx * rdr_SI
-            x += dx
-            rdr_SI += dr_SI_sq
-            Vc_v_sum1 += dv
-            Vc_v_sum2 -= dv
-            omega_r += d_omega_r
-            j += 1
-          resT += T
-          resH += H
-          resQ += Q
-          i += 1
-        TBET, HBET, QBET = resT * 0.01, resH * 0.01, resQ * 0.01
-        omegaN = sqrt(T0/TBET) * omega0
-        # print("QBET:",QBET,"TBET:",TBET,"HBET:",HBET,"O0:",omega0,"ON:",omegaN)
-        omega0 = omegaN
-      T0 = TBET
-      H0 = HBET
-    # print((W/6)-T0) # excess
-    # omega_to_RPM(omegaN), rad_to_deg(alpha_D)
-    return (omegaN * QBET * 7.05882353)
-    # assumes each of the 6 motors has 85% efficiency.
+    # print("alpha_d:",rad_to_deg(alpha_D),"T0:",T0,"v0:",k_v,"Vx:",Vx,"Vc:",Vc)
+    while abs(TBET - T0) / T0 > 0.000001:
+      resT, resH, resQ = 0, 0, 0
+      i = 0
+      vCOEFF_INIT = tan(atan2(Vx, k_v + Vc) / 2)
+      d_omega_r = omega0 * dr_SI
+      while i < 100:
+        T, H, Q, j = 0, 0, 0, 0
+        x = 0.09090909091
+        rdr_SI = 0.000064516
+        omega_r = omega0 * 0.0254
+        vCOEFF = vCOEFF_INIT * COSPSI[i]
+        dv = k_v * dx * vCOEFF
+        SUM = x * vCOEFF
+        Vc_v_sum1 = Vc + k_v * (1 + SUM)
+        Vc_v_sum2 = Vc + k_v * (1 - SUM)
+        Vx_sinpsi = Vx * SINPSI[i]
+        HCOEFF = SINPSI[i] * dr_SI
+        while j < 100:
+          SUM = omega_r + Vx_sinpsi
+          if SUM > 0:
+            phi = atan2(Vc_v_sum1, SUM)
+            VTsq_c = (Vc_v_sum1 * Vc_v_sum1 + SUM * SUM) * CHORD[j]
+            l = lCOEFF * min(0.2, max(BETA[j] - phi, -0.2)) * VTsq_c
+            d = dCOEFF * VTsq_c
+            cosphi, sinphi = cos(phi), sin(phi)
+            T += (l*cosphi - d*sinphi) * dr_SI
+            fx = (l*sinphi + d*cosphi)
+            H += fx * HCOEFF
+            Q += fx * rdr_SI
+          SUM = omega_r - Vx_sinpsi
+          if SUM > 0:
+            phi = atan2(Vc_v_sum2, SUM)
+            VTsq_c = (Vc_v_sum2 * Vc_v_sum2 + SUM * SUM) * CHORD[j]
+            l = lCOEFF * min(0.2, max(BETA[j] - phi, -0.2)) * VTsq_c
+            d = dCOEFF * VTsq_c
+            cosphi, sinphi = cos(phi), sin(phi)
+            T += (l*cosphi - d*sinphi) * dr_SI
+            fx = (l*sinphi + d*cosphi)
+            H -= fx * HCOEFF
+            Q += fx * rdr_SI
+          x += dx
+          rdr_SI += dr_SI_sq
+          Vc_v_sum1 += dv
+          Vc_v_sum2 -= dv
+          omega_r += d_omega_r
+          j += 1
+        resT += T
+        resH += H
+        resQ += Q
+        i += 1
+      TBET, HBET, QBET = resT * 0.01, resH * 0.01, resQ * 0.01
+      omegaN = sqrt(T0/TBET) * omega0
+      # print("QBET:",QBET,"TBET:",TBET,"HBET:",HBET,"O0:",omega0,"ON:",omegaN)
+      omega0 = omegaN
+    T0 = TBET
+    H0 = HBET
+  # print((W/6)-T0) # excess
+  # omega_to_RPM(omegaN), rad_to_deg(alpha_D)
+  return (omegaN * QBET * 7.05882353)
+  # assumes each of the 6 motors has 85% efficiency.
