@@ -3,6 +3,7 @@ from numpy import sort
 import osmnx
 import matplotlib.pyplot as plt
 import osmnx.simplification
+from math import sin, cos, sqrt
 
 D_PRES = 7
 PLACE_NAME = "University of Toronto"  # default place
@@ -184,7 +185,9 @@ def get_avaliable_building_data(place_name, epsg, boundary_buffer_length):
     return result
 
 def get_decomposed_network(place_name, epsg, boundary_buffer_length, 
-                           wind_func,simplification_tolerance=0):
+                           wind_func, simplification_tolerance=1, 
+                           max_truck_speed=12, base_truck_speed=1.4, 
+                           truck_city_mpg=24):
     """
     returns (nodes, edges, UID_to_ind, ind_to_UID) := 
     ([index -> (x,y) ...], 
@@ -257,10 +260,16 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length,
         avg_y += y
     avg_x = round(avg_x / len(xl), D_PRES)
     avg_y = round(avg_y / len(yl), D_PRES)
+    min_x, min_y = 0, 0
+    max_x, max_y = 0, 0
     for i in range(len(xl)):
         xl[i] = round((xl[i] - avg_x) * 10**3, max(D_PRES - 3, 0))
+        max_x = max(max_x, xl[i])
+        min_x = min(min_x, xl[i])
     for i in range(len(yl)):
         yl[i] = round((yl[i] - avg_y) * 10**3, max(D_PRES - 3, 0))
+        max_y = max(max_y, yl[i])
+        min_y = min(min_y, yl[i])
     ulb = edgesB["u_original"].values   # directional edges
     vlb = edgesB["v_original"].values
     lenlb = edgesB["length"].values
@@ -290,6 +299,13 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length,
         gc -= 1
     hash = {}
     u_ind, v_ind = -1, -1
+    x_coeff = 30 / max(abs(max_x), abs(min_x))
+    y_coeff = 30 / max(abs(max_y), abs(min_y))
+    C = 74736280 / truck_city_mpg
+    B = -sqrt(74736280 - C)
+    A = B / -24.5872
+    truck_speed, truck_epm, length = 0, 0, 0
+    x, y, mul_x, mul_y = 0, 0, 0, 0
     for i in range(len(uld)):
         if not ((uld[i] in UID_to_ind) and (vld[i] in UID_to_ind)):
             continue
@@ -300,12 +316,26 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length,
         if u_ind not in hash:
             hash[u_ind] = {}
         hash[u_ind][v_ind] = 1
+        length = round(lenld[i], max(D_PRES - 3, 0))
+        # ---------------------------
+        # Change truck velocity vector field below only.
+        # ---------------------------
+        x = x_coeff * (nodesl[u_ind][0] + nodesl[v_ind][0])
+        y = y_coeff * (nodesl[u_ind][1] + nodesl[v_ind][1])
+        mul_y = abs(cos(3+(y/6)))
+        mul_x = abs(cos(5+(x/6)))
+        truck_speed = round(base_truck_speed + max_truck_speed * 0.0003 * (mul_y * x * x + mul_x * y * y), 2)
+        # ---------------------------
+        truck_epm = A * truck_speed + B
+        truck_epm *= truck_epm
+        truck_epm = (truck_epm + C) / 1000   # J/m
         edgesl[u_ind].append((v_ind, 
-                              round(lenld[i], max(D_PRES - 3, 0)),
+                              length,
                               wind_func(nodesl[u_ind][0],
                                         nodesl[u_ind][1],
                                         nodesl[v_ind][0],
-                                        nodesl[v_ind][1])))
+                                        nodesl[v_ind][1]),
+                              truck_epm * length))
     num_extra = 0
     found = False
     for j in range(len(ulb)):
@@ -318,12 +348,26 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length,
         if (u_ind in hash) and (v_ind in hash[u_ind]):
             continue
         num_extra += 1
+        length = round(lenlb[j], max(D_PRES - 3, 0))
+        # ---------------------------
+        # Change truck velocity vector field below only.
+        # ---------------------------
+        x = x_coeff * (nodesl[u_ind][0] + nodesl[v_ind][0])
+        y = y_coeff * (nodesl[u_ind][1] + nodesl[v_ind][1])
+        mul_y = abs(cos(3+(y/6)))
+        mul_x = abs(cos(5+(x/6)))
+        truck_speed = round(base_truck_speed + max_truck_speed * 0.0003 * (mul_y * x * x + mul_x * y * y), 2)
+        # ---------------------------
+        truck_epm = A * truck_speed + B
+        truck_epm *= truck_epm
+        truck_epm = (truck_epm + C) / 1000   # J/m
         dedges[u_ind].append((v_ind, 
-                              round(lenlb[j], max(D_PRES - 3, 0)),
+                              length,
                               wind_func(nodesl[u_ind][0],
                                         nodesl[u_ind][1],
                                         nodesl[v_ind][0],
-                                        nodesl[v_ind][1])))
+                                        nodesl[v_ind][1]),
+                              truck_epm * length))
     print("Found", int(num_extra*100/len(ulb)), "percent extra edges in bike network.")
     print("Built internal edges structure & calibrated winds!")
     return (nodesl, edgesl, dedges, UID_to_ind, ind_to_UID)
