@@ -1,8 +1,10 @@
 import copy
 import enlib as el
+import enlib as el
 import osmnx
 import matplotlib.pyplot as plt
 import osmnx.simplification
+from math import sin, cos, sqrt, exp
 from math import sin, cos, sqrt, exp
 
 D_PRES = 7
@@ -186,8 +188,10 @@ def get_avaliable_building_data(place_name, epsg, boundary_buffer_length):
     print("WARNING: building data may contain inconsistent units.")
     return result
 
-def get_decomposed_network(place_name, epsg, boundary_buffer_length, type, 
-                           simplification_tolerance=0, safety_check=False):
+def get_decomposed_network(place_name, epsg, boundary_buffer_length, WEIGHTS, simplification_tolerance=1, 
+                           max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
+                           base_temperature=20, temp_flucts_coeff=3, relative_humidity=0.7,
+                           drone_velocity=18):
     """
     returns (nodes, edges, UID_to_ind, ind_to_UID) := 
     ([index -> (x,y) ...], 
@@ -286,10 +290,125 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, type,
     while gc > 0:
         edgesl.append([])
         gc -= 1
-    for i in range(uvl.size):
-        edgesl[UID_to_ind[uvl[i][0]]].append((UID_to_ind[uvl[i][1]], round(lenl[i], max(D_PRES - 3, 0))))
-    print("Graph network decomposed!")
-    return (nodesl, edgesl, UID_to_ind, ind_to_UID)
+    hash = {}
+    u_ind, v_ind = -1, -1
+    sx, sy, dx, dy = 0, 0, 0, 0
+    fsx, fsy, fdx, fdy = 0, 0, 0, 0
+    delta_x, delta_y, delta_norm = 0, 0, 0
+    fx, fy, fnorm = 0, 0, 0
+    V_w_hd, V_w_lt = 0, 0
+    x_coeff = 30 / max(abs(max_x), abs(min_x))
+    y_coeff = 30 / max(abs(max_y), abs(min_y))
+    C = 74736280 / truck_city_mpg
+    B = -sqrt(74736280 - C)
+    A = B / -24.5872
+    truck_speed, truck_epm, length = 0, 0, 0
+    x, y, mul_x, mul_y = 0, 0, 0, 0
+    T, Pv, rho, pow = 0, 0, 0, 0
+    temp_flucts_coeff /= 2
+    C_D_ALPHA0, S_REF, CHORD, BETA, SINPSI, COSPSI = el.get_init_data()
+    prc = 0
+    for i in range(len(uld)):
+        prc = round(100 * (i+1) / len(uld), 2)
+        print("\r", prc, "percent part I complete...", end='')
+        if not ((uld[i] in UID_to_ind) and (vld[i] in UID_to_ind)):
+            continue
+        u_ind = UID_to_ind[uld[i]]
+        v_ind = UID_to_ind[vld[i]]
+        if u_ind == v_ind:    # removing cyclic edges.
+            continue
+        if u_ind not in hash:
+            hash[u_ind] = {}
+        hash[u_ind][v_ind] = 1
+        length = round(lenld[i], max(D_PRES - 3, 0))
+        sx, sy = nodesl[u_ind]
+        dx, dy = nodesl[v_ind]
+        # ---------------------------
+        # Change head wind vector field below only.
+        # ---------------------------
+        fsx = (sx - 100) / 50
+        fsy = sx + sy
+        fdx = (dx - 100) / 50
+        fdy = dx + dy
+        # ---------------------------
+        delta_x = dx - sx
+        delta_y = dy - sy
+        delta_norm = sqrt(delta_x * delta_x + delta_y * delta_y)
+        fx = (fsx + fdx) / 2
+        fy = (fsy + fdy) / 2
+        fnorm = sqrt(fx * fx + fy * fy)
+        # max head wind speed: 7 m/s.
+        # print(delta_norm, fnorm)
+        V_w_hd = 7 * (fx * delta_x + fy * delta_y) / (delta_norm * fnorm)
+        # max lateral wind speed: 2 m/s.
+        V_w_lt = sin(sx + sy + dx + dy) * 2
+        x = x_coeff * (sx + dx)
+        y = y_coeff * (sy + dy)
+        # ---------------------------
+        # Change truck velocity vector field below only.
+        # ---------------------------
+        mul_y = abs(cos(3+(y/6)))
+        mul_x = abs(cos(5+(x/6)))
+        truck_speed = round(base_truck_speed + max_truck_speed * 0.0003 * (mul_y * x * x + mul_x * y * y), 2)
+        # ---------------------------
+        truck_epm = A * truck_speed + B
+        truck_epm *= truck_epm
+        truck_epm = (truck_epm + C) / 1000   # J/m
+        T = base_temperature + temp_flucts_coeff * (sin(x) + sin(y))
+        Pv = relative_humidity * 1610.78 * exp((17.27 * T) / (T + 237.3))
+        rho = ((101325 - Pv) * 0.0034837139 + Pv * 0.0021668274) / (T + 273.15)
+        pow = []
+        for w in WEIGHTS:
+            pow.append(el.power(rho, drone_velocity, w, V_w_hd, V_w_lt, C_D_ALPHA0, S_REF, CHORD, BETA, SINPSI, COSPSI))
+        edgesl[u_ind].append((v_ind, length, tuple(pow), truck_epm * length))
+    num_extra = 0
+    found = False
+    for j in range(len(ulb)):
+        prc = round(100 * (j+1) / len(ulb), 2)
+        print("\r", prc, "percent part II complete...", end='')
+        if not ((ulb[j] in UID_to_ind) and (vlb[j] in UID_to_ind)):
+            continue
+        u_ind = UID_to_ind[ulb[j]]
+        v_ind = UID_to_ind[vlb[j]]
+        if u_ind == v_ind:    # removing cyclic edges.
+            continue
+        if (u_ind in hash) and (v_ind in hash[u_ind]):
+            continue
+        num_extra += 1
+        length = round(lenlb[j], max(D_PRES - 3, 0))
+        sx, sy = nodesl[u_ind]
+        dx, dy = nodesl[v_ind]
+        # ---------------------------
+        # Change head wind vector field below only.
+        # ---------------------------
+        fsx = (sx - 100) / 50
+        fsy = sx + sy
+        fdx = (dx - 100) / 50
+        fdy = dx + dy
+        # ---------------------------
+        delta_x = dx - sx
+        delta_y = dy - sy
+        delta_norm = sqrt(delta_x * delta_x + delta_y * delta_y)
+        fx = (fsx + fdx) / 2
+        fy = (fsy + fdy) / 2
+        fnorm = sqrt(fx * fx + fy * fy)
+        # max head wind speed: 7 m/s.
+        # print(delta_norm, fnorm)
+        V_w_hd = 7 * (fx * delta_x + fy * delta_y) / (delta_norm * fnorm)
+        # max lateral wind speed: 2 m/s.
+        V_w_lt = sin(sx + sy + dx + dy) * 2
+        x = x_coeff * (sx + dx)
+        y = y_coeff * (sy + dy)
+        T = base_temperature + temp_flucts_coeff * (sin(x) + sin(y))
+        Pv = relative_humidity * 1610.78 * exp((17.27 * T) / (T + 237.3))
+        rho = ((101325 - Pv) * 0.0034837139 + Pv * 0.0021668274) / (T + 273.15)
+        pow = []
+        for w in WEIGHTS:
+            pow.append(el.power(rho, drone_velocity, w, V_w_hd, V_w_lt, C_D_ALPHA0, S_REF, CHORD, BETA, SINPSI, COSPSI))
+        dedges[u_ind].append((v_ind, length, tuple(pow)))
+    print("Found", int(num_extra*100/len(ulb)), "percent extra edges in bike network.")
+    print("Built internal edges structure & calibrated winds!")
+    return (nodesl, edgesl, dedges, UID_to_ind, ind_to_UID)
 
 
 """
