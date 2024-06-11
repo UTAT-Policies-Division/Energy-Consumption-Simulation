@@ -585,27 +585,6 @@ class EnergyHelper:
       print("WARNING: Total demand weight exceeds 4500kg critical point.")
     print("Random demand generated!")
 
-  def calibrate_winds(self, wind_func):
-    print("Calibrating winds...")
-    new_edges = -1
-    dn, l = -1, -1
-    sx, sy, dx, dy = -1, -1, -1, -1
-    for i in range(len(self.nodes)):
-      sx, sy = self.nodes[i]
-      new_edges = []
-      for j in range(len(self.edges[i])):
-        dn, l, _ = self.edges[i][j]
-        dx, dy = self.nodes[dn]
-        new_edges.append((dn, l, wind_func(sx, sy, dx, dy)))
-      self.edges[i] = new_edges
-      new_edges = []
-      for j in range(len(self.dedges[i])):
-        dn, l, _ = self.dedges[i][j]
-        dx, dy = self.nodes[dn]
-        new_edges.append((dn, l, wind_func(sx, sy, dx, dy)))
-      self.dedges[i] = new_edges
-    print("Winds calibrated!")
-
   def save(self, filename='network_data.pkl'):
     print("Saving Energy Helper object...")
     output = open(filename, 'wb')
