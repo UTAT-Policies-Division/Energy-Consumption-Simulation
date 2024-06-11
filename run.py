@@ -139,7 +139,7 @@ if __name__ == '__main__':
 #   el.draw_function(0,12000,1000,func)
 #   plt.legend(loc='best')
   plt.show()
-  
+
 
 """
 # ax, graph = show_place_adv(PLACE_NAME, TARGET_CRS_EPSG, BOUNDARY_BUFFER_LENGTH)
