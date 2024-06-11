@@ -6,13 +6,14 @@ import geopandas
 import shapely.geometry as shp
 import shapely
 import networkx as nx
+import pickler as pkl
 
 UOFT = "University of Toronto"
 MANHATTAN = "Manhattan"
-PLACE_NAME = UOFT
+PLACE_NAME = MANHATTAN
 TORONTO_CRS_EPSG = "EPSG:3348"
 LONG_ISLAND_CRS_EPSG = "EPSG:32118"
-TARGET_CRS_EPSG = TORONTO_CRS_EPSG
+TARGET_CRS_EPSG = LONG_ISLAND_CRS_EPSG
 BOUNDARY_BUFFER_LENGTH = 500  # default boundary buffer
 NUM_STOPS = 200
 GET_MONTH_INDEX = {"January":0,
@@ -86,10 +87,17 @@ if __name__ == '__main__':
   el.init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
                  base_temperature=20, temp_flucts_coeff=3, drone_speed=18,
                  relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
-  nodes, edges, dedges, UID_to_ind, ind_to_UID = gl.get_decomposed_network(PLACE_NAME, 
-                                                                   TARGET_CRS_EPSG, 
-                                                                   BOUNDARY_BUFFER_LENGTH,
-                                                                   simplification_tolerance=1)
+  eh = pkl.load_decomposed_network(
+      PLACE_NAME, 
+      TARGET_CRS_EPSG, 
+      BOUNDARY_BUFFER_LENGTH, 
+      simplification_tolerance=1
+    )
+
+#   nodes, edges, dedges, UID_to_ind, ind_to_UID = gl.get_decomposed_network(PLACE_NAME, 
+#                                                                    TARGET_CRS_EPSG, 
+#                                                                    BOUNDARY_BUFFER_LENGTH,
+#                                                                    simplification_tolerance=1)
 #   gl.show_place_adv(PLACE_NAME, TARGET_CRS_EPSG, BOUNDARY_BUFFER_LENGTH)
 #   nodes = [(0,0), (1,0), (1,1), (5,0), (2,3)]
 #   edges = [[(1, 10.0)], 
@@ -99,11 +107,11 @@ if __name__ == '__main__':
 #            [(2, 30.5)]]
 #   print(nodes[0:100])
 #   print(edges[0:100])
-  eh = el.EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID,
-                       10**(-2), gen_plot_data=True, demand=[])
+#   eh = el.EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID,
+#                        10**(-2), gen_plot_data=True, demand=[])
 #   print(eh.classify_turn_angle(0, 1, 3))
 #   print(eh.edge_exists(0, 3))
-  eh.save("uoft.pkl")
+#   eh.save("uoft.pkl")
 #   eh = el.EnergyHelper.load("uoft.pkl")
 #   eh = el.EnergyHelper.load("manhattan.pkl")
 #   eh.gen_random_demand(NUM_STOPS,
