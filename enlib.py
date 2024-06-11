@@ -30,7 +30,6 @@ CHORD, BETA, SINPSI, COSPSI = -1, -1, -1, -1
 MAX_TRUCK_SPEED, BASE_TRUCK_SPEED, TRUCK_CITY_MPG = -1, -1, -1
 BASE_TEMP, TEMP_FLUC_COEFF, REL_HUMIDITY = -1, -1, -1
 QUAD_A, QUAD_B, QUAD_C = -1, -1, -1
-x_coeff, y_coeff = -1, -1
 WEIGHTS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
 
 def inner_product(d1, d2):
@@ -210,25 +209,28 @@ def init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
   QUAD_B = -sqrt(74736280 - QUAD_C)
   QUAD_A = QUAD_B / -24.5872
 
-def set_coord_coeff(_x_coeff, _y_coeff):
-  global x_coeff, y_coeff
-  x_coeff = _x_coeff
-  y_coeff = _y_coeff
-
-def copy_globals(c_d_alpha0, s_ref, d_s, chord, beta, sinpsi, cospsi,
-                 m_ts, b_ts, t_m, b_t, tfc, rel_h, a, b, c, x_c, y_c):
+def copy_globals(drone_speed):
   global C_D_ALPHA0, S_REF, DRONE_GROUND_SPEED, \
-         CHORD, BETA, SINPSI, COSPSI, \
-         MAX_TRUCK_SPEED, BASE_TRUCK_SPEED, TRUCK_CITY_MPG, \
-         BASE_TEMP, TEMP_FLUC_COEFF, REL_HUMIDITY, \
-         QUAD_A, QUAD_B, QUAD_C, \
-         x_coeff, y_coeff
-  C_D_ALPHA0, S_REF, DRONE_GROUND_SPEED = c_d_alpha0, s_ref, d_s
-  CHORD, BETA, SINPSI, COSPSI = chord, beta, sinpsi, cospsi
-  MAX_TRUCK_SPEED, BASE_TRUCK_SPEED, TRUCK_CITY_MPG = m_ts, b_ts, t_m
-  BASE_TEMP, TEMP_FLUC_COEFF, REL_HUMIDITY = b_t, tfc, rel_h
-  QUAD_A, QUAD_B, QUAD_C = a, b, c
-  x_coeff, y_coeff = x_c, y_c
+         CHORD, BETA, SINPSI, COSPSI
+  CHORD = []  # holds in millimeters
+  BETA = []
+  _r = 1.0
+  d = 0.1
+  for _ in range(0, 100):
+    CHORD.append(c(_r))
+    BETA.append(atan2(8, 2 * pi * _r))
+    _r += d
+  SINPSI = []
+  COSPSI = []
+  psi = 0
+  d = 2 * pi / 100
+  for _ in range(0, 100):
+    SINPSI.append(sin(psi))
+    COSPSI.append(cos(psi))
+    psi += d
+  C_D_ALPHA0 = 0.5
+  S_REF = 0.05
+  DRONE_GROUND_SPEED = drone_speed
 
 def TH_BET(rho, v0, Vx, Vc, omega, CHORD, BETA, SINPSI, COSPSI):   # correct, but prefer not used
   resT, resH = 0, 0
@@ -840,100 +842,37 @@ def power(rho, W, V_w_hd, V_w_lt):
   return (omegaN * QBET * 7.05882353)
   # assumes each of the 6 motors has 85% efficiency.
 
-# Has potential to be more efficient.
 def fill_edge_data(edgesl, dedges, edge_work, dedge_work):
   print("Logical number of CPUs:", cpu_count())
   p = mp.Pool(processes=cpu_count(), 
               initializer=copy_globals,
-              initargs=(C_D_ALPHA0, S_REF, DRONE_GROUND_SPEED,
-                        CHORD, BETA, SINPSI, COSPSI,
-                        MAX_TRUCK_SPEED, BASE_TRUCK_SPEED, TRUCK_CITY_MPG,
-                        BASE_TEMP, TEMP_FLUC_COEFF, REL_HUMIDITY,
-                        QUAD_A, QUAD_B, QUAD_C,
-                        x_coeff, y_coeff))
+              initargs=(DRONE_GROUND_SPEED,))
   pbar = tqdm(total=(len(edge_work) + len(dedge_work)))
   def update(*a):
     pbar.update()
-  for u_ind, arg in edge_work:
-    edgesl[u_ind].append(p.apply_async(_edge_worker, arg, callback=update))
-  for u_ind, arg in dedge_work:
-    dedges[u_ind].append(p.apply_async(_dedge_worker, arg, callback=update))
-  for i in range(len(edgesl)):
-    for j in range(len(edgesl[i])):
-      edgesl[i][j] = edgesl[i][j].get()
-  for i in range(len(dedges)):
-    for j in range(len(dedges[i])):
-      dedges[i][j] = dedges[i][j].get()
+  u_ind, v_ind, length = 0, 0, 0
+  rho, V_w_hd, V_w_lt = 0, 0, 0
+  async_obj, ind, truck_energy = 0, 0, 0
+  for i in range(len(edge_work)):
+    u_ind, ind, rho, V_w_hd, V_w_lt = edge_work[i]
+    edge_work[i] = (u_ind, ind, p.apply_async(_worker, (rho, V_w_hd, V_w_lt), callback=update))
+  for i in range(len(dedge_work)):
+    u_ind, ind, rho, V_w_hd, V_w_lt = dedge_work[i]
+    dedge_work[i] = (u_ind, ind, p.apply_async(_worker, (rho, V_w_hd, V_w_lt), callback=update))
+  for i in range(len(edge_work)):
+    u_ind, ind, async_obj = edge_work[i]
+    v_ind, length, truck_energy = edgesl[u_ind][ind]
+    edgesl[u_ind][ind] = (v_ind, length, truck_energy, async_obj.get())
+  for i in range(len(dedge_work)):
+    u_ind, ind, async_obj = dedge_work[i]
+    v_ind, length = dedges[u_ind][ind]
+    dedges[u_ind][ind] = (v_ind, length, async_obj.get())
   p.close()
   p.join()
   pbar.close()
 
-def _edge_worker(v_ind, sx, sy, dx, dy, length):
-  # ---------------------------
-  # Change head wind vector field below only.
-  # ---------------------------
-  fsx = (sx - 100) / 50
-  fsy = sx + sy
-  fdx = (dx - 100) / 50
-  fdy = dx + dy
-  # ---------------------------
-  delta_x = dx - sx
-  delta_y = dy - sy
-  delta_norm = sqrt(delta_x * delta_x + delta_y * delta_y)
-  fx = (fsx + fdx) / 2
-  fy = (fsy + fdy) / 2
-  fnorm = sqrt(fx * fx + fy * fy)
-  # max head wind speed: 7 m/s.
-  # print(delta_norm, fnorm)
-  V_w_hd = 7 * (fx * delta_x + fy * delta_y) / (delta_norm * fnorm)
-  # max lateral wind speed: 2 m/s.
-  V_w_lt = sin(sx + sy + dx + dy) * 2
-  x = x_coeff * (sx + dx)
-  y = y_coeff * (sy + dy)
-  # ---------------------------
-  # Change truck velocity vector field below only.
-  # ---------------------------
-  mul_y = abs(cos(3+(y/6)))
-  mul_x = abs(cos(5+(x/6)))
-  truck_speed = round(BASE_TRUCK_SPEED + MAX_TRUCK_SPEED * 0.0003 * (mul_y * x * x + mul_x * y * y), 2)
-  # ---------------------------
-  truck_epm = QUAD_A * truck_speed + QUAD_B
-  truck_epm *= truck_epm
-  truck_epm = (truck_epm + QUAD_C) / 1000   # J/m
-  T = BASE_TEMP + TEMP_FLUC_COEFF * (sin(x) + sin(y))
-  Pv = REL_HUMIDITY * 1610.78 * exp((17.27 * T) / (T + 237.3))
-  rho = ((101325 - Pv) * 0.0034837139 + Pv * 0.0021668274) / (T + 273.15)
+def _worker(rho, V_w_hd, V_w_lt):
   drone_power = []
   for w in WEIGHTS:
     drone_power.append(power(rho, w, V_w_hd, V_w_lt))
-  return (v_ind, length, tuple(drone_power), truck_epm * length)
-
-def _dedge_worker(v_ind, sx, sy, dx, dy, length):
-  # ---------------------------
-  # Change head wind vector field below only.
-  # ---------------------------
-  fsx = (sx - 100) / 50
-  fsy = sx + sy
-  fdx = (dx - 100) / 50
-  fdy = dx + dy
-  # ---------------------------
-  delta_x = dx - sx
-  delta_y = dy - sy
-  delta_norm = sqrt(delta_x * delta_x + delta_y * delta_y)
-  fx = (fsx + fdx) / 2
-  fy = (fsy + fdy) / 2
-  fnorm = sqrt(fx * fx + fy * fy)
-  # max head wind speed: 7 m/s.
-  # print(delta_norm, fnorm)
-  V_w_hd = 7 * (fx * delta_x + fy * delta_y) / (delta_norm * fnorm)
-  # max lateral wind speed: 2 m/s.
-  V_w_lt = sin(sx + sy + dx + dy) * 2
-  x = x_coeff * (sx + dx)
-  y = y_coeff * (sy + dy)
-  T = BASE_TEMP + TEMP_FLUC_COEFF * (sin(x) + sin(y))
-  Pv = REL_HUMIDITY * 1610.78 * exp((17.27 * T) / (T + 237.3))
-  rho = ((101325 - Pv) * 0.0034837139 + Pv * 0.0021668274) / (T + 273.15)
-  drone_power = []
-  for w in WEIGHTS:
-    drone_power.append(power(rho, w, V_w_hd, V_w_lt))
-  return (v_ind, length, tuple(drone_power))
+  return tuple(drone_power)
