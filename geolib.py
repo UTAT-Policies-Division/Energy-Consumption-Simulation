@@ -298,8 +298,16 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, simplificat
     sx, sy, dx, dy = 0, 0, 0, 0
     x_coeff = 30 / max(abs(max_x), abs(min_x))
     y_coeff = 30 / max(abs(max_y), abs(min_y))
-    el.set_coord_coeff(x_coeff, y_coeff)
     EDGE_WORK, DEDGE_WORK = [], []
+    fsx, fsy, fdx, fdy = 0, 0, 0, 0
+    delta_x, delta_y, delta_norm = 0, 0, 0
+    fx, fy, fnorm = 0, 0, 0
+    V_w_hd, V_w_lt = 0, 0
+    x, y, mul_y, mul_x = 0, 0, 0, 0
+    truck_speed, truck_epm, T, Pv, rho = 0, 0, 0, 0, 0
+    MAX_TRUCK_SPEED, BASE_TRUCK_SPEED = el.MAX_TRUCK_SPEED, el.BASE_TRUCK_SPEED
+    BASE_TEMP, TEMP_FLUC_COEFF, REL_HUMIDITY = el.BASE_TEMP, el.TEMP_FLUC_COEFF, el.REL_HUMIDITY
+    QUAD_A, QUAD_B, QUAD_C = el.QUAD_A, el.QUAD_B, el.QUAD_C
     for i in range(len(uld)):
         if not ((uld[i] in UID_to_ind) and (vld[i] in UID_to_ind)):
             continue
@@ -313,7 +321,42 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, simplificat
         length = round(lenld[i], max(D_PRES - 3, 0))
         sx, sy = nodesl[u_ind]
         dx, dy = nodesl[v_ind]
-        EDGE_WORK.append((u_ind, (v_ind, sx, sy, dx, dy, length)))
+        # ---------------------------
+        # Change head wind vector field below only.
+        # ---------------------------
+        fsx = (sx - 100) / 50
+        fsy = sx + sy
+        fdx = (dx - 100) / 50
+        fdy = dx + dy
+        # ---------------------------
+        delta_x = dx - sx
+        delta_y = dy - sy
+        delta_norm = sqrt(delta_x * delta_x + delta_y * delta_y)
+        fx = (fsx + fdx) / 2
+        fy = (fsy + fdy) / 2
+        fnorm = sqrt(fx * fx + fy * fy)
+        # max head wind speed: 7 m/s.
+        # print(delta_norm, fnorm)
+        V_w_hd = 7 * (fx * delta_x + fy * delta_y) / (delta_norm * fnorm)
+        # max lateral wind speed: 2 m/s.
+        V_w_lt = sin(sx + sy + dx + dy) * 2
+        x = x_coeff * (sx + dx)
+        y = y_coeff * (sy + dy)
+        # ---------------------------
+        # Change truck velocity vector field below only.
+        # ---------------------------
+        mul_y = abs(cos(3+(y/6)))
+        mul_x = abs(cos(5+(x/6)))
+        truck_speed = round(BASE_TRUCK_SPEED + MAX_TRUCK_SPEED * 0.0003 * (mul_y * x * x + mul_x * y * y), 2)
+        # ---------------------------
+        truck_epm = QUAD_A * truck_speed + QUAD_B
+        truck_epm *= truck_epm
+        truck_epm = (truck_epm + QUAD_C) / 1000   # J/m
+        T = BASE_TEMP + TEMP_FLUC_COEFF * (sin(x) + sin(y))
+        Pv = REL_HUMIDITY * 1610.78 * exp((17.27 * T) / (T + 237.3))
+        rho = ((101325 - Pv) * 0.0034837139 + Pv * 0.0021668274) / (T + 273.15)
+        EDGE_WORK.append((u_ind, len(edgesl[u_ind]), rho, V_w_hd, V_w_lt))
+        edgesl[u_ind].append((v_ind, length, truck_epm * length))
     num_extra = 0
     found = False
     for j in range(len(ulb)):
@@ -329,7 +372,32 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, simplificat
         length = round(lenlb[j], max(D_PRES - 3, 0))
         sx, sy = nodesl[u_ind]
         dx, dy = nodesl[v_ind]
-        DEDGE_WORK.append((u_ind, (v_ind, sx, sy, dx, dy, length)))
+        # ---------------------------
+        # Change head wind vector field below only.
+        # ---------------------------
+        fsx = (sx - 100) / 50
+        fsy = sx + sy
+        fdx = (dx - 100) / 50
+        fdy = dx + dy
+        # ---------------------------
+        delta_x = dx - sx
+        delta_y = dy - sy
+        delta_norm = sqrt(delta_x * delta_x + delta_y * delta_y)
+        fx = (fsx + fdx) / 2
+        fy = (fsy + fdy) / 2
+        fnorm = sqrt(fx * fx + fy * fy)
+        # max head wind speed: 7 m/s.
+        # print(delta_norm, fnorm)
+        V_w_hd = 7 * (fx * delta_x + fy * delta_y) / (delta_norm * fnorm)
+        # max lateral wind speed: 2 m/s.
+        V_w_lt = sin(sx + sy + dx + dy) * 2
+        x = x_coeff * (sx + dx)
+        y = y_coeff * (sy + dy)
+        T = BASE_TEMP + TEMP_FLUC_COEFF * (sin(x) + sin(y))
+        Pv = REL_HUMIDITY * 1610.78 * exp((17.27 * T) / (T + 237.3))
+        rho = ((101325 - Pv) * 0.0034837139 + Pv * 0.0021668274) / (T + 273.15)
+        DEDGE_WORK.append((u_ind, len(dedges[u_ind]), rho, V_w_hd, V_w_lt))
+        dedges[u_ind].append((v_ind, length))
     print("Found", int(num_extra*100/len(ulb)), "percent extra edges in bike network.")
     el.fill_edge_data(edgesl, dedges, EDGE_WORK, DEDGE_WORK)
     print("Built internal edges structure & calibrated winds!")
