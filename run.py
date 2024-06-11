@@ -9,10 +9,10 @@ import networkx as nx
 
 UOFT = "University of Toronto"
 MANHATTAN = "Manhattan"
-PLACE_NAME = MANHATTAN
+PLACE_NAME = UOFT
 TORONTO_CRS_EPSG = "EPSG:3348"
 LONG_ISLAND_CRS_EPSG = "EPSG:32118"
-TARGET_CRS_EPSG = LONG_ISLAND_CRS_EPSG
+TARGET_CRS_EPSG = TORONTO_CRS_EPSG
 BOUNDARY_BUFFER_LENGTH = 500  # default boundary buffer
 NUM_STOPS = 200
 GET_MONTH_INDEX = {"January":0,
@@ -101,15 +101,15 @@ if __name__ == '__main__':
 #   print(edges[0:100])
   eh = el.EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID,
                        10**(-2), gen_plot_data=True, demand=[])
+#   print(eh.classify_turn_angle(0, 1, 3))
+#   print(eh.edge_exists(0, 3))
+  eh.save("uoft.pkl")
+#   eh = el.EnergyHelper.load("uoft.pkl")
+#   eh = el.EnergyHelper.load("manhattan.pkl")
 #   eh.gen_random_demand(NUM_STOPS,
 #                        cluster_num=25,
 #                        CLUSTER_JUMP=2)
 #   print(eh.total_weight)
-#   print(eh.classify_turn_angle(0, 1, 3))
-#   print(eh.edge_exists(0, 3))
-  eh.save("manhattan.pkl")
-#   eh = el.EnergyHelper.load("uoft.pkl")
-#   eh = el.EnergyHelper.load("manhattan.pkl")
 #   eh.plot_network()
 #   el.DRONE_GROUND_SPEED = el.kph_to_mps(30)
 #   print(el.power(el.rho_air_std,
@@ -138,7 +138,7 @@ if __name__ == '__main__':
 #     return el.TH_BET(el.rho_air_std, 2.43, 23.0, 4.25, el.RPM_to_omega(rpm), CHORD, BETA, SINPSI, COSPSI)[1]
 #   el.draw_function(0,12000,1000,func)
 #   plt.legend(loc='best')
-#   plt.show()
+  plt.show()
   
 
 """

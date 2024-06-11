@@ -1,12 +1,11 @@
 from math import sqrt, acos, atan2, pi, \
                  sin, cos, tan, exp, \
                  floor, ceil
-from random import randrange, randint
+from random import randint
 import matplotlib.pyplot as plt
 import pickle
 import multiprocessing as mp
-from os import getpid, cpu_count
-from time import sleep
+from os import cpu_count
 from tqdm import tqdm
 
 half_pi = pi / 2
@@ -519,7 +518,7 @@ class EnergyHelper:
     """
     plot given graph network
     """
-    print("Plotting network...\nGreen: drone only, Blue: all, Red: node, Magenta: demand node (larger).")
+    print("Plotting network...\nGreen: drone only, Blue: all, Red: node, Crimson: demand node (larger).")
     got = [0 for _ in range(len(self.nodes))]
     nx, dx = [], []
     ny, dy = [], []
@@ -536,7 +535,7 @@ class EnergyHelper:
       self.line_cover = self.gen_network_line_cover(self.edges)
     if self.line_cover_d is None:
       self.line_cover_d = self.gen_network_line_cover(self.dedges)
-    plt.scatter(dx, dy, c="magenta", s=12)
+    plt.scatter(dx, dy, c="crimson", s=12)
     plt.scatter(nx, ny, c="red", s=4)
     llx, lly = self.line_cover
     for i in range(len(llx)):
@@ -699,8 +698,6 @@ class EnergyHelper:
   
   def gen_weights(self, drone_velocity):
     """
-    init weights.
-      need drone velocity to init drone time taken.
     use floyd marshall cause switch point.
       need seperate for drone and truck.
     use ACO on top.
