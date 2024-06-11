@@ -759,7 +759,7 @@ def power(rho, W, V_w_hd, V_w_lt):
   cosphi, sinphi = 0, 0
   HCOEFF = 0
   C, k_v, fv, dv, Vxsq, VAR1 = 0, 0, 0, 0, 0, 0
-  while abs(T0 - T_OLD) / T0 > 0.000001:
+  while abs(T0 - T_OLD) / T0 > 0.00001:
     T_OLD = T0
     alpha_D = atan2(Df, W) + atan2(H0, sqrt(Df*Df + W*W))
     T0 = sqrt(W*W + Df*Df - H0*H0) / 6
@@ -775,13 +775,13 @@ def power(rho, W, V_w_hd, V_w_lt):
     VAR1 = k_v + Vc
     fv = ((k_v * k_v * (VAR1 * VAR1 + Vxsq)) - C)
     dv = fv / (2 * k_v * ((VAR1 * (VAR1 + k_v)) + Vxsq))
-    while abs(fv) > NEWT_PREC:
+    while abs(fv) > 0.0001:
       k_v -= dv
       VAR1 = k_v + Vc
       fv = ((k_v * k_v * (VAR1 * VAR1 + Vxsq)) - C)
       dv = fv / (2 * k_v * ((VAR1 * (VAR1 + k_v)) + Vxsq))
     # print("alpha_d:",rad_to_deg(alpha_D),"T0:",T0,"v0:",k_v,"Vx:",Vx,"Vc:",Vc)
-    while abs(TBET - T0) / T0 > 0.000001:
+    while abs(TBET - T0) / T0 > 0.0001:
       resT, resH, resQ = 0, 0, 0
       i = 0
       vCOEFF_INIT = tan(atan2(Vx, k_v + Vc) / 2)
