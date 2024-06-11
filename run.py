@@ -9,10 +9,10 @@ import networkx as nx
 
 UOFT = "University of Toronto"
 MANHATTAN = "Manhattan"
-PLACE_NAME = UOFT
+PLACE_NAME = MANHATTAN
 TORONTO_CRS_EPSG = "EPSG:3348"
 LONG_ISLAND_CRS_EPSG = "EPSG:32118"
-TARGET_CRS_EPSG = TORONTO_CRS_EPSG
+TARGET_CRS_EPSG = LONG_ISLAND_CRS_EPSG
 BOUNDARY_BUFFER_LENGTH = 500  # default boundary buffer
 NUM_STOPS = 200
 GET_MONTH_INDEX = {"January":0,
@@ -86,11 +86,11 @@ if __name__ == '__main__':
   el.init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
                  base_temperature=20, temp_flucts_coeff=3, drone_speed=18,
                  relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
-  gl.show_place_adv(PLACE_NAME, TARGET_CRS_EPSG, BOUNDARY_BUFFER_LENGTH)
   nodes, edges, dedges, UID_to_ind, ind_to_UID = gl.get_decomposed_network(PLACE_NAME, 
                                                                    TARGET_CRS_EPSG, 
                                                                    BOUNDARY_BUFFER_LENGTH,
                                                                    simplification_tolerance=1)
+#   gl.show_place_adv(PLACE_NAME, TARGET_CRS_EPSG, BOUNDARY_BUFFER_LENGTH)
 #   nodes = [(0,0), (1,0), (1,1), (5,0), (2,3)]
 #   edges = [[(1, 10.0)], 
 #            [(0, 10.0), (2, 10.0), (3, 40.0)], 

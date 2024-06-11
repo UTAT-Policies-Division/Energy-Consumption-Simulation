@@ -478,7 +478,7 @@ class EnergyHelper:
     returns tuple of x and y component
     of line segments covering the network.
     """
-    print("Generating line segement cover for network...")
+    print("Generating line segement cover for one network...")
     segs_x, segs_y = [], []
     edt = self.gen_edges_tracker(edge_data)
     N = len(edge_data)
