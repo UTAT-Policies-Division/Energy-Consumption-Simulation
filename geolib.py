@@ -250,13 +250,8 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, simplificat
             uidl.append(euidl[j])
         j += 1
     print("Found", num_extra, "extra verticies from drive network")
-    avg_x, avg_y = 0, 0
-    for x in xl:
-        avg_x += x
-    for y in yl:
-        avg_y += y
-    avg_x = round(avg_x / len(xl), D_PRES)
-    avg_y = round(avg_y / len(yl), D_PRES)
+    avg_x = round(sum(x for x in xl) / len(xl), D_PRES)
+    avg_y = round(sum(y for y in yl) / len(yl), D_PRES)
     min_x, min_y = 0, 0
     max_x, max_y = 0, 0
     for i in range(len(xl)):
@@ -288,11 +283,7 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, simplificat
         nodesl.append((xl[i], yl[i]))
         gc += 1
     print("Internal nodes structure built!\nBuilding internal edges structure & calibrating winds...")
-    edgesl, dedges = [], []
-    while gc > 0:
-        edgesl.append([])
-        dedges.append([])
-        gc -= 1
+    edgesl, dedges = [[] for _ in range(gc)], [[] for _ in range(gc)]
     hash = {}
     u_ind, v_ind, length = -1, -1, -1
     sx, sy, dx, dy = 0, 0, 0, 0

@@ -360,6 +360,10 @@ class EnergyHelper:
     self.total_weight = 0
     for dat in demand:
       self.total_weight += dat[1]
+    self.sp_pherm = None
+    self.t_pherm = None
+    self.dt_pherm = None
+    self.do_pherm = None
     self.line_cover = None
     self.line_cover_d = None
     if gen_plot_data:
@@ -514,35 +518,55 @@ class EnergyHelper:
     print("Line segement cover generated!")
     return (segs_x, segs_y)
 
-  def plot_network(self):
+  def plot_network(self, show_for_all_edges, show_drone_only_edges, show_demand, spec_ind=[]):
     """
     plot given graph network
     """
-    print("Plotting network...\nGreen: drone only, Blue: all, Red: node, Crimson: demand node (larger).")
+    print("Plotting network...")
+    print("Green: paths only for drone.")
+    print("Blue: paths for both drone and truck.")
+    print("Red [+ linear gradient with White]: truck reachable node [+ redness indicates phermone level].")
+    print("Light Gray [+ linear gradient with White]: drone reachable only node.")
+    print("Magenta: demand node (larger).")
     got = [0 for _ in range(len(self.nodes))]
-    nx, dx = [], []
-    ny, dy = [], []
+    nx, ny, nc = [], [], []
+    dx, dy = [], []
+    max_pherm = 0
     for p in self.demand:
       got[p[0]] = 1
       dx.append(self.nodes[p[0]][0])
       dy.append(self.nodes[p[0]][1])
+    max_pherm = max(p for p in self.sp_pherm)
+    base_c = 0.01 * max_pherm
+    max_pherm *= 1.01
+    comp = 0
     for i in range(len(self.nodes)):
       if got[i] == 1:
         continue
       nx.append(self.nodes[i][0])
       ny.append(self.nodes[i][1])
-    if self.line_cover is None:
+      if len(self.edges[i]) > 0:
+        comp = 0.9 - min(1.75 * ((self.sp_pherm[i] + base_c) / max_pherm), 0.9)
+        nc.append((1, comp, comp))
+      else:
+        nc.append((0.7, 0.7, 0.7))
+    if self.line_cover is None and show_for_all_edges:
       self.line_cover = self.gen_network_line_cover(self.edges)
-    if self.line_cover_d is None:
+    if self.line_cover_d is None and show_drone_only_edges:
       self.line_cover_d = self.gen_network_line_cover(self.dedges)
-    plt.scatter(dx, dy, c="crimson", s=12)
-    plt.scatter(nx, ny, c="red", s=4)
-    llx, lly = self.line_cover
-    for i in range(len(llx)):
-      plt.plot(llx[i], lly[i], marker="", c="mediumblue")
-    llx, lly = self.line_cover_d
-    for i in range(len(llx)):
-      plt.plot(llx[i], lly[i], marker="", c="limegreen")
+    if show_demand:
+      plt.scatter(dx, dy, c="magenta", s=15)
+    plt.scatter(x=nx, y=ny, color=nc, s=8)
+    if show_for_all_edges:
+      llx, lly = self.line_cover
+      for i in range(len(llx)):
+        plt.plot(llx[i], lly[i], marker="", c="mediumblue", alpha=0.4)
+    if show_drone_only_edges:
+      llx, lly = self.line_cover_d
+      for i in range(len(llx)):
+        plt.plot(llx[i], lly[i], marker="", c="limegreen", alpha=0.4)
+    for i in spec_ind:
+      plt.scatter(x=self.nodes[i][0], y=self.nodes[i][1], c='black', s=15)
     print("Plotted network!")
 
   def gen_random_demand(self, num, cluster_num = 0, CLUSTER_JUMP = 0):
@@ -564,7 +588,7 @@ class EnergyHelper:
     if cluster_num <= 0:
       while num > 0:
         n = randint(a, b)
-        while (got[n] > 0) or (len(self.edges[n]) + len(self.dedges[n]) == 0):
+        while (got[n] > 0) or (len(self.edges[n]) == 0):
           n = (n + 1) % N
           if LIM == 1:
             self.demand = []
@@ -580,15 +604,14 @@ class EnergyHelper:
         num -= 1
     else:
       # CLUSTER_JUMP = 0 implies immediate neighbors
-      num = floor(num / cluster_num)
-      threshold = 1 + (num >> 2)
+      threshold = 1 + int(floor(num / cluster_num) * 0.1)
       to_add = 0
       q = [-1 for _ in range(N)]
       end = -1
       lv = -1
-      for _ in range(cluster_num):
+      for cluster_rem in range(cluster_num, 0, -1):
         n = randint(a, b)
-        while (got[n] > 0) or (len(self.edges[n]) + len(self.dedges[n]) == 0):
+        while (got[n] > 0) or (len(self.edges[n]) == 0):
           n = (n + 1) % N
           if LIM == 1:
             self.demand = []
@@ -599,16 +622,17 @@ class EnergyHelper:
             LIM -= 1
         end = 0
         q[end] = (n, 0)
-        to_add = num
+        to_add = max(1, ceil(num / cluster_rem))
         to_swap = -1
         tmp = -1
         while end >= 0:
           n, lv = q[end]
           end -= 1
           if lv == 0:
-            got[n] = 1
+            got[n] = 1   # targeted & visited
             w = WEIGHTS[randint(w_a, w_b)]
             self.demand.append((n, w))
+            num -= 1
             w_total += w
             if to_add == 1:
               break
@@ -616,6 +640,7 @@ class EnergyHelper:
               for j in range(min(len(self.edges[n]), to_add + 1)):
                 tmp = self.edges[n][j][0]
                 if got[tmp] == 0:
+                  got[tmp] = 3   # in queue
                   to_swap = randint(0, max(0, end))
                   end += 1
                   q[end] = (tmp, CLUSTER_JUMP)
@@ -624,11 +649,12 @@ class EnergyHelper:
                   q[end] = tmp
               to_add -= 1
           else:
-            got[n] = 2
+            got[n] = 2   # not targted
             lv -= 1
             for j in range(min(len(self.edges[n]), to_add + 1)):
               tmp = self.edges[n][j][0]
               if got[tmp] == 0:
+                got[tmp] = 3   # in queue
                 to_swap = randint(0, max(0, end))
                 end += 1
                 q[end] = (tmp, lv)
@@ -655,7 +681,7 @@ class EnergyHelper:
     obj = pickle.load(input)
     input.close()
     print("Energy Helper object loaded!")
-    ehobj = EnergyHelper(obj.nodes, 
+    ehobj = EnergyHelper(obj.nodes,
                          obj.edges,
                          obj.dedges,
                          obj.UID_to_ind,
@@ -665,6 +691,10 @@ class EnergyHelper:
                          obj.demand)
     ehobj.line_cover = obj.line_cover
     ehobj.line_cover_d = obj.line_cover_d
+    ehobj.sp_pherm = obj.sp_pherm
+    ehobj.t_pherm = obj.t_pherm
+    ehobj.dt_pherm = obj.dt_pherm
+    ehobj.do_pherm = obj.do_pherm
     if (obj.total_weight - ehobj.total_weight) > 0.0001:
       print("WARNING: total weight not consistent between actual demand and storage.")
     return ehobj
@@ -675,6 +705,122 @@ class EnergyHelper:
   def get_node_osmid(self, local_index):
     return self.ind_to_UID[local_index]
   
+  def get_close_node(self, tx, ty, delta_tol = 10, drive_only=True):
+    if drive_only:
+      for i in range(len(self.nodes)):
+        if len(self.edges[i]) == 0:
+          continue
+        if abs(tx - self.nodes[i][0]) < delta_tol:
+          if abs(ty - self.nodes[i][1]) < delta_tol:
+            return i
+    else:
+      for i in range(len(self.nodes)):
+        if abs(tx - self.nodes[i][0]) < delta_tol:
+          if abs(ty - self.nodes[i][1]) < delta_tol:
+            return i
+
+  def get_top_right_node(self):
+    max_x, max_y, ind = 0, 0, 0
+    for i in range(len(self.nodes)):
+      if self.nodes[i][0] > max_x and self.nodes[i][1] > max_y:
+        max_x = self.nodes[i][0]
+        max_y = self.nodes[i][1]
+        ind = i
+    return ind
+  
+  def get_top_left_node(self):
+    max_x, min_y, ind = 0, 0, 0
+    for i in range(len(self.nodes)):
+      if self.nodes[i][0] > max_x and self.nodes[i][1] < min_y:
+        max_x = self.nodes[i][0]
+        min_y = self.nodes[i][1]
+        ind = i
+    return ind
+  
+  def get_bottom_right_node(self):
+    min_x, max_y, ind = 0, 0, 0
+    for i in range(len(self.nodes)):
+      if self.nodes[i][0] < min_x and self.nodes[i][1] > max_y:
+        min_x = self.nodes[i][0]
+        max_y = self.nodes[i][1]
+        ind = i
+    return ind
+  
+  def get_bottom_left_node(self):
+    min_x, min_y, ind = 0, 0, 0
+    for i in range(len(self.nodes)):
+      if self.nodes[i][0] < min_x and self.nodes[i][1] < min_y:
+        min_x = self.nodes[i][0]
+        min_y = self.nodes[i][1]
+        ind = i
+    return ind
+
+  def init_pherm_tracker(self, R, depot_node_id = None):
+    """
+    initalize phermones to show
+    shortest paths and encourage
+    exploration as well.
+
+    load more phermones for Floyd-
+    Marshall algorithm results.
+
+    switch point phermones load
+    highest at R/2 perimeter.
+    """
+    print("Generating phermones tracker...")
+    R_HALF = (R / 2)  
+    MAX_DST = 0.99 * R   # trying to ensure no negative.
+    print("max distance:", MAX_DST)
+    SP_PHERM_COEFF = 100
+    nodes = self.nodes
+    edges = self.edges
+    dedges = self.dedges
+    demand = self.demand
+    # --------------------------------
+    # NOTE: Assumes non-empty nodes, edges
+    # --------------------------------
+    tgt_ind = 0
+    while len(edges[tgt_ind]) == 0:
+      tgt_ind += 1
+    tgt_node1 = nodes[tgt_ind]
+    tgt_node2 = nodes[edges[tgt_ind][0][0]]
+    # len_actual = edges[tgt_ind][0][1]
+    # --------------------------------
+    Dx_sq = tgt_node1[0] - tgt_node2[0]
+    Dx_sq *= Dx_sq
+    Dy_sq = tgt_node1[1] - tgt_node2[1]
+    Dy_sq *= Dy_sq
+    # dist_ratio = len_actual / sqrt(Dx_sq + Dy_sq)
+    # print("actual distance to coordinate distance ratio:", dist_ratio)
+    sp_pherm = [0 for _ in range(len(nodes))]
+    got = [0 for _ in range(len(nodes))]
+    q_ind, q_len = [], []
+    ind, dst = -1, -1
+    for i,_ in demand:
+      for j in range(len(got)):
+        got[j] = 0
+      q_ind.clear()
+      q_len.clear()
+      q_ind.append(i)
+      q_len.append(0)
+      while len(q_ind) > 0:
+        ind = q_ind.pop()
+        dst = q_len.pop()
+        sp_pherm[ind] += int((1 - abs(1 - (dst / R_HALF))) * SP_PHERM_COEFF)
+        got[ind] = 1
+        for n_ind, n_dst, _, _ in edges[ind]:
+          n_dst += dst
+          if n_dst < MAX_DST and got[n_ind] == 0:
+            q_ind.append(n_ind)
+            q_len.append(n_dst)
+    
+    # ehobj.t_pherm = obj.t_pherm
+    # ehobj.dt_pherm = obj.dt_pherm
+    # ehobj.do_pherm = obj.do_pherm
+    self.sp_pherm = sp_pherm
+    print("Phermones tracker generated!")
+
+
   def gen_weights(self, drone_velocity):
     """
     use floyd marshall cause switch point.

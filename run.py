@@ -81,15 +81,15 @@ def RH(isMorning, month):
             return 0.59
 
 if __name__ == '__main__':
-  isMorning = False
-  Month = "March"
-  el.init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
-                 base_temperature=20, temp_flucts_coeff=3, drone_speed=18,
-                 relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
-  nodes, edges, dedges, UID_to_ind, ind_to_UID = gl.get_decomposed_network(PLACE_NAME, 
-                                                                   TARGET_CRS_EPSG, 
-                                                                   BOUNDARY_BUFFER_LENGTH,
-                                                                   simplification_tolerance=1)
+#   isMorning = False
+#   Month = "March"
+#   el.init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
+#                  base_temperature=20, temp_flucts_coeff=3, drone_speed=18,
+#                  relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
+#   nodes, edges, dedges, UID_to_ind, ind_to_UID = gl.get_decomposed_network(PLACE_NAME, 
+#                                                                    TARGET_CRS_EPSG, 
+#                                                                    BOUNDARY_BUFFER_LENGTH,
+#                                                                    simplification_tolerance=1)
 #   gl.show_place_adv(PLACE_NAME, TARGET_CRS_EPSG, BOUNDARY_BUFFER_LENGTH)
 #   nodes = [(0,0), (1,0), (1,1), (5,0), (2,3)]
 #   edges = [[(1, 10.0)], 
@@ -99,18 +99,19 @@ if __name__ == '__main__':
 #            [(2, 30.5)]]
 #   print(nodes[0:100])
 #   print(edges[0:100])
-  eh = el.EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID,
-                       10**(-2), gen_plot_data=True, demand=[])
+#   eh = el.EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID,
+#                        10**(-2), gen_plot_data=True, demand=[])
 #   print(eh.classify_turn_angle(0, 1, 3))
 #   print(eh.edge_exists(0, 3))
-  eh.save("uoft.pkl")
-#   eh = el.EnergyHelper.load("uoft.pkl")
+#   eh.save("uoft.pkl")
+  eh = el.EnergyHelper.load("manhattan.pkl")
 #   eh = el.EnergyHelper.load("manhattan.pkl")
-#   eh.gen_random_demand(NUM_STOPS,
-#                        cluster_num=25,
-#                        CLUSTER_JUMP=2)
+  eh.gen_random_demand(200, cluster_num=50, CLUSTER_JUMP=2)
+  eh.init_pherm_tracker(500)
 #   print(eh.total_weight)
-#   eh.plot_network()
+  eh.plot_network(show_demand=True,
+                  show_drone_only_edges=True,
+                  show_for_all_edges=True)
 #   el.DRONE_GROUND_SPEED = el.kph_to_mps(30)
 #   print(el.power(el.rho_air_std,
 #                  el.kgs_to_W(2.5),
