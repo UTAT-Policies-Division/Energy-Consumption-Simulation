@@ -9,10 +9,10 @@ import networkx as nx
 
 UOFT = "University of Toronto"
 MANHATTAN = "Manhattan"
-PLACE_NAME = UOFT
+PLACE_NAME = MANHATTAN
 TORONTO_CRS_EPSG = "EPSG:3348"
 LONG_ISLAND_CRS_EPSG = "EPSG:32118"
-TARGET_CRS_EPSG = TORONTO_CRS_EPSG
+TARGET_CRS_EPSG = LONG_ISLAND_CRS_EPSG
 BOUNDARY_BUFFER_LENGTH = 500  # default boundary buffer
 NUM_STOPS = 200
 GET_MONTH_INDEX = {"January":0,
@@ -104,14 +104,20 @@ if __name__ == '__main__':
 #   print(eh.classify_turn_angle(0, 1, 3))
 #   print(eh.edge_exists(0, 3))
 #   eh.save("uoft.pkl")
+#   eh = el.EnergyHelper.load("uoft.pkl")
   eh = el.EnergyHelper.load("manhattan.pkl")
-#   eh = el.EnergyHelper.load("manhattan.pkl")
-  eh.gen_random_demand(200, cluster_num=50, CLUSTER_JUMP=2)
-  eh.init_pherm_tracker(500)
+  eh.gen_random_demand(10, cluster_num=2, CLUSTER_JUMP=3)
+  lep_t = eh.init_pherm_tracker(1000)
+#   pth = [eh.demand[0][0]]
+#   print(eh.nodes[eh.demand[0][0]])
+#   pth.extend(lep_t[0][0])
 #   print(eh.total_weight)
-  eh.plot_network(show_demand=True,
-                  show_drone_only_edges=True,
-                  show_for_all_edges=True)
+  eh.plot_network(show_drone_only_nodes=False,
+                  show_demand_nodes=True,
+                  show_drone_only_edges=False,
+                  show_for_all_edges=False,
+                  spec_ind=[],
+                  spec_path=lep_t[5])
 #   el.DRONE_GROUND_SPEED = el.kph_to_mps(30)
 #   print(el.power(el.rho_air_std,
 #                  el.kgs_to_W(2.5),

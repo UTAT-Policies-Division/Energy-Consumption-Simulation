@@ -7,6 +7,7 @@ import pickle
 import multiprocessing as mp
 from os import cpu_count
 from tqdm import tqdm
+import heapq
 
 half_pi = pi / 2
 three_half_pi = 3 * (pi / 2)
@@ -518,7 +519,8 @@ class EnergyHelper:
     print("Line segement cover generated!")
     return (segs_x, segs_y)
 
-  def plot_network(self, show_for_all_edges, show_drone_only_edges, show_demand, spec_ind=[]):
+  def plot_network(self, show_drone_only_nodes, show_demand_nodes,
+                   show_for_all_edges, show_drone_only_edges, spec_ind=[], spec_path=[]):
     """
     plot given graph network
     """
@@ -540,21 +542,30 @@ class EnergyHelper:
     base_c = 0.01 * max_pherm
     max_pherm *= 1.01
     comp = 0
-    for i in range(len(self.nodes)):
-      if got[i] == 1:
-        continue
-      nx.append(self.nodes[i][0])
-      ny.append(self.nodes[i][1])
-      if len(self.edges[i]) > 0:
+    if show_drone_only_nodes:
+      for i in range(len(self.nodes)):
+        if got[i] == 1:
+          continue
+        nx.append(self.nodes[i][0])
+        ny.append(self.nodes[i][1])
+        if len(self.edges[i]) > 0:
+          comp = 0.9 - min(1.75 * ((self.sp_pherm[i] + base_c) / max_pherm), 0.9)
+          nc.append((1, comp, comp))
+        else:
+          nc.append((0.7, 0.7, 0.7))
+    else:
+      for i in range(len(self.nodes)):
+        if got[i] == 1 or len(self.edges[i]) == 0:
+          continue
+        nx.append(self.nodes[i][0])
+        ny.append(self.nodes[i][1])
         comp = 0.9 - min(1.75 * ((self.sp_pherm[i] + base_c) / max_pherm), 0.9)
         nc.append((1, comp, comp))
-      else:
-        nc.append((0.7, 0.7, 0.7))
     if self.line_cover is None and show_for_all_edges:
       self.line_cover = self.gen_network_line_cover(self.edges)
     if self.line_cover_d is None and show_drone_only_edges:
       self.line_cover_d = self.gen_network_line_cover(self.dedges)
-    if show_demand:
+    if show_demand_nodes:
       plt.scatter(dx, dy, c="magenta", s=15)
     plt.scatter(x=nx, y=ny, color=nc, s=8)
     if show_for_all_edges:
@@ -567,6 +578,13 @@ class EnergyHelper:
         plt.plot(llx[i], lly[i], marker="", c="limegreen", alpha=0.4)
     for i in spec_ind:
       plt.scatter(x=self.nodes[i][0], y=self.nodes[i][1], c='black', s=15)
+    path_x, path_y = None, None
+    for path in spec_path:
+      path_x, path_y = [], []
+      for i in path:
+        path_x.append(self.nodes[i][0])
+        path_y.append(self.nodes[i][1])
+      plt.plot(path_x, path_y, marker="", c="black", alpha=0.1)
     print("Plotted network!")
 
   def gen_random_demand(self, num, cluster_num = 0, CLUSTER_JUMP = 0):
@@ -766,12 +784,26 @@ class EnergyHelper:
 
     switch point phermones load
     highest at R/2 perimeter.
+
+    phermone coefficents should
+    be multiplied to normalized
+    variables.
     """
     print("Generating phermones tracker...")
     R_HALF = (R / 2)  
     MAX_DST = 0.99 * R   # trying to ensure no negative.
-    print("max distance:", MAX_DST)
+    SP_BASE_PHERM = 0
     SP_PHERM_COEFF = 100
+    T_BASE_PHERM = 0
+    T_PATH_BASE = 75
+    T_PATH_COEFF = 100 - T_PATH_BASE
+    T_PATH_EXPLR = 40
+    DT_BASE_PHERM = 0
+    DT_PATH_BASE = 25
+    DT_PATH_COEFF = 100 - DT_PATH_BASE
+    DO_BASE_PHERM = DT_BASE_PHERM
+    DO_PATH_BASE = 50
+    DO_PATH_COEFF = 125 - DO_PATH_BASE
     nodes = self.nodes
     edges = self.edges
     dedges = self.dedges
@@ -779,24 +811,117 @@ class EnergyHelper:
     # --------------------------------
     # NOTE: Assumes non-empty nodes, edges
     # --------------------------------
-    tgt_ind = 0
-    while len(edges[tgt_ind]) == 0:
-      tgt_ind += 1
-    tgt_node1 = nodes[tgt_ind]
-    tgt_node2 = nodes[edges[tgt_ind][0][0]]
+    # tgt_ind = 0
+    # while len(edges[tgt_ind]) == 0:
+    #   tgt_ind += 1
+    # tgt_node1 = nodes[tgt_ind]
+    # tgt_node2 = nodes[edges[tgt_ind][0][0]]
     # len_actual = edges[tgt_ind][0][1]
     # --------------------------------
-    Dx_sq = tgt_node1[0] - tgt_node2[0]
-    Dx_sq *= Dx_sq
-    Dy_sq = tgt_node1[1] - tgt_node2[1]
-    Dy_sq *= Dy_sq
+    # Dx_sq = tgt_node1[0] - tgt_node2[0]
+    # Dx_sq *= Dx_sq
+    # Dy_sq = tgt_node1[1] - tgt_node2[1]
+    # Dy_sq *= Dy_sq
     # dist_ratio = len_actual / sqrt(Dx_sq + Dy_sq)
     # print("actual distance to coordinate distance ratio:", dist_ratio)
-    sp_pherm = [0 for _ in range(len(nodes))]
+    print("Creating phermone data structures...")
+    pbar = tqdm(total=4)
+    sp_pherm = [SP_BASE_PHERM for _ in range(len(nodes))]
+    pbar.update()
+    t_pherm = [[T_BASE_PHERM for _ in range(len(nodes))] for _ in range(len(nodes))]
+    pbar.update()
+    dt_pherm = [[DT_BASE_PHERM for _ in range(len(nodes))] for _ in range(len(nodes))]
+    pbar.update()
+    do_pherm = [[DO_BASE_PHERM for _ in range(len(nodes))] for _ in range(len(nodes))]
+    pbar.update()
+    pbar.close()
+    print("Phermone data structures created!")
     got = [0 for _ in range(len(nodes))]
     q_ind, q_len = [], []
-    ind, dst = -1, -1
-    for i,_ in demand:
+    heapq.heapify(q_ind)
+    lep_t = [[-1 for _ in range(len(nodes))] for _ in range(len(demand))]
+    let_t = [[float('inf') for _ in range(len(nodes))] for _ in range(len(demand))]
+    let_g = [float('inf') for _ in range(len(nodes))]
+    lep, let, eng, ind, tent_eng = None, None, -1, -1, -1
+    up_arrs, curr, next = [], -1, -1
+    # Getting shortest paths via Dijkstra's
+    # algorithm, between every demand node
+    # and every other node.
+    print("Running Dijkstra's + Path Tracking for all demand nodes...")
+    pbar = tqdm(total=len(demand))
+    for i in range(len(demand)):
+      let_t[i][demand[i][0]] = 0
+      for j in range(len(got)):
+        got[j] = 0
+      lep, let = lep_t[i], let_t[i]
+      # Dijkstra's Algorithm
+      heapq.heappush(q_ind, (0, demand[i][0]))
+      while len(q_ind) > 0:
+        eng, ind = heapq.heappop(q_ind)
+        for e in edges[ind]:
+          if got[e[0]] == 1:
+            continue
+          got[e[0]] = 1
+          tent_eng = eng + e[2]
+          if tent_eng < let[e[0]]:
+            let[e[0]] = tent_eng
+            lep[e[0]] = ind
+            heapq.heappush(q_ind, (tent_eng, e[0]))
+      # Path Construction
+      lep[demand[i][0]] = []
+      for j in range(len(nodes)):
+        if isinstance(lep[j], int):
+          if lep[j] >= 0:
+            curr = lep[j]
+            lep[j] = [j]
+            up_arrs.append(lep[j])
+          else:
+            lep[j] = []
+            continue
+        while curr >= 0:
+          if isinstance(lep[curr], int):
+            for arr in up_arrs:
+              arr.append(curr)
+            next = lep[curr]
+            lep[curr] = [curr]
+            if next >= 0:
+              up_arrs.append(lep[curr])
+            curr = next
+          else:
+            if len(lep[curr]) > 0:
+              for arr in up_arrs:
+                arr.extend(lep[curr])
+            curr = -1
+        up_arrs.clear()
+      pbar.update()
+    pbar.close()
+    print("Dijkstra's + Path Tracking complete!")
+    print("Initializing truck path phermones between all pairs of demand nodes...")
+    to_add, w_i, w_j = None, -1, -1
+    max_weight = max(w for _, w in demand)
+    # Initialzing phermones for paths
+    # between all pairs of demand edges.
+    pbar = tqdm(total=(len(demand) * (len(demand) - 1) / 2))
+    for i in range(len(demand)):
+      w_i = T_PATH_BASE + T_PATH_COEFF * (demand[i][1] / max_weight)
+      for j in range(i + 1, len(demand)):
+        to_add = lep_t[i][demand[j][0]]
+        curr = 1
+        w_j = T_PATH_BASE + T_PATH_COEFF * (demand[j][1] / max_weight)
+        while curr < len(to_add):
+          t_pherm[to_add[curr]][to_add[curr - 1]] += w_j
+          t_pherm[to_add[curr - 1]][to_add[curr]] += w_i
+          curr += 1
+        t_pherm[demand[i][0]][to_add[curr - 1]] += w_j
+        t_pherm[to_add[curr - 1]][demand[i][0]] += w_i
+        pbar.update()
+    ind, dst, w_coeff = -1, -1, -1
+    # Setting switch point phermones.
+    pbar.close()
+    print("Initialized truck path phermones!")
+    print("Intializing all other phermones around demand nodes...")
+    pbar = tqdm(total=len(demand))
+    for i,demand_weight in demand:
       for j in range(len(got)):
         got[j] = 0
       q_ind.clear()
@@ -811,15 +936,66 @@ class EnergyHelper:
         for n_ind, n_dst, _, _ in edges[ind]:
           n_dst += dst
           if n_dst < MAX_DST and got[n_ind] == 0:
+            if t_pherm[ind][n_ind] < 50:
+              t_pherm[ind][n_ind] += T_PATH_EXPLR
+              t_pherm[n_ind][ind] += T_PATH_EXPLR
             q_ind.append(n_ind)
             q_len.append(n_dst)
-    
-    # ehobj.t_pherm = obj.t_pherm
-    # ehobj.dt_pherm = obj.dt_pherm
-    # ehobj.do_pherm = obj.do_pherm
+      # Drone & Truck Edges Work:
+      heapq.heapify(q_ind)
+      for j in range(len(got)):
+        got[j] = 0
+      let = let_g
+      for j in range(len(let)):
+        let[j] = float('inf')
+      # Local Dijkstra's Algorithm
+      # with phermone loading
+      heapq.heappush(q_ind, (0, 0, i))
+      w_coeff = DT_PATH_BASE + DT_PATH_COEFF * (demand_weight / max_weight)
+      while len(q_ind) > 0:
+        eng, dst, ind = heapq.heappop(q_ind)
+        for e in edges[ind]:
+          if got[e[0]] == 1:
+            continue
+          got[e[0]] = 1
+          tent_eng = eng + e[3][0]  # 0.5kg payload
+          n_dst = dst + e[1]
+          if tent_eng < let[e[0]] and n_dst < MAX_DST:
+            dt_pherm[e[0]][ind] = w_coeff * (1 - (n_dst / R))
+            let[e[0]] = tent_eng
+            heapq.heappush(q_ind, (tent_eng, n_dst, e[0]))
+      # Drone Only Edges Work:
+      heapq.heapify(q_ind)
+      for j in range(len(got)):
+        got[j] = 0
+      let = let_g
+      for j in range(len(let)):
+        let[j] = float('inf')
+      # Local Dijkstra's Algorithm
+      # with phermone loading
+      heapq.heappush(q_ind, (0, 0, i))
+      w_coeff = DO_PATH_BASE + DO_PATH_COEFF * (demand_weight / max_weight)
+      while len(q_ind) > 0:
+        eng, dst, ind = heapq.heappop(q_ind)
+        for e in dedges[ind]:
+          if got[e[0]] == 1:
+            continue
+          got[e[0]] = 1
+          tent_eng = eng + e[2][0]  # 0.5kg payload
+          n_dst = dst + e[1]
+          if tent_eng < let[e[0]] and n_dst < MAX_DST:
+            do_pherm[e[0]][ind] = w_coeff * (1 - (n_dst / R))
+            let[e[0]] = tent_eng
+            heapq.heappush(q_ind, (tent_eng, n_dst, e[0]))
+      pbar.update()
+    pbar.close()
+    print("Intialized all other phermones!")
+    self.dt_pherm = dt_pherm
+    self.do_pherm = do_pherm
     self.sp_pherm = sp_pherm
+    self.t_pherm = t_pherm
     print("Phermones tracker generated!")
-
+    return lep_t   # OPTIONAL
 
   def gen_weights(self, drone_velocity):
     """
@@ -994,6 +1170,7 @@ def fill_edge_data(edgesl, dedges, edge_work, dedge_work):
   pbar.close()
 
 def _worker(rho, V_w_hd, V_w_lt):
+  return WEIGHTS
   drone_power = []
   for w in WEIGHTS:
     drone_power.append(power(rho, w, V_w_hd, V_w_lt))
