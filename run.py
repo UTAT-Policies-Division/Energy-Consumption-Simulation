@@ -107,17 +107,18 @@ if __name__ == '__main__':
 #   eh = el.EnergyHelper.load("uoft.pkl")
   eh = el.EnergyHelper.load("manhattan.pkl")
   eh.gen_random_demand(10, cluster_num=2, CLUSTER_JUMP=3)
-  lep_t = eh.init_pherm_tracker(1000)
+  lep_t = eh.init_pherm_tracker(1500)
 #   pth = [eh.demand[0][0]]
 #   print(eh.nodes[eh.demand[0][0]])
 #   pth.extend(lep_t[0][0])
 #   print(eh.total_weight)
   eh.plot_network(show_drone_only_nodes=False,
                   show_demand_nodes=True,
-                  show_drone_only_edges=False,
-                  show_for_all_edges=False,
+                  show_drone_only_edges=True,
+                  show_for_all_edges=True,
+                  enable_phermone_alpha=True,
                   spec_ind=[],
-                  spec_path=lep_t[5])
+                  spec_path=[])
 #   el.DRONE_GROUND_SPEED = el.kph_to_mps(30)
 #   print(el.power(el.rho_air_std,
 #                  el.kgs_to_W(2.5),

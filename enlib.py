@@ -483,19 +483,19 @@ class EnergyHelper:
     of line segments covering the network.
     """
     print("Generating line segement cover for one network...")
-    segs_x, segs_y = [], []
+    segs_x, segs_y, segs_n = [], [], []
     edt = self.gen_edges_tracker(edge_data)
     N = len(edge_data)
     cnt = 0
     min_index = 0
     cr = 0
     c_x, c_y = -1, -1
-    cl_x, cl_y = [], []
+    cl_x, cl_y, cl_n = None, None, None
     while min_index < N:
       cr = min_index
       nbs = edt[cr]
       c_x, c_y = self.nodes[cr]
-      cl_x, cl_y = [c_x], [c_y]
+      cl_x, cl_y, cl_n = [c_x], [c_y], [cr]
       if not EnergyHelper._exists_neighbor(cr, nbs):
         min_index += 1
       else:
@@ -514,13 +514,16 @@ class EnergyHelper:
           c_x, c_y = self.nodes[cr]
           cl_x.append(c_x)
           cl_y.append(c_y)
+          cl_n.append(cr)
         segs_x.append(cl_x)
         segs_y.append(cl_y)
+        segs_n.append(cl_n)
     print("Line segement cover generated!")
-    return (segs_x, segs_y)
+    return (segs_x, segs_y, segs_n)
 
   def plot_network(self, show_drone_only_nodes, show_demand_nodes,
-                   show_for_all_edges, show_drone_only_edges, spec_ind=[], spec_path=[]):
+                   show_for_all_edges, show_drone_only_edges, 
+                   enable_phermone_alpha, spec_ind=[], spec_path=[]):
     """
     plot given graph network
     """
@@ -568,14 +571,94 @@ class EnergyHelper:
     if show_demand_nodes:
       plt.scatter(dx, dy, c="magenta", s=15)
     plt.scatter(x=nx, y=ny, color=nc, s=8)
+    x, y, dx, dy, cx, cy = 0, 0, 0, 0, 0, 0
+    phm, ln, cnt = -1, None, 0
     if show_for_all_edges:
-      llx, lly = self.line_cover
-      for i in range(len(llx)):
-        plt.plot(llx[i], lly[i], marker="", c="mediumblue", alpha=0.4)
+      llx, lly, lln = self.line_cover
+      if enable_phermone_alpha:
+        max_pherm = -1
+        for k1 in self.dt_pherm:
+          for k2 in self.dt_pherm[k1]:
+            max_pherm = max(max_pherm, self.dt_pherm[k1][k2])
+        for i in range(len(llx)):
+          ln = lln[i]
+          for j in range(1, len(llx[i])):
+            phm = 0
+            cnt = 0
+            if ln[j-1] in self.dt_pherm and ln[j] in self.dt_pherm[ln[j-1]]:
+              phm += self.dt_pherm[ln[j - 1]][ln[j]]
+              cnt += 1
+            if ln[j] in self.dt_pherm and ln[j-1] in self.dt_pherm[ln[j]]:
+              phm -= self.dt_pherm[ln[j]][ln[j - 1]]
+              cnt += 1
+            if cnt == 0:
+              continue
+            if phm > 0:
+              x = llx[i][j-1]
+              y = lly[i][j-1]
+              dx = llx[i][j] - x
+              dy = lly[i][j] - y
+            else:
+              x = llx[i][j]
+              y = lly[i][j]
+              dx = llx[i][j - 1] - x
+              dy = lly[i][j - 1] - y
+            cx = min(max(0.05 * dx, -0.05), 0.05)
+            cy = min(max(0.05 * dy, -0.05), 0.05)
+            x += cx
+            y += cy
+            dx -= cx
+            dy -= cy
+            phm = abs(phm) * (1.5 - cnt * 0.5) / max_pherm
+            plt.arrow(x, y, dx, dy, ec="mediumblue", 
+                      length_includes_head=True, 
+                      head_width=0.2 * phm, alpha=phm)
+      else:
+        for i in range(len(llx)):
+          plt.plot(llx[i], lly[i], marker="", c="mediumblue", alpha=0.4)
     if show_drone_only_edges:
-      llx, lly = self.line_cover_d
-      for i in range(len(llx)):
-        plt.plot(llx[i], lly[i], marker="", c="limegreen", alpha=0.4)
+      llx, lly, lln = self.line_cover_d
+      if enable_phermone_alpha:
+        max_pherm = -1
+        for k1 in self.do_pherm:
+          for k2 in self.do_pherm[k1]:
+            max_pherm = max(max_pherm, self.do_pherm[k1][k2])
+        for i in range(len(llx)):
+          ln = lln[i]
+          for j in range(1, len(llx[i])):
+            phm = 0
+            cnt = 0
+            if ln[j-1] in self.do_pherm and ln[j] in self.do_pherm[ln[j-1]]:
+              phm += self.do_pherm[ln[j - 1]][ln[j]]
+              cnt += 1
+            if ln[j] in self.do_pherm and ln[j-1] in self.do_pherm[ln[j]]:
+              phm += self.do_pherm[ln[j]][ln[j - 1]]
+              cnt += 1
+            if cnt == 0:
+              continue
+            if phm > 0:
+              x = llx[i][j-1]
+              y = lly[i][j-1]
+              dx = llx[i][j] - x
+              dy = lly[i][j] - y
+            else:
+              x = llx[i][j]
+              y = lly[i][j]
+              dx = llx[i][j - 1] - x
+              dy = lly[i][j - 1] - y
+            cx = min(max(0.05 * dx, -0.05), 0.05)
+            cy = min(max(0.05 * dy, -0.05), 0.05)
+            x += cx
+            y += cy
+            dx -= cx
+            dy -= cy
+            phm = abs(phm) * (1.5 - cnt * 0.5) / max_pherm
+            plt.arrow(x, y, dx, dy, ec="limegreen", 
+                      length_includes_head=True, 
+                      head_width=0.2 * phm, alpha=phm)
+      else:
+        for i in range(len(llx)):
+          plt.plot(llx[i], lly[i], marker="", c="limegreen", alpha=0.4)
     for i in spec_ind:
       plt.scatter(x=self.nodes[i][0], y=self.nodes[i][1], c='black', s=15)
     path_x, path_y = None, None
@@ -825,16 +908,11 @@ class EnergyHelper:
     # dist_ratio = len_actual / sqrt(Dx_sq + Dy_sq)
     # print("actual distance to coordinate distance ratio:", dist_ratio)
     print("Creating phermone data structures...")
-    pbar = tqdm(total=4)
     sp_pherm = [SP_BASE_PHERM for _ in range(len(nodes))]
-    pbar.update()
     t_pherm = [[T_BASE_PHERM for _ in range(len(nodes))] for _ in range(len(nodes))]
-    pbar.update()
-    dt_pherm = [[DT_BASE_PHERM for _ in range(len(nodes))] for _ in range(len(nodes))]
-    pbar.update()
-    do_pherm = [[DO_BASE_PHERM for _ in range(len(nodes))] for _ in range(len(nodes))]
-    pbar.update()
-    pbar.close()
+    # dt_pherm = [[DT_BASE_PHERM for _ in range(len(nodes))] for _ in range(len(nodes))]
+    # do_pherm = [[DO_BASE_PHERM for _ in range(len(nodes))] for _ in range(len(nodes))]
+    dt_pherm, do_pherm = {}, {}
     print("Phermone data structures created!")
     got = [0 for _ in range(len(nodes))]
     q_ind, q_len = [], []
@@ -961,7 +1039,11 @@ class EnergyHelper:
           tent_eng = eng + e[3][0]  # 0.5kg payload
           n_dst = dst + e[1]
           if tent_eng < let[e[0]] and n_dst < MAX_DST:
-            dt_pherm[e[0]][ind] = w_coeff * (1 - (n_dst / R))
+            if e[0] not in dt_pherm:
+              dt_pherm[e[0]] = {}
+            if ind not in dt_pherm[e[0]]:
+              dt_pherm[e[0]][ind] = DT_BASE_PHERM
+            dt_pherm[e[0]][ind] += w_coeff * (1 - (n_dst / R))
             let[e[0]] = tent_eng
             heapq.heappush(q_ind, (tent_eng, n_dst, e[0]))
       # Drone Only Edges Work:
@@ -984,7 +1066,11 @@ class EnergyHelper:
           tent_eng = eng + e[2][0]  # 0.5kg payload
           n_dst = dst + e[1]
           if tent_eng < let[e[0]] and n_dst < MAX_DST:
-            do_pherm[e[0]][ind] = w_coeff * (1 - (n_dst / R))
+            if e[0] not in do_pherm:
+              do_pherm[e[0]] = {}
+            if ind not in do_pherm[e[0]]:
+              do_pherm[e[0]][ind] = DO_BASE_PHERM
+            do_pherm[e[0]][ind] += w_coeff * (1 - (n_dst / R))
             let[e[0]] = tent_eng
             heapq.heappush(q_ind, (tent_eng, n_dst, e[0]))
       pbar.update()
@@ -997,7 +1083,7 @@ class EnergyHelper:
     print("Phermones tracker generated!")
     return lep_t   # OPTIONAL
 
-  def gen_weights(self, drone_velocity):
+  def gen_weights(self):
     """
     use floyd marshall cause switch point.
       need seperate for drone and truck.
@@ -1006,7 +1092,6 @@ class EnergyHelper:
     # 1% decrease in mpg for every 100 pounds
     # implies 1 / (1 - 0.01 * num_pounds) multiplier. 
     truck_coeff = 1 / (1 - (0.01 * self.total_weight / 45.359237))
-
     return 0
 
 def D_f(rho, V):   # correct, but prefer not used
