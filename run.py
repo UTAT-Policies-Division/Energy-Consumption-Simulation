@@ -9,12 +9,9 @@ import networkx as nx
 
 UOFT = "University of Toronto"
 MANHATTAN = "Manhattan"
-PLACE_NAME = MANHATTAN
 TORONTO_CRS_EPSG = "EPSG:3348"
 LONG_ISLAND_CRS_EPSG = "EPSG:32118"
-TARGET_CRS_EPSG = LONG_ISLAND_CRS_EPSG
 BOUNDARY_BUFFER_LENGTH = 500  # default boundary buffer
-NUM_STOPS = 200
 GET_MONTH_INDEX = {"January":0,
                    "February":1,
                    "March":2,
@@ -81,6 +78,8 @@ def RH(isMorning, month):
             return 0.59
 
 if __name__ == '__main__':
+  PLACE_NAME = MANHATTAN
+  TARGET_CRS_EPSG = LONG_ISLAND_CRS_EPSG
 #   isMorning = False
 #   Month = "March"
 #   el.init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
@@ -104,10 +103,23 @@ if __name__ == '__main__':
 #   print(eh.classify_turn_angle(0, 1, 3))
 #   print(eh.edge_exists(0, 3))
 #   eh.save("uoft.pkl")
-#   eh = el.EnergyHelper.load("uoft.pkl")
-  eh = el.EnergyHelper.load("manhattan.pkl")
-  eh.gen_random_demand(10, cluster_num=2, CLUSTER_JUMP=3)
+  NUM_STOPS = 200
+  RANGE = 1500
+  eh = el.EnergyHelper.load("test.pkl")
+  b_d = 1000
+  b_ind = -1
+  for i in range(len(eh.demand)):
+    dem = eh.demand[i][0]
+    if b_d > abs(eh.nodes[dem][0] + 38.4) + abs(eh.nodes[dem][1] + 66.45):
+      b_d = abs(eh.nodes[dem][0] + 38.4) + abs(eh.nodes[dem][1] + 66.45)
+      b_ind = i
+  print(b_ind, eh.nodes[eh.demand[b_ind][0]])
+  eh.demand.pop(b_ind)
   lep_t = eh.init_pherm_tracker(1500)
+#   eh.remove_phermones(1500, b_ind)
+#   eh.append_random_demand(5, cluster_num=0, CLUSTER_JUMP=0)
+#   eh.append_random_demand(30, cluster_num=5, CLUSTER_JUMP=1)
+#   lep_t = eh.init_pherm_tracker(1500)
 #   pth = [eh.demand[0][0]]
 #   print(eh.nodes[eh.demand[0][0]])
 #   pth.extend(lep_t[0][0])
