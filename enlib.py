@@ -18,8 +18,7 @@ mps_coeff = 3.6
 rho_air_std = 1.204 # kg / m^3
 kgs_coeff = 9.81
 deg_coeff = pi / 180
-PROP_START = 1  # inches
-PROP_END = 11   # inches
+PROP_START, PROP_END = 1, 11  # inches
 DRAW_PREC = 100 # power of 10, larger => more precise
 AREA = pi * (11 / meter_coeff)**2
 NEWT_PREC = 10**(-5)
@@ -630,7 +629,7 @@ class EnergyHelper:
             nphm = edge_map[ln[j - 1]][ln[j]] / max_pherm
             plt.arrow(x, y, dx, dy, ec=color, fc=color,
                       length_includes_head=True, 
-                      head_width=6*nphm, alpha=nphm)
+                      head_width=8*nphm, alpha=nphm)
           if ln[j] in edge_map and ln[j-1] in edge_map[ln[j]]:
             x = llx[i][j]
             y = lly[i][j]
@@ -645,7 +644,7 @@ class EnergyHelper:
             nphm = edge_map[ln[j]][ln[j - 1]] / max_pherm
             plt.arrow(x, y, dx, dy, ec=color, fc=color,
                       length_includes_head=True,
-                      head_width=6*nphm, alpha=nphm)
+                      head_width=8*nphm, alpha=nphm)
     else:
       for i in range(len(self.nodes)):
         for j in range(len(self.nodes)):
@@ -668,7 +667,7 @@ class EnergyHelper:
             nphm /= max_pherm
             plt.arrow(x, y, dx, dy, ec=color, fc=color,
                       length_includes_head=True, 
-                      head_width=6*nphm, alpha=nphm)
+                      head_width=8*nphm, alpha=nphm)
           nphm = edge_map[ln[j]][ln[j - 1]]
           if nphm > 1:
             x = llx[i][j]
@@ -684,7 +683,7 @@ class EnergyHelper:
             nphm /= max_pherm
             plt.arrow(x, y, dx, dy, ec=color, fc=color,
                       length_includes_head=True,
-                      head_width=6*nphm, alpha=nphm)
+                      head_width=8*nphm, alpha=nphm)
 
   def plot_network(self, show_drone_only_nodes, show_drone_only_edges, show_demand_nodes, 
                    show_demand_paths, show_for_all_edges, enable_phermone_alpha, spec_ind=[], spec_path=[]):
@@ -708,7 +707,6 @@ class EnergyHelper:
     if self.sp_pherm is not None:
       max_pherm = max(p for p in self.sp_pherm)
       base_c = 0.01 * max_pherm
-      max_pherm *= 1.01
       comp = 0
       if show_drone_only_nodes:
         for i in range(len(self.nodes)):
@@ -717,7 +715,7 @@ class EnergyHelper:
           nx.append(self.nodes[i][0])
           ny.append(self.nodes[i][1])
           if len(self.edges[i]) > 0:
-            comp = 0.9 - min(1.75 * ((self.sp_pherm[i] + base_c) / max_pherm), 0.9)
+            comp = 0.9 - min(1.75 * ((1000 * self.sp_pherm[i] + base_c) / max_pherm), 0.9)
             nc.append((1, comp, comp))
           else:
             nc.append((0.7, 0.7, 0.7))
@@ -727,7 +725,7 @@ class EnergyHelper:
             continue
           nx.append(self.nodes[i][0])
           ny.append(self.nodes[i][1])
-          comp = 0.9 - min(1.75 * ((self.sp_pherm[i] + base_c) / max_pherm), 0.9)
+          comp = 0.9 - min(1.75 * ((1000 * self.sp_pherm[i] + base_c) / max_pherm), 0.9)
           nc.append((1, comp, comp))
     else:
       if show_drone_only_nodes:
@@ -759,7 +757,7 @@ class EnergyHelper:
       if enable_phermone_alpha:
         self.plot_edge_phermones(self.dt_pherm, "mediumblue", llx, lly, lln)
       if show_demand_paths:
-        self.plot_edge_phermones(self.t_pherm, "mediumblue", llx, lly, lln)
+        self.plot_edge_phermones(self.t_pherm, "black", llx, lly, lln)
       if not (enable_phermone_alpha or show_demand_paths):
         for i in range(len(llx)):
           plt.plot(llx[i], lly[i], marker="", c="mediumblue", alpha=0.4)
@@ -973,14 +971,14 @@ class EnergyHelper:
   def remove_phermones(self, R, dem_ind):
     R_HALF = (R / 2)  
     MAX_DST = 0.99 * R   # trying to ensure no negative.
-    SP_PHERM_COEFF = 100
-    T_PATH_BASE = 75
-    T_PATH_COEFF = 100 - T_PATH_BASE
-    T_PATH_EXPLR = 40
-    DT_PATH_BASE = 25
-    DT_PATH_COEFF = 100 - DT_PATH_BASE
-    DO_PATH_BASE = 50
-    DO_PATH_COEFF = 125 - DO_PATH_BASE
+    SP_PHERM_COEFF = 0.1
+    T_PATH_BASE = 0.075
+    T_PATH_COEFF = 0.1 - T_PATH_BASE
+    T_PATH_EXPLR = 0.04
+    DT_PATH_BASE = 0.025
+    DT_PATH_COEFF = 0.1 - DT_PATH_BASE
+    DO_PATH_BASE = 0.05
+    DO_PATH_COEFF = 0.125 - DO_PATH_BASE
     nodes = self.nodes
     edges = self.edges
     dedges = self.dedges
@@ -1081,9 +1079,6 @@ class EnergyHelper:
     shortest paths and encourage
     exploration as well.
 
-    load more phermones for Floyd-
-    Marshall algorithm results.
-
     switch point phermones load
     highest at R/2 perimeter.
 
@@ -1095,15 +1090,15 @@ class EnergyHelper:
     R_HALF = (R / 2)  
     MAX_DST = 0.99 * R   # trying to ensure no negative.
     SP_BASE_PHERM = 0
-    SP_PHERM_COEFF = 100
+    SP_PHERM_COEFF = 0.1
     T_BASE_PHERM = 0
-    T_PATH_BASE = 75
-    T_PATH_COEFF = 100 - T_PATH_BASE
-    T_PATH_EXPLR = 40
-    DT_PATH_BASE = 25
-    DT_PATH_COEFF = 100 - DT_PATH_BASE
-    DO_PATH_BASE = 50
-    DO_PATH_COEFF = 125 - DO_PATH_BASE
+    T_PATH_BASE = 0.075
+    T_PATH_COEFF = 0.1 - T_PATH_BASE
+    T_PATH_EXPLR = 0.04
+    DT_PATH_BASE = 0.025
+    DT_PATH_COEFF = 0.1 - DT_PATH_BASE
+    DO_PATH_BASE = 0.05
+    DO_PATH_COEFF = 0.125 - DO_PATH_BASE
     nodes = self.nodes
     edges = self.edges
     dedges = self.dedges
@@ -1304,15 +1299,14 @@ class EnergyHelper:
     self.lep_t = lep_t
     print("Phermones tracker generated!")
 
-  def gen_weights(self):
+  def aco(self, src):
     """
-    use floyd marshall cause switch point.
-      need seperate for drone and truck.
-    use ACO on top.
+    src: source depot index in self.nodes
     """
     # 1% decrease in mpg for every 100 pounds
     # implies 1 / (1 - 0.01 * num_pounds) multiplier. 
     truck_coeff = 1 / (1 - (0.01 * self.total_weight / 45.359237))
+
     return 0
 
 def D_f(rho, V):   # correct, but prefer not used
