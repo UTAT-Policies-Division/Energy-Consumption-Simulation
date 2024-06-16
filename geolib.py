@@ -200,21 +200,28 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, simplificat
     simplification_tolerance accepts integral number to simplify graph under.
     """
     print("Getting data from server...")
-    graphB = osmnx.graph_from_polygon(
-                    get_place_area(place_name, epsg, boundary_buffer_length).at[0, "geometry"], 
-                    network_type="bike")
-    graphD = osmnx.graph_from_polygon(
-                    get_place_area(place_name, epsg, boundary_buffer_length).at[0, "geometry"], 
-                    network_type="drive")
+    # graphB = osmnx.graph_from_polygon(
+    #                 get_place_area(place_name, epsg, boundary_buffer_length).at[0, "geometry"], 
+    #                 network_type="bike")
+    # graphD = osmnx.graph_from_polygon(
+    #                 get_place_area(place_name, epsg, boundary_buffer_length).at[0, "geometry"], 
+    #                 network_type="drive")
+    # if simplification_tolerance > 0:
+    #     graphB = osmnx.project_graph(
+    #                 osmnx.simplification.consolidate_intersections(
+    #                     osmnx.project_graph(graphB, epsg), tolerance=simplification_tolerance), 
+    #                 OSM_CRS_EPSG)
+    #     graphD = osmnx.project_graph(
+    #                 osmnx.simplification.consolidate_intersections(
+    #                     osmnx.project_graph(graphD, epsg), tolerance=simplification_tolerance), 
+    #                 OSM_CRS_EPSG)
+    place_polygon = osmnx.geocode_to_gdf(place_name).to_crs(epsg)
+    place_polygon["geometry"] = place_polygon.buffer(boundary_buffer_length).to_crs(OSM_CRS_EPSG)
+    graphB = osmnx.project_graph(osmnx.graph_from_polygon(place_polygon.at[0, "geometry"], network_type="bike"), epsg)
+    graphD = osmnx.project_graph(osmnx.graph_from_polygon(place_polygon.at[0, "geometry"], network_type="drive"), epsg)
     if simplification_tolerance > 0:
-        graphB = osmnx.project_graph(
-                    osmnx.simplification.consolidate_intersections(
-                        osmnx.project_graph(graphB, epsg), tolerance=simplification_tolerance), 
-                    OSM_CRS_EPSG)
-        graphD = osmnx.project_graph(
-                    osmnx.simplification.consolidate_intersections(
-                        osmnx.project_graph(graphD, epsg), tolerance=simplification_tolerance), 
-                    OSM_CRS_EPSG)
+        graphB = osmnx.simplification.consolidate_intersections(graphB, tolerance=simplification_tolerance)
+        graphD = osmnx.simplification.consolidate_intersections(graphD, tolerance=simplification_tolerance)
     nodesB, edgesB = osmnx.graph_to_gdfs(graphB)
     nodesD, edgesD = osmnx.graph_to_gdfs(graphD)
     print("Got data from server!\nDecomposing graph network...")

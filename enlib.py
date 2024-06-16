@@ -372,6 +372,90 @@ class EnergyHelper:
       self.line_cover = self.gen_network_line_cover(self.edges)
       self.line_cover_d = self.gen_network_line_cover(self.dedges)
   
+  def enforce_graph_connections(self):
+    count, ind = 0, 0
+    found, tgt_edge, e = False, None, None
+    q, to_add = [], []
+    got = [0 for _ in range(len(self.nodes))]
+    print("Finding nodes which are purely source / drain...")
+    for n in range(len(self.nodes)):
+      if len(self.edges[n]) == 0:
+        continue
+      found = False
+      for e in self.edges[n]:
+        for re in self.edges[e[0]]:
+          if n == re[0]:
+            found = True
+            break
+      if not found:
+        count += 1
+        self.edges[n] = []
+    print("Complete! About", round(count * 100 / len(self.nodes), 2), "percent of all nodes were unreachable via truck.")
+    print("Finding edges which need to be added to ensure well-connectedness of drive network...")
+    count = 0
+    for n in range(len(self.nodes)):
+      for i in range(len(self.edges[n])):
+        e = self.edges[n][i]
+        if len(self.edges[e[0]]) == 0:
+          continue
+        for j in range(len(got)):
+          got[j] = 0
+        q.append(e[0])
+        got[e[0]] = 1
+        while len(q) > 0:
+          ind = q.pop()
+          for _e in self.edges[ind]:
+            if got[_e[0]] == 0 and len(self.edges[_e[0]]) > 0:
+              got[_e[0]] = 1
+              q.append(_e[0])
+        for _e in self.edges[n]:
+          if got[_e[0]] == 0 and len(self.edges[_e[0]]) > 0:
+            to_add.append(i)
+            break
+      count += len(to_add)
+      while len(to_add) > 0:
+        ind = to_add.pop()
+        tgt_edge = self.edges[n][ind]
+        self.edges[tgt_edge[0]].append((n, tgt_edge[1], tgt_edge[2], tgt_edge[3]))
+    print(count, "road connections were made both-way!")
+    # ind = 260
+    # for i in range(len(got)):
+    #   got[i] = 0
+    # while len(self.edges[ind]) == 0:
+    #   print("UHOH")
+    #   ind = (ind + 1) % len(self.nodes)
+    # NUM = len(self.nodes)
+    # for i in range(len(self.nodes)):
+    #   if len(self.edges[i]) == 0:
+    #     got[i] = 1
+    #     NUM -= 1
+    # got[ind] = 1
+    # q.append(ind)
+    # lst = [ind]
+    # num = 1
+    # while len(q) > 0:
+    #   ind = q.pop()
+    #   for e in self.edges[ind]:
+    #     if got[e[0]] == 0 and len(self.edges[e[0]]) > 0:
+    #       got[e[0]] = 1
+    #       num += 1
+    #       lst.append(e[0])
+    #       q.append(e[0])
+    # print(NUM - num)
+    # lst = []
+    # for i in range(len(got)):
+    #   if got[i] == 0:
+    #     print(i)
+    #     lst.append(i)
+    #     for e in self.edges[i]:
+    #       # for re in self.edges[e[0]]:
+    #       #   if i == re[0]:
+    #       #     return -1
+    #       if len(self.edges[e[0]]) > 0:
+    #         print("----",e[0])
+    #         lst.append(e[0])
+    # print([e[0] for e in self.edges[267]])
+
   def add_demand_node(self, index, weight):
     if index < 0 or index >= len(self.nodes):
       raise IndexError("Demand Index out of bounds.")
@@ -525,46 +609,85 @@ class EnergyHelper:
   def plot_edge_phermones(self, edge_map, color, llx, lly, lln):
     x, y, dx, dy, cx, cy = 0, 0, 0, 0, 0, 0
     nphm, max_pherm, ln = -1, -1, None
-    for k1 in edge_map:
-      for k2 in edge_map[k1]:
-        max_pherm = max(max_pherm, edge_map[k1][k2])
-    for i in range(len(llx)):
-      ln = lln[i]
-      for j in range(1, len(llx[i])):
-        if ln[j-1] in edge_map and ln[j] in edge_map[ln[j-1]]:
-          x = llx[i][j-1]
-          y = lly[i][j-1]
-          dx = llx[i][j] - x
-          dy = lly[i][j] - y
-          cx = min(max(0.05 * dx, -0.05), 0.05)
-          cy = min(max(0.05 * dy, -0.05), 0.05)
-          x += cx
-          y += cy
-          dx -= cx
-          dy -= cy
-          nphm = edge_map[ln[j - 1]][ln[j]] / max_pherm
-          plt.arrow(x, y, dx, dy, ec=color, fc=color,
-                    length_includes_head=True, 
-                    head_width=0.18*nphm, alpha=nphm)
-        if ln[j] in edge_map and ln[j-1] in edge_map[ln[j]]:
-          x = llx[i][j]
-          y = lly[i][j]
-          dx = llx[i][j - 1] - x
-          dy = lly[i][j - 1] - y
-          cx = min(max(0.05 * dx, -0.05), 0.05)
-          cy = min(max(0.05 * dy, -0.05), 0.05)
-          x += cx
-          y += cy
-          dx -= cx
-          dy -= cy
-          nphm = edge_map[ln[j]][ln[j - 1]] / max_pherm
-          plt.arrow(x, y, dx, dy, ec=color, fc=color,
-                    length_includes_head=True,
-                    head_width=0.18*nphm, alpha=nphm)
+    if isinstance(edge_map, dict):
+      for k1 in edge_map:
+        for k2 in edge_map[k1]:
+          max_pherm = max(max_pherm, edge_map[k1][k2])
+      for i in range(len(llx)):
+        ln = lln[i]
+        for j in range(1, len(llx[i])):
+          if ln[j-1] in edge_map and ln[j] in edge_map[ln[j-1]]:
+            x = llx[i][j-1]
+            y = lly[i][j-1]
+            dx = llx[i][j] - x
+            dy = lly[i][j] - y
+            cx = min(max(0.05 * dx, -0.05), 0.05)
+            cy = min(max(0.05 * dy, -0.05), 0.05)
+            x += cx
+            y += cy
+            dx -= cx
+            dy -= cy
+            nphm = edge_map[ln[j - 1]][ln[j]] / max_pherm
+            plt.arrow(x, y, dx, dy, ec=color, fc=color,
+                      length_includes_head=True, 
+                      head_width=0.18*nphm, alpha=nphm)
+          if ln[j] in edge_map and ln[j-1] in edge_map[ln[j]]:
+            x = llx[i][j]
+            y = lly[i][j]
+            dx = llx[i][j - 1] - x
+            dy = lly[i][j - 1] - y
+            cx = min(max(0.05 * dx, -0.05), 0.05)
+            cy = min(max(0.05 * dy, -0.05), 0.05)
+            x += cx
+            y += cy
+            dx -= cx
+            dy -= cy
+            nphm = edge_map[ln[j]][ln[j - 1]] / max_pherm
+            plt.arrow(x, y, dx, dy, ec=color, fc=color,
+                      length_includes_head=True,
+                      head_width=0.18*nphm, alpha=nphm)
+    else:
+      for i in range(len(self.nodes)):
+        for j in range(len(self.nodes)):
+          max_pherm = max(max_pherm, edge_map[i][j])
+      for i in range(len(llx)):
+        ln = lln[i]
+        for j in range(1, len(llx[i])):
+          nphm = edge_map[ln[j - 1]][ln[j]]
+          if nphm > 1:
+            x = llx[i][j-1]
+            y = lly[i][j-1]
+            dx = llx[i][j] - x
+            dy = lly[i][j] - y
+            cx = min(max(0.05 * dx, -0.05), 0.05)
+            cy = min(max(0.05 * dy, -0.05), 0.05)
+            x += cx
+            y += cy
+            dx -= cx
+            dy -= cy
+            nphm /= max_pherm
+            plt.arrow(x, y, dx, dy, ec=color, fc=color,
+                      length_includes_head=True, 
+                      head_width=0.18*nphm, alpha=nphm)
+          nphm = edge_map[ln[j]][ln[j - 1]]
+          if nphm > 1:
+            x = llx[i][j]
+            y = lly[i][j]
+            dx = llx[i][j - 1] - x
+            dy = lly[i][j - 1] - y
+            cx = min(max(0.05 * dx, -0.05), 0.05)
+            cy = min(max(0.05 * dy, -0.05), 0.05)
+            x += cx
+            y += cy
+            dx -= cx
+            dy -= cy
+            nphm /= max_pherm
+            plt.arrow(x, y, dx, dy, ec=color, fc=color,
+                      length_includes_head=True,
+                      head_width=0.18*nphm, alpha=nphm)
 
-  def plot_network(self, show_drone_only_nodes, show_demand_nodes,
-                   show_for_all_edges, show_drone_only_edges, 
-                   enable_phermone_alpha, spec_ind=[], spec_path=[]):
+  def plot_network(self, show_drone_only_nodes, show_drone_only_edges, show_demand_nodes, 
+                   show_demand_paths, show_for_all_edges, enable_phermone_alpha, spec_ind=[], spec_path=[]):
     """
     plot given graph network
     """
@@ -582,29 +705,48 @@ class EnergyHelper:
       got[p[0]] = 1
       dx.append(self.nodes[p[0]][0])
       dy.append(self.nodes[p[0]][1])
-    max_pherm = max(p for p in self.sp_pherm)
-    base_c = 0.01 * max_pherm
-    max_pherm *= 1.01
-    comp = 0
-    if show_drone_only_nodes:
-      for i in range(len(self.nodes)):
-        if got[i] == 1:
-          continue
-        nx.append(self.nodes[i][0])
-        ny.append(self.nodes[i][1])
-        if len(self.edges[i]) > 0:
+    if self.sp_pherm is not None:
+      max_pherm = max(p for p in self.sp_pherm)
+      base_c = 0.01 * max_pherm
+      max_pherm *= 1.01
+      comp = 0
+      if show_drone_only_nodes:
+        for i in range(len(self.nodes)):
+          if got[i] == 1:
+            continue
+          nx.append(self.nodes[i][0])
+          ny.append(self.nodes[i][1])
+          if len(self.edges[i]) > 0:
+            comp = 0.9 - min(1.75 * ((self.sp_pherm[i] + base_c) / max_pherm), 0.9)
+            nc.append((1, comp, comp))
+          else:
+            nc.append((0.7, 0.7, 0.7))
+      else:
+        for i in range(len(self.nodes)):
+          if got[i] == 1 or len(self.edges[i]) == 0:
+            continue
+          nx.append(self.nodes[i][0])
+          ny.append(self.nodes[i][1])
           comp = 0.9 - min(1.75 * ((self.sp_pherm[i] + base_c) / max_pherm), 0.9)
           nc.append((1, comp, comp))
-        else:
-          nc.append((0.7, 0.7, 0.7))
     else:
-      for i in range(len(self.nodes)):
-        if got[i] == 1 or len(self.edges[i]) == 0:
-          continue
-        nx.append(self.nodes[i][0])
-        ny.append(self.nodes[i][1])
-        comp = 0.9 - min(1.75 * ((self.sp_pherm[i] + base_c) / max_pherm), 0.9)
-        nc.append((1, comp, comp))
+      if show_drone_only_nodes:
+        for i in range(len(self.nodes)):
+          if got[i] == 1:
+            continue
+          nx.append(self.nodes[i][0])
+          ny.append(self.nodes[i][1])
+          if len(self.edges[i]) > 0:
+            nc.append((1, 0, 0))
+          else:
+            nc.append((0.7, 0.7, 0.7))
+      else:
+        for i in range(len(self.nodes)):
+          if got[i] == 1 or len(self.edges[i]) == 0:
+            continue
+          nx.append(self.nodes[i][0])
+          ny.append(self.nodes[i][1])
+          nc.append((1, 0, 0))
     if self.line_cover is None and show_for_all_edges:
       self.line_cover = self.gen_network_line_cover(self.edges)
     if self.line_cover_d is None and show_drone_only_edges:
@@ -616,7 +758,9 @@ class EnergyHelper:
       llx, lly, lln = self.line_cover
       if enable_phermone_alpha:
         self.plot_edge_phermones(self.dt_pherm, "mediumblue", llx, lly, lln)
-      else:
+      if show_demand_paths:
+        self.plot_edge_phermones(self.t_pherm, "mediumblue", llx, lly, lln)
+      if not (enable_phermone_alpha or show_demand_paths):
         for i in range(len(llx)):
           plt.plot(llx[i], lly[i], marker="", c="mediumblue", alpha=0.4)
     if show_drone_only_edges:
@@ -854,16 +998,16 @@ class EnergyHelper:
       to_add = self.lep_t[dem_ind][demand[j][0]]
       curr = 1
       while curr < len(to_add):
-        self.t_pherm[to_add[curr - 1]][to_add[curr]] -= w_i
+        self.t_pherm[to_add[curr - 1]][to_add[curr]] -= min(w_i, self.t_pherm[to_add[curr - 1]][to_add[curr]])
         curr += 1
-      self.t_pherm[to_add[curr - 1]][demand[dem_ind][0]] -= w_i
+      self.t_pherm[to_add[curr - 1]][demand[dem_ind][0]] -= min(w_i, self.t_pherm[to_add[curr - 1]][demand[dem_ind][0]])
     for j in range(dem_ind + 1, len(demand)):
       to_add = self.lep_t[dem_ind][demand[j][0]]
       curr = 1
       while curr < len(to_add):
-        self.t_pherm[to_add[curr - 1]][to_add[curr]] -= w_i
+        self.t_pherm[to_add[curr - 1]][to_add[curr]] -= min(w_i, self.t_pherm[to_add[curr - 1]][to_add[curr]])
         curr += 1
-      self.t_pherm[to_add[curr - 1]][demand[dem_ind][0]] -= w_i
+      self.t_pherm[to_add[curr - 1]][demand[dem_ind][0]] -= min(w_i, self.t_pherm[to_add[curr - 1]][demand[dem_ind][0]])
     ind, dst, w_coeff = -1, -1, -1
     # Removing phermones from switch
     # points distribution, removing
@@ -876,13 +1020,13 @@ class EnergyHelper:
     while len(q_ind) > 0:
       ind = q_ind.pop()
       dst = q_len.pop()
-      self.sp_pherm[ind] -= (1 - abs(1 - (dst / R_HALF))) * SP_PHERM_COEFF
+      self.sp_pherm[ind] -= min((1 - abs(1 - (dst / R_HALF))) * SP_PHERM_COEFF, self.sp_pherm[ind])
       got[ind] = 1
       for n_ind, n_dst, _, _ in edges[ind]:
         n_dst += dst
         if n_dst < MAX_DST and got[n_ind] == 0:
-          self.t_pherm[ind][n_ind] -= T_PATH_EXPLR
-          self.t_pherm[n_ind][ind] -= T_PATH_EXPLR
+          self.t_pherm[ind][n_ind] -= min(T_PATH_EXPLR, self.t_pherm[ind][n_ind])
+          self.t_pherm[n_ind][ind] -= min(T_PATH_EXPLR, self.t_pherm[n_ind][ind])
           q_ind.append(n_ind)
           q_len.append(n_dst)
     # Drone & Truck Edges Work:
@@ -904,7 +1048,7 @@ class EnergyHelper:
         tent_eng = eng + e[3][0]  # 0.5kg payload
         n_dst = dst + e[1]
         if tent_eng < let[e[0]] and n_dst < MAX_DST:
-          self.dt_pherm[e[0]][ind] -= w_coeff * (1 - (n_dst / R))
+          self.dt_pherm[e[0]][ind] -= min(w_coeff * (1 - (n_dst / R)), self.dt_pherm[e[0]][ind])
           let[e[0]] = tent_eng
           heapq.heappush(q_ind, (tent_eng, n_dst, e[0]))
     # Drone Only Edges Work:
@@ -927,11 +1071,11 @@ class EnergyHelper:
         tent_eng = eng + e[2][0]  # 0.5kg payload
         n_dst = dst + e[1]
         if tent_eng < let[e[0]] and n_dst < MAX_DST:
-          self.do_pherm[e[0]][ind] -= w_coeff * (1 - (n_dst / R))
+          self.do_pherm[e[0]][ind] -= min(w_coeff * (1 - (n_dst / R)), self.do_pherm[e[0]][ind])
           let[e[0]] = tent_eng
           heapq.heappush(q_ind, (tent_eng, n_dst, e[0]))
 
-  def init_pherm_tracker(self, R, depot_node_id = None):
+  def init_pherm_tracker(self, R):
     """
     initalize phermones to show
     shortest paths and encourage
@@ -1056,6 +1200,9 @@ class EnergyHelper:
       w_i = T_PATH_BASE + T_PATH_COEFF * (demand[i][1] / max_weight)
       for j in range(i + 1, len(demand)):
         to_add = lep_t[i][demand[j][0]]
+        # print([e[0] for e in edges[demand[j][0]]])
+        # print([e[0] for e in edges[demand[i][0]]])
+        # print(demand[i][0], demand[j][0])
         curr = 1
         w_j = T_PATH_BASE + T_PATH_COEFF * (demand[j][1] / max_weight)
         while curr < len(to_add):
@@ -1329,7 +1476,6 @@ def fill_edge_data(edgesl, dedges, edge_work, dedge_work):
   pbar.close()
 
 def _worker(rho, V_w_hd, V_w_lt):
-  return WEIGHTS
   drone_power = []
   for w in WEIGHTS:
     drone_power.append(power(rho, w, V_w_hd, V_w_lt))
