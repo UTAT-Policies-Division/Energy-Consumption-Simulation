@@ -78,17 +78,17 @@ def RH(isMorning, month):
             return 0.59
 
 if __name__ == '__main__':
-  PLACE_NAME = UOFT
-  TARGET_CRS_EPSG = TORONTO_CRS_EPSG
-  isMorning = False
-  Month = "March"
-  el.init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
-                 base_temperature=20, temp_flucts_coeff=3, drone_speed=18,
-                 relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
-  nodes, edges, dedges, UID_to_ind, ind_to_UID = gl.get_decomposed_network(PLACE_NAME, 
-                                                                   TARGET_CRS_EPSG, 
-                                                                   BOUNDARY_BUFFER_LENGTH,
-                                                                   simplification_tolerance=1)
+#   PLACE_NAME = UOFT
+#   TARGET_CRS_EPSG = TORONTO_CRS_EPSG
+#   isMorning = False
+#   Month = "March"
+#   el.init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
+#                  base_temperature=20, temp_flucts_coeff=3, drone_speed=18,
+#                  relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
+#   nodes, edges, dedges, UID_to_ind, ind_to_UID = gl.get_decomposed_network(PLACE_NAME, 
+#                                                                    TARGET_CRS_EPSG, 
+#                                                                    BOUNDARY_BUFFER_LENGTH,
+#                                                                    simplification_tolerance=1)
 #   gl.show_place_adv(PLACE_NAME, TARGET_CRS_EPSG, BOUNDARY_BUFFER_LENGTH)
 #   nodes = [(0,0), (1,0), (1,1), (5,0), (2,3)]
 #   edges = [[(1, 10.0)], 
@@ -98,15 +98,15 @@ if __name__ == '__main__':
 #            [(2, 30.5)]]
 #   print(nodes[0:100])
 #   print(edges[0:100])
-  eh = el.EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID,
-                       10**(-2), gen_plot_data=True, demand=[])
-  eh.enforce_graph_connections()
+#   eh = el.EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID,
+#                        10**(-2), gen_plot_data=True, demand=[])
+#   eh.enforce_graph_connections()
 #   print(eh.classify_turn_angle(0, 1, 3))
 #   print(eh.edge_exists(0, 3))
-  eh.save("uoft.pkl")
+#   eh.save("uoft.pkl")
   NUM_STOPS = 200
   RANGE = 1500
-#   eh = el.EnergyHelper.load("uoft.pkl")
+  eh = el.EnergyHelper.load("uoft.pkl")
 #   b_d = 1000
 #   b_ind = -1
 #   for i in range(len(eh.demand)):
@@ -125,7 +125,7 @@ if __name__ == '__main__':
 #   pth.extend(lep_t[0][0])
 #   print(eh.total_weight)
   eh.plot_network(show_drone_only_nodes=False,
-                  show_drone_only_edges=False,
+                  show_drone_only_edges=True,
                   show_demand_nodes=True,
                   show_demand_paths=False,
                   show_for_all_edges=True,
@@ -159,6 +159,7 @@ if __name__ == '__main__':
 #     return el.TH_BET(el.rho_air_std, 2.43, 23.0, 4.25, el.RPM_to_omega(rpm), CHORD, BETA, SINPSI, COSPSI)[1]
 #   el.draw_function(0,12000,1000,func)
 #   plt.legend(loc='best')
+#   plt.savefig("pic.png")
   plt.show()
 
 
