@@ -630,7 +630,7 @@ class EnergyHelper:
             nphm = edge_map[ln[j - 1]][ln[j]] / max_pherm
             plt.arrow(x, y, dx, dy, ec=color, fc=color,
                       length_includes_head=True, 
-                      head_width=0.18*nphm, alpha=nphm)
+                      head_width=6*nphm, alpha=nphm)
           if ln[j] in edge_map and ln[j-1] in edge_map[ln[j]]:
             x = llx[i][j]
             y = lly[i][j]
@@ -645,7 +645,7 @@ class EnergyHelper:
             nphm = edge_map[ln[j]][ln[j - 1]] / max_pherm
             plt.arrow(x, y, dx, dy, ec=color, fc=color,
                       length_includes_head=True,
-                      head_width=0.18*nphm, alpha=nphm)
+                      head_width=6*nphm, alpha=nphm)
     else:
       for i in range(len(self.nodes)):
         for j in range(len(self.nodes)):
@@ -668,7 +668,7 @@ class EnergyHelper:
             nphm /= max_pherm
             plt.arrow(x, y, dx, dy, ec=color, fc=color,
                       length_includes_head=True, 
-                      head_width=0.18*nphm, alpha=nphm)
+                      head_width=6*nphm, alpha=nphm)
           nphm = edge_map[ln[j]][ln[j - 1]]
           if nphm > 1:
             x = llx[i][j]
@@ -684,7 +684,7 @@ class EnergyHelper:
             nphm /= max_pherm
             plt.arrow(x, y, dx, dy, ec=color, fc=color,
                       length_includes_head=True,
-                      head_width=0.18*nphm, alpha=nphm)
+                      head_width=6*nphm, alpha=nphm)
 
   def plot_network(self, show_drone_only_nodes, show_drone_only_edges, show_demand_nodes, 
                    show_demand_paths, show_for_all_edges, enable_phermone_alpha, spec_ind=[], spec_path=[]):
@@ -1476,6 +1476,7 @@ def fill_edge_data(edgesl, dedges, edge_work, dedge_work):
   pbar.close()
 
 def _worker(rho, V_w_hd, V_w_lt):
+  return WEIGHTS
   drone_power = []
   for w in WEIGHTS:
     drone_power.append(power(rho, w, V_w_hd, V_w_lt))

@@ -262,11 +262,11 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, simplificat
     min_x, min_y = 0, 0
     max_x, max_y = 0, 0
     for i in range(len(xl)):
-        xl[i] = round((xl[i] - avg_x) * 10**3, max(D_PRES - 3, 0))
+        xl[i] = round((xl[i] - avg_x), max(D_PRES - 3, 0))
         max_x = max(max_x, xl[i])
         min_x = min(min_x, xl[i])
     for i in range(len(yl)):
-        yl[i] = round((yl[i] - avg_y) * 10**3, max(D_PRES - 3, 0))
+        yl[i] = round((yl[i] - avg_y), max(D_PRES - 3, 0))
         max_y = max(max_y, yl[i])
         min_y = min(min_y, yl[i])
     ulb = edgesB["u_original"].values   # directional edges
