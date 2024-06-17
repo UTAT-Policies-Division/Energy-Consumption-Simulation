@@ -979,111 +979,6 @@ class EnergyHelper:
         ind = i
     return ind
 
-  def remove_phermones(self, R, dem_ind):
-    R_HALF = (R / 2)  
-    MAX_DST = 0.99 * R   # trying to ensure no negative.
-    SP_PHERM_COEFF = 0.1
-    T_PATH_BASE = 0.075
-    T_PATH_COEFF = 0.1 - T_PATH_BASE
-    T_PATH_EXPLR = 0.04
-    DT_PATH_BASE = 0.025
-    DT_PATH_COEFF = 0.1 - DT_PATH_BASE
-    DO_PATH_BASE = 0.05
-    DO_PATH_COEFF = 0.125 - DO_PATH_BASE
-    nodes = self.nodes
-    edges = self.edges
-    dedges = self.dedges
-    demand = self.demand
-    got = [0 for _ in range(len(nodes))]
-    q_ind, q_len = [], []
-    heapq.heapify(q_ind)
-    eng, ind, tent_eng = -1, -1, -1
-    to_add, curr, w_i = None, -1, -1
-    max_weight = max(w for _, w in demand)
-    # Removing phermones from paths
-    # leading to [dem_ind] demand.
-    w_i = T_PATH_BASE + T_PATH_COEFF * (demand[dem_ind][1] / max_weight)
-    for j in range(0, dem_ind):
-      to_add = self.lep_t[dem_ind][demand[j][0]]
-      curr = 1
-      while curr < len(to_add):
-        self.t_pherm[to_add[curr - 1]][to_add[curr]] -= min(w_i, self.t_pherm[to_add[curr - 1]][to_add[curr]])
-        curr += 1
-      self.t_pherm[to_add[curr - 1]][demand[dem_ind][0]] -= min(w_i, self.t_pherm[to_add[curr - 1]][demand[dem_ind][0]])
-    for j in range(dem_ind + 1, len(demand)):
-      to_add = self.lep_t[dem_ind][demand[j][0]]
-      curr = 1
-      while curr < len(to_add):
-        self.t_pherm[to_add[curr - 1]][to_add[curr]] -= min(w_i, self.t_pherm[to_add[curr - 1]][to_add[curr]])
-        curr += 1
-      self.t_pherm[to_add[curr - 1]][demand[dem_ind][0]] -= min(w_i, self.t_pherm[to_add[curr - 1]][demand[dem_ind][0]])
-    ind, dst, w_coeff = -1, -1, -1
-    # Removing phermones from switch
-    # points distribution, removing
-    # exploration phermones as well.
-    for j in range(len(got)):
-      got[j] = 0
-    q_ind.append(demand[dem_ind][0])
-    q_len.append(0)
-    got[demand[dem_ind][0]] = 1
-    while len(q_ind) > 0:
-      ind = q_ind.pop()
-      dst = q_len.pop()
-      self.sp_pherm[ind] -= min((1 - abs(1 - (dst / R_HALF))) * SP_PHERM_COEFF, self.sp_pherm[ind])
-      got[ind] = 1
-      for n_ind, n_dst, _, _ in edges[ind]:
-        n_dst += dst
-        if n_dst < MAX_DST and got[n_ind] == 0:
-          self.t_pherm[ind][n_ind] -= min(T_PATH_EXPLR, self.t_pherm[ind][n_ind])
-          self.t_pherm[n_ind][ind] -= min(T_PATH_EXPLR, self.t_pherm[n_ind][ind])
-          q_ind.append(n_ind)
-          q_len.append(n_dst)
-    # Drone & Truck Edges Work:
-    heapq.heapify(q_ind)
-    for j in range(len(got)):
-      got[j] = 0
-    let = [float('inf') for _ in range(len(nodes))]
-    # Local Dijkstra's Algorithm
-    # with phermone loading
-    heapq.heappush(q_ind, (0, 0, demand[dem_ind][0]))
-    got[demand[dem_ind][0]] = 1
-    w_coeff = DT_PATH_BASE + DT_PATH_COEFF * (demand[dem_ind][1] / max_weight)
-    while len(q_ind) > 0:
-      eng, dst, ind = heapq.heappop(q_ind)
-      for e in edges[ind]:
-        if got[e[0]] == 1:
-          continue
-        got[e[0]] = 1
-        tent_eng = eng + e[3][0]  # 0.5kg payload
-        n_dst = dst + e[1]
-        if tent_eng < let[e[0]] and n_dst < MAX_DST:
-          self.dt_pherm[e[0]][ind] -= min(w_coeff * (1 - (n_dst / R)), self.dt_pherm[e[0]][ind])
-          let[e[0]] = tent_eng
-          heapq.heappush(q_ind, (tent_eng, n_dst, e[0]))
-    # Drone Only Edges Work:
-    heapq.heapify(q_ind)
-    for j in range(len(got)):
-      got[j] = 0
-    for j in range(len(let)):
-      let[j] = float('inf')
-    # Local Dijkstra's Algorithm
-    # with phermone loading
-    heapq.heappush(q_ind, (0, 0, demand[dem_ind][0]))
-    got[demand[dem_ind][0]] = 1
-    w_coeff = DO_PATH_BASE + DO_PATH_COEFF * (demand[dem_ind][1] / max_weight)
-    while len(q_ind) > 0:
-      eng, dst, ind = heapq.heappop(q_ind)
-      for e in dedges[ind]:
-        if got[e[0]] == 1:
-          continue
-        got[e[0]] = 1
-        tent_eng = eng + e[2][0]  # 0.5kg payload
-        n_dst = dst + e[1]
-        if tent_eng < let[e[0]] and n_dst < MAX_DST:
-          self.do_pherm[e[0]][ind] -= min(w_coeff * (1 - (n_dst / R)), self.do_pherm[e[0]][ind])
-          let[e[0]] = tent_eng
-          heapq.heappush(q_ind, (tent_eng, n_dst, e[0]))
-
   def init_phermone_system(self, R=float("inf")):
     # range is a dummy decision variable for now
     print("Generating phermones tracker...")
@@ -1098,7 +993,7 @@ class EnergyHelper:
     got = [0 for _ in range(len(nodes))]
     q_ind = []
     lep, let, eng, ind, tent_eng, w_i = None, None, -1, -1, -1, -1
-    up_arrs, curr, next = [], [], -1, -1
+    up_arrs, curr, next = [], -1, -1
     n_pherm = [[NODE_BASE_PHERM for _ in range(len(nodes))] for _ in range(len(demand))]
     max_weight = max(w for _, w in demand)
     for i in range(len(demand)):
