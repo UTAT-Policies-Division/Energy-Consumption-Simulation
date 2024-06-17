@@ -1133,7 +1133,7 @@ class EnergyHelper:
         if self.let_t[i][self.demand[j][0]] == float("inf"):
           print("BAD CONNECTION:", self.demand[i], self.demand[j])
 
-    STAGNANT_LIMIT = 10
+    STAGNANT_LIMIT = int(0.3 * K)
     demand = self.demand
     sp_poss = self.sp_poss
     n_pherm = self.n_pherm
@@ -1168,7 +1168,7 @@ class EnergyHelper:
       cycles.append((best_cycle, best_energy))
       if iter % 5 == 0:
         self.plot_cycle(cycles[0][0], int(iter / 5))   # for saving pictures
-      if abs(cycles[0][1] - best_energy) / best_energy < NEWT_PREC:
+      if abs(cycles[0][1] - best_energy) / (best_energy + 0.0001) < NEWT_PREC:
         STAGNANT_LIMIT -= 1
         if STAGNANT_LIMIT <= 0:
           print("Limit for iterations to stay stagnant exceeded! Stopping earlier by", K - iter,"iterations")
