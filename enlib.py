@@ -1,7 +1,7 @@
 from math import sqrt, acos, atan2, pi, \
                  sin, cos, tan, exp, \
                  floor, ceil
-from random import randint
+from random import randint, sample
 import matplotlib.pyplot as plt
 import pickle
 import multiprocessing as mp
@@ -23,13 +23,15 @@ DRAW_PREC = 100 # power of 10, larger => more precise
 AREA = pi * (11 / meter_coeff)**2
 NEWT_PREC = 10**(-5)
 BATTERY_RESERVE_MARGIN = 0.2
-BATTERY_CAPACITY = 17.0 * 48 * 3600 * (1 - BATTERY_RESERVE_MARGIN)  # J
+BATTERY_CAPACITY = 17.0 * 48 * 3600  # J
+MAX_BATTERY_USE = BATTERY_CAPACITY * (1 - BATTERY_RESERVE_MARGIN)
+MAX_BATTERY_USE_HALF = MAX_BATTERY_USE / 2
 C_D_ALPHA0, S_REF, DRONE_GROUND_SPEED = -1, -1, -1
 CHORD, BETA, SINPSI, COSPSI = -1, -1, -1, -1
 MAX_TRUCK_SPEED, BASE_TRUCK_SPEED, TRUCK_CITY_MPG = -1, -1, -1
 BASE_TEMP, TEMP_FLUC_COEFF, REL_HUMIDITY = -1, -1, -1
 QUAD_A, QUAD_B, QUAD_C = -1, -1, -1
-WEIGHTS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
+WEIGHTS = [0, 0.25, 0.5, 1, 1.5, 2]
 
 def inner_product(d1, d2):
   """
@@ -360,11 +362,11 @@ class EnergyHelper:
     self.total_weight = 0
     for dat in demand:
       self.total_weight += dat[1]
-    self.sp_pherm = None
-    self.t_pherm = None
-    self.dt_pherm = None
-    self.do_pherm = None
+    self.sp_poss = None
+    self.n_pherm = None
+    self.llep_d = None
     self.lep_t = None
+    self.let_t = None
     self.line_cover = None
     self.line_cover_d = None
     if gen_plot_data:
@@ -779,20 +781,21 @@ class EnergyHelper:
       plt.plot(path_x, path_y, marker="", c="black", alpha=0.1)
     print("Plotted network!")
 
-  def append_random_demand(self, num, cluster_num = 0, CLUSTER_JUMP = 0):
+  def append_random_demand(self, num, cluster_num = 0, cluster_jump = 0, 
+                           drone_only_possible_component=0.7, num_allocs=3):
     """
     Demand generated ALWAYS corresponds
     to nodes reachable by the truck.
 
-    returns total weight allocated.
+    drone_only_possible_component is
+    responsible for allocating pure
+    drone only possible deliveries
     """
     print("Generating random demand...")
     N = len(self.nodes)
     LIM = N * N
     a, w_a = 0, 0
     b, w_b = N - 1, len(WEIGHTS) - 1
-    w = -1
-    w_total = 0
     got = [0 for _ in range(N)]
     for dem,_ in self.demand:
       got[dem] = 1
@@ -810,12 +813,10 @@ class EnergyHelper:
           else:
             LIM -= 1
         got[n] = 1
-        w = WEIGHTS[randint(w_a, w_b)]
-        self.demand.append((n, w))
-        w_total += w
+        self.demand.append(n)
         num -= 1
     else:
-      # CLUSTER_JUMP = 0 implies immediate neighbors
+      # cluster_jump = 0 implies immediate neighbors
       threshold = 1 + int(floor(num / cluster_num) * 0.1)
       to_add = 0
       q = [-1 for _ in range(N)]
@@ -842,10 +843,8 @@ class EnergyHelper:
           end -= 1
           if lv == 0:
             got[n] = 1   # targeted & visited
-            w = WEIGHTS[randint(w_a, w_b)]
-            self.demand.append((n, w))
+            self.demand.append(n)
             num -= 1
-            w_total += w
             if to_add == 1:
               break
             else:
@@ -855,7 +854,7 @@ class EnergyHelper:
                   got[tmp] = 3   # in queue
                   to_swap = randint(0, max(0, end))
                   end += 1
-                  q[end] = (tmp, CLUSTER_JUMP)
+                  q[end] = (tmp, cluster_jump)
                   tmp = q[to_swap]
                   q[to_swap] = q[end]
                   q[end] = tmp
@@ -875,6 +874,18 @@ class EnergyHelper:
                 q[end] = tmp
         if to_add > threshold:
           print("WARNING: cluster generation suppressed in area.")
+    w_total, w = 0, 0
+    pure_drone = sample([i for i in range(len(self.demand))], ceil(drone_only_possible_component * len(self.demand)))
+    for i in range(len(self.demand)):
+      w = 0
+      if i in pure_drone:
+        w = WEIGHTS[randint(w_a, w_b)]
+      else:
+        w = 0
+        for _ in range(num_allocs):
+          w += WEIGHTS[randint(w_a, w_b)]
+      self.demand[i] = (self.demand[i], w)
+      w_total += w
     self.total_weight = w_total
     if self.total_weight >= 4500:
       print("WARNING: Total demand weight exceeds 4500kg critical point.")
@@ -903,11 +914,11 @@ class EnergyHelper:
                          obj.demand)
     ehobj.line_cover = obj.line_cover
     ehobj.line_cover_d = obj.line_cover_d
-    ehobj.sp_pherm = obj.sp_pherm
-    ehobj.t_pherm = obj.t_pherm
-    ehobj.dt_pherm = obj.dt_pherm
-    ehobj.do_pherm = obj.do_pherm
+    ehobj.sp_poss = obj.sp_poss
+    ehobj.n_pherm = obj.n_pherm
+    ehobj.llep_d = obj.llep_d
     ehobj.lep_t = obj.lep_t
+    ehobj.let_t = obj.let_t
     if (obj.total_weight - ehobj.total_weight) > 0.0001:
       print("WARNING: total weight not consistent between actual demand and storage.")
     return ehobj
@@ -1073,68 +1084,30 @@ class EnergyHelper:
           let[e[0]] = tent_eng
           heapq.heappush(q_ind, (tent_eng, n_dst, e[0]))
 
-  def init_pherm_tracker(self, R):
-    """
-    initalize phermones to show
-    shortest paths and encourage
-    exploration as well.
-
-    switch point phermones load
-    highest at R/2 perimeter.
-
-    phermone coefficents should
-    be multiplied to normalized
-    variables.
-    """
+  def init_phermone_system(self, R=float("inf")):
+    # range is a dummy decision variable for now
     print("Generating phermones tracker...")
-    R_HALF = (R / 2)  
-    MAX_DST = 0.99 * R   # trying to ensure no negative.
-    SP_BASE_PHERM = 0
-    SP_PHERM_COEFF = 0.1
-    T_BASE_PHERM = 0
-    T_PATH_BASE = 0.075
-    T_PATH_COEFF = 0.1 - T_PATH_BASE
-    T_PATH_EXPLR = 0.04
-    DT_PATH_BASE = 0.025
-    DT_PATH_COEFF = 0.1 - DT_PATH_BASE
-    DO_PATH_BASE = 0.05
-    DO_PATH_COEFF = 0.125 - DO_PATH_BASE
     nodes = self.nodes
     edges = self.edges
     dedges = self.dedges
     demand = self.demand
-    # --------------------------------
-    # NOTE: Assumes non-empty nodes, edges
-    # --------------------------------
-    # tgt_ind = 0
-    # while len(edges[tgt_ind]) == 0:
-    #   tgt_ind += 1
-    # tgt_node1 = nodes[tgt_ind]
-    # tgt_node2 = nodes[edges[tgt_ind][0][0]]
-    # len_actual = edges[tgt_ind][0][1]
-    # --------------------------------
-    # Dx_sq = tgt_node1[0] - tgt_node2[0]
-    # Dx_sq *= Dx_sq
-    # Dy_sq = tgt_node1[1] - tgt_node2[1]
-    # Dy_sq *= Dy_sq
-    # dist_ratio = len_actual / sqrt(Dx_sq + Dy_sq)
-    # print("actual distance to coordinate distance ratio:", dist_ratio)
-    print("Creating phermone data structures...")
-    sp_pherm = [SP_BASE_PHERM for _ in range(len(nodes))]
-    t_pherm = [[T_BASE_PHERM for _ in range(len(nodes))] for _ in range(len(nodes))]
-    dt_pherm, do_pherm = {}, {}
-    print("Phermone data structures created!")
+    DEMAND_BASE_PHERM = 0.3
+    DEMAND_PHERM_COEFF = 0.2
+    NODE_BASE_PHERM = 0
+    SP_PHERM_COEFF = 0.7
     got = [0 for _ in range(len(nodes))]
-    q_ind, q_len = [], []
-    heapq.heapify(q_ind)
+    q_ind = []
+    lep, let, eng, ind, tent_eng, w_i = None, None, -1, -1, -1, -1
+    up_arrs, curr, next = [], [], -1, -1
+    n_pherm = [[NODE_BASE_PHERM for _ in range(len(nodes))] for _ in range(len(demand))]
+    max_weight = max(w for _, w in demand)
+    for i in range(len(demand)):
+      w_i = DEMAND_BASE_PHERM + DEMAND_PHERM_COEFF * (demand[i][1] / max_weight)
+      for j in range(i + 1, len(demand)):
+        n_pherm[i][demand[j][0]] += w_i + DEMAND_PHERM_COEFF * (demand[j][1] / max_weight)
+        n_pherm[j][demand[i][0]] = n_pherm[i][demand[j][0]]
     lep_t = [[-1 for _ in range(len(nodes))] for _ in range(len(demand))]
     let_t = [[float('inf') for _ in range(len(nodes))] for _ in range(len(demand))]
-    let_g = [float('inf') for _ in range(len(nodes))]
-    lep, let, eng, ind, tent_eng = None, None, -1, -1, -1
-    up_arrs, curr, next = [], -1, -1
-    # Getting shortest paths via Dijkstra's
-    # algorithm, between every demand node
-    # and every other node.
     print("Running Dijkstra's + Path Tracking for all demand nodes...")
     pbar = tqdm(total=len(demand))
     for i in range(len(demand)):
@@ -1143,7 +1116,7 @@ class EnergyHelper:
         got[j] = 0
       lep, let = lep_t[i], let_t[i]
       # Dijkstra's Algorithm
-      heapq.heappush(q_ind, (0, demand[i][0]))
+      q_ind.append((0, demand[i][0]))
       got[demand[i][0]] = 1
       while len(q_ind) > 0:
         eng, ind = heapq.heappop(q_ind)
@@ -1158,6 +1131,7 @@ class EnergyHelper:
             heapq.heappush(q_ind, (tent_eng, e[0]))
       # Path Construction
       lep[demand[i][0]] = []
+      curr = -1
       for j in range(len(nodes)):
         if isinstance(lep[j], int):
           if lep[j] >= 0:
@@ -1185,119 +1159,95 @@ class EnergyHelper:
       pbar.update()
     pbar.close()
     print("Dijkstra's + Path Tracking complete!")
-    print("Initializing truck path phermones between all pairs of demand nodes...")
-    to_add, w_i, w_j = None, -1, -1
-    max_weight = max(w for _, w in demand)
-    # Initialzing phermones for paths
-    # between all pairs of demand edges.
-    pbar = tqdm(total=(len(demand) * (len(demand) - 1) / 2))
-    for i in range(len(demand)):
-      w_i = T_PATH_BASE + T_PATH_COEFF * (demand[i][1] / max_weight)
-      for j in range(i + 1, len(demand)):
-        to_add = lep_t[i][demand[j][0]]
-        # print([e[0] for e in edges[demand[j][0]]])
-        # print([e[0] for e in edges[demand[i][0]]])
-        # print(demand[i][0], demand[j][0])
-        curr = 1
-        w_j = T_PATH_BASE + T_PATH_COEFF * (demand[j][1] / max_weight)
-        while curr < len(to_add):
-          t_pherm[to_add[curr]][to_add[curr - 1]] += w_j
-          t_pherm[to_add[curr - 1]][to_add[curr]] += w_i
-          curr += 1
-        t_pherm[demand[i][0]][to_add[curr - 1]] += w_j
-        t_pherm[to_add[curr - 1]][demand[i][0]] += w_i
-        pbar.update()
-    ind, dst, w_coeff = -1, -1, -1
-    # Setting switch point phermones.
-    pbar.close()
-    print("Initialized truck path phermones!")
-    print("Intializing all other phermones around demand nodes...")
+    print("Initializing switch point possibilities & local best paths around demands...")
+    n_eng = 0
+    sp_poss = [[] for _ in range(len(demand))]
+    let_g = [float('inf') for _ in range(len(nodes))]
+    llep_d = [{} for _ in range(len(demand))]
     pbar = tqdm(total=len(demand))
-    for i,demand_weight in demand:
+    for dem_ind in range(len(demand)):
+      i, demand_weight = demand[dem_ind]
+      if demand_weight > WEIGHTS[-1]:
+        continue
       for j in range(len(got)):
         got[j] = 0
-      q_ind.clear()
-      q_len.clear()
-      q_ind.append(i)
-      q_len.append(0)
+      q_ind.append((0, 0, i))
       got[i] = 1
       while len(q_ind) > 0:
-        ind = q_ind.pop()
-        dst = q_len.pop()
-        sp_pherm[ind] += (1 - abs(1 - (dst / R_HALF))) * SP_PHERM_COEFF
-        got[ind] = 1
-        for n_ind, n_dst, _, _ in edges[ind]:
+        tent_eng, dst, ind = heapq.heappop(q_ind)
+        sp_poss[dem_ind].append(ind)
+        for n in range(len(demand)):
+          n_pherm[n][ind] += (1 - abs(1 - (tent_eng / MAX_BATTERY_USE_HALF))) * SP_PHERM_COEFF
+        for n_ind, n_dst, _, _, drone_powers in edges[ind]:
+          if got[n_ind] == 1:
+            continue
+          got[n_ind] = 1
+          # loading based on maximum range i.e. 0.25kg payload
+          n_eng = tent_eng + (drone_powers[1] * n_dst / DRONE_GROUND_SPEED)
           n_dst += dst
-          if n_dst < MAX_DST and got[n_ind] == 0:
-            t_pherm[ind][n_ind] += T_PATH_EXPLR
-            t_pherm[n_ind][ind] += T_PATH_EXPLR
-            q_ind.append(n_ind)
-            q_len.append(n_dst)
-      # Drone & Truck Edges Work:
-      heapq.heapify(q_ind)
+          if n_eng < MAX_BATTERY_USE and got[n_ind] == 0 and n_dst < R:
+            heapq.heappush(q_ind, (n_eng, n_dst, n_ind))
+      n_pherm[dem_ind][i] = 0
       for j in range(len(got)):
         got[j] = 0
       let = let_g
       for j in range(len(let)):
         let[j] = float('inf')
-      # Local Dijkstra's Algorithm
-      # with phermone loading
-      heapq.heappush(q_ind, (0, 0, i))
+      lep = llep_d[dem_ind]
+      q_ind.append((0, 0, i))
       got[i] = 1
-      w_coeff = DT_PATH_BASE + DT_PATH_COEFF * (demand_weight / max_weight)
       while len(q_ind) > 0:
         eng, dst, ind = heapq.heappop(q_ind)
-        for e in edges[ind]:
-          if got[e[0]] == 1:
+        for n_ind, n_dst, _, _, drone_powers in edges[ind]:
+          if got[n_ind] == 1:
             continue
-          got[e[0]] = 1
-          tent_eng = eng + e[3][0]  # 0.5kg payload
-          n_dst = dst + e[1]
-          if tent_eng < let[e[0]] and n_dst < MAX_DST:
-            if e[0] not in dt_pherm:
-              dt_pherm[e[0]] = {ind:0}
-            elif ind not in dt_pherm[e[0]]:
-              dt_pherm[e[0]][ind] = 0
-            dt_pherm[e[0]][ind] += w_coeff * (1 - (n_dst / R))
-            let[e[0]] = tent_eng
-            heapq.heappush(q_ind, (tent_eng, n_dst, e[0]))
-      # Drone Only Edges Work:
-      heapq.heapify(q_ind)
-      for j in range(len(got)):
-        got[j] = 0
-      let = let_g
-      for j in range(len(let)):
-        let[j] = float('inf')
-      # Local Dijkstra's Algorithm
-      # with phermone loading
-      heapq.heappush(q_ind, (0, 0, i))
-      got[i] = 1
-      w_coeff = DO_PATH_BASE + DO_PATH_COEFF * (demand_weight / max_weight)
-      while len(q_ind) > 0:
-        eng, dst, ind = heapq.heappop(q_ind)
-        for e in dedges[ind]:
-          if got[e[0]] == 1:
+          got[n_ind] = 1
+          # loading based on maximum range i.e. 0.25kg payload
+          n_eng = tent_eng + (drone_powers[1] * n_dst / DRONE_GROUND_SPEED)
+          n_dst += dst
+          if n_eng < MAX_BATTERY_USE and got[n_ind] == 0 and n_dst < R:
+            lep[n_ind] = ind
+            heapq.heappush(q_ind, (n_eng, n_dst, n_ind))
+        for n_ind, n_dst, drone_powers in dedges[ind]:
+          if got[n_ind] == 1:
             continue
-          got[e[0]] = 1
-          tent_eng = eng + e[2][0]  # 0.5kg payload
-          n_dst = dst + e[1]
-          if tent_eng < let[e[0]] and n_dst < MAX_DST:
-            if e[0] not in do_pherm:
-              do_pherm[e[0]] = {ind:0}
-            elif ind not in do_pherm[e[0]]:
-              do_pherm[e[0]][ind] = 0
-            do_pherm[e[0]][ind] += w_coeff * (1 - (n_dst / R))
-            let[e[0]] = tent_eng
-            heapq.heappush(q_ind, (tent_eng, n_dst, e[0]))
+          got[n_ind] = 1
+          # loading based on maximum range i.e. 0.25kg payload
+          n_eng = tent_eng + (drone_powers[1] * n_dst / DRONE_GROUND_SPEED)
+          n_dst += dst
+          if n_eng < MAX_BATTERY_USE and got[n_ind] == 0 and n_dst < R:
+            llep_d[dem_ind][n_ind] = ind
+            heapq.heappush(q_ind, (n_eng, n_dst, n_ind))
+      lep[i] = []
+      curr = -1
+      for j in lep:
+        if isinstance(lep[j], int):
+          curr = lep[j]
+          lep[j] = [j]
+          up_arrs.append(lep[j])
+        while curr >= 0:
+          if isinstance(lep[curr], int):
+            for arr in up_arrs:
+              arr.append(curr)
+            next = lep[curr]
+            lep[curr] = [curr]
+            up_arrs.append(lep[curr])
+            curr = next
+          else:
+            if len(lep[curr]) > 0:
+              for arr in up_arrs:
+                arr.extend(lep[curr])
+            break
+        up_arrs.clear()
       pbar.update()
     pbar.close()
-    print("Intialized all other phermones!")
-    self.dt_pherm = dt_pherm
-    self.do_pherm = do_pherm
-    self.sp_pherm = sp_pherm
-    self.t_pherm = t_pherm
+    print("Initialization complete!")
+    self.sp_poss = sp_poss
+    self.n_pherm = n_pherm
+    self.llep_d = llep_d
     self.lep_t = lep_t
-    print("Phermones tracker generated!")
+    self.let_t = let_t
+    print("Phermone system initialized!")
 
   def aco(self, src):
     """
@@ -1450,7 +1400,8 @@ def fill_edge_data(edgesl, dedges, edge_work, dedge_work):
     pbar.update()
   u_ind, v_ind, length = 0, 0, 0
   rho, V_w_hd, V_w_lt = 0, 0, 0
-  async_obj, ind, truck_energy = 0, 0, 0
+  async_obj, ind = 0, 0
+  truck_energy, truck_speed = 0, 0
   for i in range(len(edge_work)):
     u_ind, ind, rho, V_w_hd, V_w_lt = edge_work[i]
     edge_work[i] = (u_ind, ind, p.apply_async(_worker, (rho, V_w_hd, V_w_lt), callback=update))
@@ -1459,8 +1410,8 @@ def fill_edge_data(edgesl, dedges, edge_work, dedge_work):
     dedge_work[i] = (u_ind, ind, p.apply_async(_worker, (rho, V_w_hd, V_w_lt), callback=update))
   for i in range(len(edge_work)):
     u_ind, ind, async_obj = edge_work[i]
-    v_ind, length, truck_energy = edgesl[u_ind][ind]
-    edgesl[u_ind][ind] = (v_ind, length, truck_energy, async_obj.get())
+    v_ind, length, truck_energy, truck_speed = edgesl[u_ind][ind]
+    edgesl[u_ind][ind] = (v_ind, length, truck_energy, truck_speed, async_obj.get())
   for i in range(len(dedge_work)):
     u_ind, ind, async_obj = dedge_work[i]
     v_ind, length = dedges[u_ind][ind]

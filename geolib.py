@@ -354,7 +354,7 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, simplificat
         Pv = REL_HUMIDITY * 1610.78 * exp((17.27 * T) / (T + 237.3))
         rho = ((101325 - Pv) * 0.0034837139 + Pv * 0.0021668274) / (T + 273.15)
         EDGE_WORK.append((u_ind, len(edgesl[u_ind]), rho, V_w_hd, V_w_lt))
-        edgesl[u_ind].append((v_ind, length, truck_epm * length))
+        edgesl[u_ind].append((v_ind, length, truck_epm * length, truck_speed))
     num_extra = 0
     found = False
     for j in range(len(ulb)):
