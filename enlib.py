@@ -965,10 +965,10 @@ class EnergyHelper:
     dedges = self.dedges
     demand = self.demand
     demand.append((src, 0))
-    DEMAND_BASE_PHERM = 0.7
-    DEMAND_PHERM_COEFF = 2.0
+    DEMAND_BASE_PHERM = 5
+    DEMAND_PHERM_COEFF = 25
     NODE_BASE_PHERM = 0
-    SP_PHERM_COEFF = 3.5
+    SP_PHERM_COEFF = 5.0
     got = [0 for _ in range(len(nodes))]
     q_ind = []
     lep, let, eng, ind, w_i = None, None, -1, -1, -1
@@ -1124,7 +1124,7 @@ class EnergyHelper:
     self.let_t = let_t
     print("Phermone system initialized!\nNOTE: Demand structures now hold source vertex with 0 weight.")
 
-  def aco(self, K=1000, ants_per_iter=50, q=10, degradation_factor=0.97):
+  def aco(self, K=500, ants_per_iter=75, q=100, degradation_factor=0.999):
     # 1% decrease in mpg for every 100 pounds
     # implies 1 / (1 - 0.01 * num_pounds) multiplier.
     truck_coeff = 1 / (1 - (0.01 * self.total_weight / 45.359237))
@@ -1133,7 +1133,7 @@ class EnergyHelper:
         if self.let_t[i][self.demand[j][0]] == float("inf"):
           print("BAD CONNECTION:", self.demand[i], self.demand[j])
 
-    STAGNANT_LIMIT = int(0.3 * K)
+    STAGNANT_LIMIT = int(0.2 * K)
     demand = self.demand
     sp_poss = self.sp_poss
     n_pherm = self.n_pherm
@@ -1166,8 +1166,8 @@ class EnergyHelper:
       cycles.sort(key = lambda x: x[1])
       cycles = cycles[: ants_per_iter//2]
       cycles.append((best_cycle, best_energy))
-      if iter % 5 == 0:
-        self.plot_cycle(cycles[0][0], int(iter / 5))   # for saving pictures
+      if iter % 10 == 0:
+        self.plot_cycle(cycles[0][0], int(iter / 10))   # for saving pictures
       if abs(cycles[0][1] - best_energy) / (best_energy + 0.0001) < NEWT_PREC:
         STAGNANT_LIMIT -= 1
         if STAGNANT_LIMIT <= 0:
