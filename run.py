@@ -118,20 +118,21 @@ if __name__ == '__main__':
 #   eh.demand.pop(b_ind)
 #   eh.remove_phermones(1500, b_ind)
 #   eh.append_random_demand(50, cluster_num=0, cluster_jump=0)
-  eh.append_random_demand(50, cluster_num=0, cluster_jump=0)
-  eh.init_phermone_system(R=float(10000000))
+#   eh.append_random_demand(50, cluster_num=0, cluster_jump=0, 
+#                           drone_only_possible_component=1.0)
+#   eh.init_phermone_system(R=float(10000000))
 #   pth = [eh.demand[0][0]]
 #   print(eh.nodes[eh.demand[0][0]])
 #   pth.extend(lep_t[0][0])
 #   print(eh.total_weight)
+#   print(eh.llep_d[0])
   eh.plot_network(show_drone_only_nodes=True,
-                  show_drone_only_edges=False,
+                  show_drone_only_edges=True,
                   show_demand_nodes=True,
-                  show_demand_paths=False,
-                  show_for_all_edges=False,
-                  enable_phermone_alpha=False,
+                  show_demand_local_paths=False,
+                  show_for_all_edges=True,
                   spec_ind=[],
-                  spec_path=[eh.llep_d[0][eh.sp_poss[0][0]]])
+                  spec_path=[])
 #   el.DRONE_GROUND_SPEED = el.kph_to_mps(30)
 #   print(el.power(el.rho_air_std,
 #                  el.kgs_to_W(2.5),
