@@ -7,6 +7,7 @@ import pickle
 import multiprocessing as mp
 from os import cpu_count
 from tqdm import tqdm
+from copy import deepcopy
 import heapq
 
 half_pi = pi / 2
@@ -1135,7 +1136,7 @@ class EnergyHelper:
     STAGNANT_LIMIT = int(0.15 * K)
     demand = self.demand
     sp_poss = self.sp_poss
-    n_pherm = self.n_pherm
+    n_pherm = deepcopy(self.n_pherm)
     llep_d = self.llep_d
     lep_t = self.lep_t
     let_t = self.let_t
@@ -1195,7 +1196,6 @@ class EnergyHelper:
     print("ACO complete!")
     demand.append((src, 0))
     sp_poss.append(src_local_poss)
-    n_pherm.append(src_pherm_view)
     llep_d.append(src_local_paths)
     lep_t.append(src_lep_t)
     let_t.append(src_let_t)

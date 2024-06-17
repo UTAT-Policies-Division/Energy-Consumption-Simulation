@@ -121,10 +121,10 @@ if __name__ == '__main__':
   eh.append_random_demand(20, cluster_num=0, cluster_jump=0, 
                           drone_only_possible_component=0.8)
   src = eh.get_top_right_node()
+  eh.init_phermone_system(R=float(10000000), src=src)
   lx = []
   ly = []
   for i in range(10, 101, 10):
-    eh.init_phermone_system(R=float(10000000), src=src)
     best_cycle, best_energy = eh.aco(K=100, q=i)
     eh.plot_cycle(best_cycle, int(i / 10)) 
     print(i, ":", best_energy)
