@@ -372,7 +372,7 @@ class EnergyHelper:
     if gen_plot_data:
       self.line_cover = self.gen_network_line_cover(self.edges)
       self.line_cover_d = self.gen_network_line_cover(self.dedges)
-  
+
   def enforce_graph_connections(self):
     count, ind = 0, 0
     found, tgt_edge, e = False, None, None
@@ -417,45 +417,8 @@ class EnergyHelper:
       while len(to_add) > 0:
         ind = to_add.pop()
         tgt_edge = self.edges[n][ind]
-        self.edges[tgt_edge[0]].append((n, tgt_edge[1], tgt_edge[2], tgt_edge[3]))
+        self.edges[tgt_edge[0]].append((n, tgt_edge[1], tgt_edge[2], tgt_edge[3], tgt_edge[4]))
     print(count, "road connections were made both-way!")
-    # ind = 260
-    # for i in range(len(got)):
-    #   got[i] = 0
-    # while len(self.edges[ind]) == 0:
-    #   print("UHOH")
-    #   ind = (ind + 1) % len(self.nodes)
-    # NUM = len(self.nodes)
-    # for i in range(len(self.nodes)):
-    #   if len(self.edges[i]) == 0:
-    #     got[i] = 1
-    #     NUM -= 1
-    # got[ind] = 1
-    # q.append(ind)
-    # lst = [ind]
-    # num = 1
-    # while len(q) > 0:
-    #   ind = q.pop()
-    #   for e in self.edges[ind]:
-    #     if got[e[0]] == 0 and len(self.edges[e[0]]) > 0:
-    #       got[e[0]] = 1
-    #       num += 1
-    #       lst.append(e[0])
-    #       q.append(e[0])
-    # print(NUM - num)
-    # lst = []
-    # for i in range(len(got)):
-    #   if got[i] == 0:
-    #     print(i)
-    #     lst.append(i)
-    #     for e in self.edges[i]:
-    #       # for re in self.edges[e[0]]:
-    #       #   if i == re[0]:
-    #       #     return -1
-    #       if len(self.edges[e[0]]) > 0:
-    #         print("----",e[0])
-    #         lst.append(e[0])
-    # print([e[0] for e in self.edges[267]])
 
   def add_demand_node(self, index, weight):
     if index < 0 or index >= len(self.nodes):
@@ -688,7 +651,7 @@ class EnergyHelper:
                       head_width=8*nphm, alpha=nphm)
 
   def plot_network(self, show_drone_only_nodes, show_drone_only_edges, show_demand_nodes, 
-                   show_demand_paths, show_for_all_edges, enable_phermone_alpha, spec_ind=[], spec_path=[]):
+                   show_demand_local_paths, show_for_all_edges, spec_ind=[], spec_path=[]):
     """
     plot given graph network
     """
@@ -706,8 +669,8 @@ class EnergyHelper:
       got[p[0]] = 1
       dx.append(self.nodes[p[0]][0])
       dy.append(self.nodes[p[0]][1])
-    if self.sp_pherm is not None:
-      max_pherm = max(p for p in self.sp_pherm)
+    if self.n_pherm is not None and len(self.demand) > 0:
+      max_pherm = max(p for p in self.n_pherm[0])
       base_c = 0.01 * max_pherm
       comp = 0
       if show_drone_only_nodes:
@@ -717,7 +680,7 @@ class EnergyHelper:
           nx.append(self.nodes[i][0])
           ny.append(self.nodes[i][1])
           if len(self.edges[i]) > 0:
-            comp = 0.9 - min(1.75 * ((1000 * self.sp_pherm[i] + base_c) / max_pherm), 0.9)
+            comp = 0.9 - min(1.75 * ((1000 * self.n_pherm[0][i] + base_c) / max_pherm), 0.9)
             nc.append((1, comp, comp))
           else:
             nc.append((0.7, 0.7, 0.7))
@@ -727,7 +690,7 @@ class EnergyHelper:
             continue
           nx.append(self.nodes[i][0])
           ny.append(self.nodes[i][1])
-          comp = 0.9 - min(1.75 * ((1000 * self.sp_pherm[i] + base_c) / max_pherm), 0.9)
+          comp = 0.9 - min(1.75 * ((1000 * self.n_pherm[0][i] + base_c) / max_pherm), 0.9)
           nc.append((1, comp, comp))
     else:
       if show_drone_only_nodes:
@@ -754,22 +717,31 @@ class EnergyHelper:
     if show_demand_nodes:
       plt.scatter(dx, dy, c="magenta", s=15)
     plt.scatter(x=nx, y=ny, color=nc, s=8)
+    if show_demand_local_paths:
+      for i in range(len(self.demand)):
+        for j in range(len(self.nodes)):
+          got[j] = 0
+        dem_ind = self.demand[i][0]
+        for k in self.llep_d[i]:
+          lx, ly = [], []
+          for ind in self.llep_d[i][k]:
+            if got[ind] == 1:
+              break
+            got[ind] = 1
+            lx.append(self.nodes[ind][0])
+            ly.append(self.nodes[ind][1])
+          if got[dem_ind] == 0:
+            lx.append(self.nodes[dem_ind][0])
+            ly.append(self.nodes[dem_ind][1])
+          plt.plot(lx, ly, marker="", c="black", alpha=0.3)
     if show_for_all_edges:
       llx, lly, lln = self.line_cover
-      if enable_phermone_alpha:
-        self.plot_edge_phermones(self.dt_pherm, "mediumblue", llx, lly, lln)
-      if show_demand_paths:
-        self.plot_edge_phermones(self.t_pherm, "black", llx, lly, lln)
-      if not (enable_phermone_alpha or show_demand_paths):
-        for i in range(len(llx)):
-          plt.plot(llx[i], lly[i], marker="", c="mediumblue", alpha=0.4)
+      for i in range(len(llx)):
+        plt.plot(llx[i], lly[i], marker="", c="mediumblue", alpha=0.4)
     if show_drone_only_edges:
       llx, lly, lln = self.line_cover_d
-      if enable_phermone_alpha:
-        self.plot_edge_phermones(self.do_pherm, "limegreen", llx, lly, lln)
-      else:
-        for i in range(len(llx)):
-          plt.plot(llx[i], lly[i], marker="", c="limegreen", alpha=0.4)
+      for i in range(len(llx)):
+        plt.plot(llx[i], lly[i], marker="", c="limegreen", alpha=0.4)
     for i in spec_ind:
       plt.scatter(x=self.nodes[i][0], y=self.nodes[i][1], c='black', s=15)
     path_x, path_y = None, None
