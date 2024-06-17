@@ -1167,7 +1167,7 @@ class EnergyHelper:
       cycles = cycles[: ants_per_iter//2]
       cycles.append((best_cycle, best_energy))
       if iter % 5 == 0:
-        self.plot_cycle(int(cycles[0][0], iter / 5))   # for saving pictures
+        self.plot_cycle(cycles[0][0], int(iter / 5))   # for saving pictures
       if abs(cycles[0][1] - best_energy) / best_energy < NEWT_PREC:
         STAGNANT_LIMIT -= 1
         if STAGNANT_LIMIT <= 0:
