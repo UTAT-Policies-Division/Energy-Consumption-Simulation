@@ -651,7 +651,7 @@ class EnergyHelper:
     glx.extend(lx)
     gly.extend(ly)
     plt.plot(glx, gly, marker="", c="black", alpha=0.6)
-    plt.savefig("Pictures/{}.png".format(num), dpi=700)
+    plt.savefig("Pictures/{}.png".format(num), dpi=500)
     plt.clf()
 
   def plot_network(self, show_drone_only_nodes, show_drone_only_edges, show_demand_nodes, 
@@ -965,8 +965,8 @@ class EnergyHelper:
     dedges = self.dedges
     demand = self.demand
     demand.append((src, 0))
-    DEMAND_BASE_PHERM = 5
-    DEMAND_PHERM_COEFF = 25
+    DEMAND_BASE_PHERM = 3.0
+    DEMAND_PHERM_COEFF = 7.0
     NODE_BASE_PHERM = 0
     SP_PHERM_COEFF = 5.0
     got = [0 for _ in range(len(nodes))]
@@ -1124,16 +1124,15 @@ class EnergyHelper:
     self.let_t = let_t
     print("Phermone system initialized!\nNOTE: Demand structures now hold source vertex with 0 weight.")
 
-  def aco(self, K=500, ants_per_iter=75, q=100, degradation_factor=0.999):
+  def aco(self, K=100, ants_per_iter=50, q=10, degradation_factor=0.99):
     # 1% decrease in mpg for every 100 pounds
     # implies 1 / (1 - 0.01 * num_pounds) multiplier.
     truck_coeff = 1 / (1 - (0.01 * self.total_weight / 45.359237))
-    for i in range(len(self.demand) - 1):
-      for j in range(len(self.demand) - 1):
-        if self.let_t[i][self.demand[j][0]] == float("inf"):
-          print("BAD CONNECTION:", self.demand[i], self.demand[j])
-
-    STAGNANT_LIMIT = int(0.2 * K)
+    # for i in range(len(self.demand) - 1):
+    #   for j in range(len(self.demand) - 1):
+    #     if self.let_t[i][self.demand[j][0]] == float("inf"):
+    #       print("BAD CONNECTION:", self.demand[i], self.demand[j])
+    STAGNANT_LIMIT = int(0.15 * K)
     demand = self.demand
     sp_poss = self.sp_poss
     n_pherm = self.n_pherm
@@ -1166,8 +1165,8 @@ class EnergyHelper:
       cycles.sort(key = lambda x: x[1])
       cycles = cycles[: ants_per_iter//2]
       cycles.append((best_cycle, best_energy))
-      if iter % 10 == 0:
-        self.plot_cycle(cycles[0][0], int(iter / 10))   # for saving pictures
+      # if iter % 10 == 0:
+      #   self.plot_cycle(cycles[0][0], int(iter / 10))   # for saving pictures
       if abs(cycles[0][1] - best_energy) / (best_energy + 0.0001) < NEWT_PREC:
         STAGNANT_LIMIT -= 1
         if STAGNANT_LIMIT <= 0:
