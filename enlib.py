@@ -717,20 +717,31 @@ class EnergyHelper:
     if show_demand_nodes:
       plt.scatter(dx, dy, c="magenta", s=15)
     plt.scatter(x=nx, y=ny, color=nc, s=8)
+    if show_demand_local_paths:
+      for i in range(len(self.demand)):
+        for j in range(len(self.nodes)):
+          got[j] = 0
+        dem_ind = self.demand[i][0]
+        for k in self.llep_d[i]:
+          lx, ly = [], []
+          for ind in self.llep_d[i][k]:
+            if got[ind] == 1:
+              break
+            got[ind] = 1
+            lx.append(self.nodes[ind][0])
+            ly.append(self.nodes[ind][1])
+          if got[dem_ind] == 0:
+            lx.append(self.nodes[dem_ind][0])
+            ly.append(self.nodes[dem_ind][1])
+          plt.plot(lx, ly, marker="", c="black", alpha=0.3)
     if show_for_all_edges:
       llx, lly, lln = self.line_cover
-      if show_demand_local_paths:
-        pass
-      else:
-        for i in range(len(llx)):
-          plt.plot(llx[i], lly[i], marker="", c="mediumblue", alpha=0.4)
+      for i in range(len(llx)):
+        plt.plot(llx[i], lly[i], marker="", c="mediumblue", alpha=0.4)
     if show_drone_only_edges:
       llx, lly, lln = self.line_cover_d
-      if show_demand_local_paths:
-        pass
-      else:
-        for i in range(len(llx)):
-          plt.plot(llx[i], lly[i], marker="", c="limegreen", alpha=0.4)
+      for i in range(len(llx)):
+        plt.plot(llx[i], lly[i], marker="", c="limegreen", alpha=0.4)
     for i in spec_ind:
       plt.scatter(x=self.nodes[i][0], y=self.nodes[i][1], c='black', s=15)
     path_x, path_y = None, None
