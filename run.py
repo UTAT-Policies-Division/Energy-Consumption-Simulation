@@ -78,13 +78,13 @@ def RH(isMorning, month):
             return 0.59
 
 if __name__ == '__main__':
-#   PLACE_NAME = UOFT
-#   TARGET_CRS_EPSG = TORONTO_CRS_EPSG
-#   isMorning = False
-#   Month = "March"
-#   el.init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
-#                  base_temperature=20, temp_flucts_coeff=3, drone_speed=18,
-#                  relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
+  PLACE_NAME = UOFT
+  TARGET_CRS_EPSG = TORONTO_CRS_EPSG
+  isMorning = False
+  Month = "March"
+  el.init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
+                 base_temperature=20, temp_flucts_coeff=3, drone_speed=18,
+                 relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
 #   nodes, edges, dedges, UID_to_ind, ind_to_UID = gl.get_decomposed_network(PLACE_NAME, 
 #                                                                    TARGET_CRS_EPSG, 
 #                                                                    BOUNDARY_BUFFER_LENGTH,
@@ -118,19 +118,18 @@ if __name__ == '__main__':
 #   eh.demand.pop(b_ind)
 #   eh.remove_phermones(1500, b_ind)
 #   eh.append_random_demand(50, cluster_num=0, cluster_jump=0)
-#   eh.append_random_demand(50, cluster_num=0, cluster_jump=0, 
-#                           drone_only_possible_component=1.0)
-#   eh.init_phermone_system(R=float(10000000))
+  eh.append_random_demand(1, cluster_num=0, cluster_jump=0, 
+                          drone_only_possible_component=1.0)
+  eh.init_phermone_system(R=float(10000000))
 #   pth = [eh.demand[0][0]]
 #   print(eh.nodes[eh.demand[0][0]])
 #   pth.extend(lep_t[0][0])
 #   print(eh.total_weight)
-#   print(eh.llep_d[0])
   eh.plot_network(show_drone_only_nodes=True,
-                  show_drone_only_edges=True,
+                  show_drone_only_edges=False,
                   show_demand_nodes=True,
-                  show_demand_local_paths=False,
-                  show_for_all_edges=True,
+                  show_demand_local_paths=True,
+                  show_for_all_edges=False,
                   spec_ind=[],
                   spec_path=[])
 #   el.DRONE_GROUND_SPEED = el.kph_to_mps(30)

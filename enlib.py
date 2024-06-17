@@ -670,7 +670,7 @@ class EnergyHelper:
       dx.append(self.nodes[p[0]][0])
       dy.append(self.nodes[p[0]][1])
     if self.n_pherm is not None and len(self.demand) > 0:
-      max_pherm = max(p for p in self.n_pherm[0])
+      max_pherm = max(max(p for p in self.n_pherm[i]) for i in range(len(self.demand)))
       base_c = 0.01 * max_pherm
       comp = 0
       if show_drone_only_nodes:
@@ -719,20 +719,14 @@ class EnergyHelper:
     plt.scatter(x=nx, y=ny, color=nc, s=8)
     if show_demand_local_paths:
       for i in range(len(self.demand)):
-        for j in range(len(self.nodes)):
-          got[j] = 0
         dem_ind = self.demand[i][0]
         for k in self.llep_d[i]:
           lx, ly = [], []
           for ind in self.llep_d[i][k]:
-            if got[ind] == 1:
-              break
-            got[ind] = 1
             lx.append(self.nodes[ind][0])
             ly.append(self.nodes[ind][1])
-          if got[dem_ind] == 0:
-            lx.append(self.nodes[dem_ind][0])
-            ly.append(self.nodes[dem_ind][1])
+          lx.append(self.nodes[dem_ind][0])
+          ly.append(self.nodes[dem_ind][1])
           plt.plot(lx, ly, marker="", c="black", alpha=0.3)
     if show_for_all_edges:
       llx, lly, lln = self.line_cover
@@ -766,7 +760,7 @@ class EnergyHelper:
     print("Generating random demand...")
     N = len(self.nodes)
     LIM = N * N
-    a, w_a = 0, 0
+    a, w_a = 0, 1
     b, w_b = N - 1, len(WEIGHTS) - 1
     got = [0 for _ in range(N)]
     for dem,_ in self.demand:
@@ -964,7 +958,7 @@ class EnergyHelper:
     SP_PHERM_COEFF = 0.7
     got = [0 for _ in range(len(nodes))]
     q_ind = []
-    lep, let, eng, ind, tent_eng, w_i = None, None, -1, -1, -1, -1
+    lep, let, eng, ind, w_i = None, None, -1, -1, -1
     up_arrs, curr, next = [], -1, -1
     n_pherm = [[NODE_BASE_PHERM for _ in range(len(nodes))] for _ in range(len(demand))]
     max_weight = max(w for _, w in demand)
@@ -975,6 +969,7 @@ class EnergyHelper:
         n_pherm[j][demand[i][0]] = n_pherm[i][demand[j][0]]
     lep_t = [[-1 for _ in range(len(nodes))] for _ in range(len(demand))]
     let_t = [[float('inf') for _ in range(len(nodes))] for _ in range(len(demand))]
+    let_g = [float('inf') for _ in range(len(nodes))]
     print("Running Dijkstra's + Path Tracking for all demand nodes...")
     pbar = tqdm(total=len(demand))
     for i in range(len(demand)):
@@ -984,18 +979,17 @@ class EnergyHelper:
       lep, let = lep_t[i], let_t[i]
       # Dijkstra's Algorithm
       q_ind.append((0, demand[i][0]))
-      got[demand[i][0]] = 1
       while len(q_ind) > 0:
         eng, ind = heapq.heappop(q_ind)
+        if got[ind] == 1:
+          continue
+        got[ind] = 1
         for e in edges[ind]:
-          if got[e[0]] == 1:
-            continue
-          got[e[0]] = 1
-          tent_eng = eng + e[2]
-          if tent_eng < let[e[0]]:
-            let[e[0]] = tent_eng
+          n_eng = eng + e[2]
+          if n_eng < let[e[0]]:
+            let[e[0]] = n_eng
             lep[e[0]] = ind
-            heapq.heappush(q_ind, (tent_eng, e[0]))
+            heapq.heappush(q_ind, (n_eng, e[0]))
       # Path Construction
       lep[demand[i][0]] = []
       curr = -1
@@ -1029,7 +1023,6 @@ class EnergyHelper:
     print("Initializing switch point possibilities & local best paths around demands...")
     n_eng = 0
     sp_poss = [[] for _ in range(len(demand))]
-    let_g = [float('inf') for _ in range(len(nodes))]
     llep_d = [{} for _ in range(len(demand))]
     pbar = tqdm(total=len(demand))
     for dem_ind in range(len(demand)):
@@ -1038,52 +1031,54 @@ class EnergyHelper:
         continue
       for j in range(len(got)):
         got[j] = 0
+      let = let_g
+      for j in range(len(let)):
+        let[j] = float("inf")
       q_ind.append((0, 0, i))
-      got[i] = 1
       while len(q_ind) > 0:
-        tent_eng, dst, ind = heapq.heappop(q_ind)
+        eng, dst, ind = heapq.heappop(q_ind)
+        if got[ind] == 1:
+          continue
+        got[ind] = 1
         sp_poss[dem_ind].append(ind)
-        for n in range(len(demand)):
-          n_pherm[n][ind] += (1 - abs(1 - (tent_eng / MAX_BATTERY_USE_HALF))) * SP_PHERM_COEFF
         for n_ind, n_dst, _, _, drone_powers in edges[ind]:
-          if got[n_ind] == 1:
-            continue
-          got[n_ind] = 1
           # loading based on maximum range i.e. 0.25kg payload
-          n_eng = tent_eng + (drone_powers[1] * n_dst / DRONE_GROUND_SPEED)
+          n_eng = eng + (drone_powers[1] * n_dst / DRONE_GROUND_SPEED)
           n_dst += dst
-          if n_eng < MAX_BATTERY_USE and got[n_ind] == 0 and n_dst < R:
+          if n_eng < MAX_BATTERY_USE and n_eng < let[n_ind] and n_dst < R:
+            let[n_ind] = n_eng
             heapq.heappush(q_ind, (n_eng, n_dst, n_ind))
+      for j in range(len(let)):
+        if let[j] == float("inf"):
+          continue
+        for n in range(len(demand)):
+          n_pherm[n][j] += (1 - abs(1 - (let[j] / MAX_BATTERY_USE_HALF))) * SP_PHERM_COEFF
+        let[j] = float("inf")
       n_pherm[dem_ind][i] = 0
       for j in range(len(got)):
         got[j] = 0
-      let = let_g
-      for j in range(len(let)):
-        let[j] = float('inf')
       lep = llep_d[dem_ind]
       q_ind.append((0, 0, i))
-      got[i] = 1
       while len(q_ind) > 0:
         eng, dst, ind = heapq.heappop(q_ind)
+        if got[ind] == 1:
+          continue
+        got[ind] = 1
         for n_ind, n_dst, _, _, drone_powers in edges[ind]:
-          if got[n_ind] == 1:
-            continue
-          got[n_ind] = 1
           # loading based on maximum range i.e. 0.25kg payload
-          n_eng = tent_eng + (drone_powers[1] * n_dst / DRONE_GROUND_SPEED)
+          n_eng = eng + (drone_powers[1] * n_dst / DRONE_GROUND_SPEED)
           n_dst += dst
-          if n_eng < MAX_BATTERY_USE and got[n_ind] == 0 and n_dst < R:
+          if n_eng < MAX_BATTERY_USE and n_eng < let[n_ind] and n_dst < R:
+            let[n_ind] = n_eng
             lep[n_ind] = ind
             heapq.heappush(q_ind, (n_eng, n_dst, n_ind))
         for n_ind, n_dst, drone_powers in dedges[ind]:
-          if got[n_ind] == 1:
-            continue
-          got[n_ind] = 1
           # loading based on maximum range i.e. 0.25kg payload
-          n_eng = tent_eng + (drone_powers[1] * n_dst / DRONE_GROUND_SPEED)
+          n_eng = eng + (drone_powers[1] * n_dst / DRONE_GROUND_SPEED)
           n_dst += dst
-          if n_eng < MAX_BATTERY_USE and got[n_ind] == 0 and n_dst < R:
-            llep_d[dem_ind][n_ind] = ind
+          if n_eng < MAX_BATTERY_USE and n_eng < let[n_ind] and n_dst < R:
+            let[n_ind] = n_eng
+            lep[n_ind] = ind
             heapq.heappush(q_ind, (n_eng, n_dst, n_ind))
       lep[i] = []
       curr = -1
