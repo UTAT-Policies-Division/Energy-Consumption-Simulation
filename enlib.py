@@ -1,7 +1,7 @@
 from math import sqrt, acos, atan2, pi, \
                  sin, cos, tan, exp, \
                  floor, ceil
-from random import randint, sample
+from random import randint, sample, choices
 import matplotlib.pyplot as plt
 import pickle
 import multiprocessing as mp
@@ -570,85 +570,89 @@ class EnergyHelper:
     print("Line segement cover generated!")
     return (segs_x, segs_y, segs_n)
 
-  def plot_edge_phermones(self, edge_map, color, llx, lly, lln):
-    x, y, dx, dy, cx, cy = 0, 0, 0, 0, 0, 0
-    nphm, max_pherm, ln = -1, -1, None
-    if isinstance(edge_map, dict):
-      for k1 in edge_map:
-        for k2 in edge_map[k1]:
-          max_pherm = max(max_pherm, edge_map[k1][k2])
-      for i in range(len(llx)):
-        ln = lln[i]
-        for j in range(1, len(llx[i])):
-          if ln[j-1] in edge_map and ln[j] in edge_map[ln[j-1]]:
-            x = llx[i][j-1]
-            y = lly[i][j-1]
-            dx = llx[i][j] - x
-            dy = lly[i][j] - y
-            cx = min(max(0.05 * dx, -0.05), 0.05)
-            cy = min(max(0.05 * dy, -0.05), 0.05)
-            x += cx
-            y += cy
-            dx -= cx
-            dy -= cy
-            nphm = edge_map[ln[j - 1]][ln[j]] / max_pherm
-            plt.arrow(x, y, dx, dy, ec=color, fc=color,
-                      length_includes_head=True, 
-                      head_width=8*nphm, alpha=nphm)
-          if ln[j] in edge_map and ln[j-1] in edge_map[ln[j]]:
-            x = llx[i][j]
-            y = lly[i][j]
-            dx = llx[i][j - 1] - x
-            dy = lly[i][j - 1] - y
-            cx = min(max(0.05 * dx, -0.05), 0.05)
-            cy = min(max(0.05 * dy, -0.05), 0.05)
-            x += cx
-            y += cy
-            dx -= cx
-            dy -= cy
-            nphm = edge_map[ln[j]][ln[j - 1]] / max_pherm
-            plt.arrow(x, y, dx, dy, ec=color, fc=color,
-                      length_includes_head=True,
-                      head_width=8*nphm, alpha=nphm)
+  def plot_cycle(self, cycle, num):
+    got = [0 for _ in range(len(self.nodes))]
+    nx, ny, nc = [], [], []
+    dx, dy = [], []
+    max_pherm = 0
+    for p in self.demand:
+      got[p[0]] = 1
+      dx.append(self.nodes[p[0]][0])
+      dy.append(self.nodes[p[0]][1])
+    if self.n_pherm is not None and len(self.demand) > 0:
+      max_pherm = max(max(p for p in self.n_pherm[i]) for i in range(len(self.demand)))
+      base_c = 0.01 * max_pherm
+      comp = 0
+      for i in range(len(self.nodes)):
+        if got[i] == 1:
+          continue
+        nx.append(self.nodes[i][0])
+        ny.append(self.nodes[i][1])
+        if len(self.edges[i]) > 0:
+          comp = 0.9 - min(1.75 * ((1000 * self.n_pherm[0][i] + base_c) / max_pherm), 0.9)
+          nc.append((1, comp, comp))
+        else:
+          nc.append((0.7, 0.7, 0.7))
     else:
       for i in range(len(self.nodes)):
-        for j in range(len(self.nodes)):
-          max_pherm = max(max_pherm, edge_map[i][j])
-      for i in range(len(llx)):
-        ln = lln[i]
-        for j in range(1, len(llx[i])):
-          nphm = edge_map[ln[j - 1]][ln[j]]
-          if nphm > 1:
-            x = llx[i][j-1]
-            y = lly[i][j-1]
-            dx = llx[i][j] - x
-            dy = lly[i][j] - y
-            cx = min(max(0.05 * dx, -0.05), 0.05)
-            cy = min(max(0.05 * dy, -0.05), 0.05)
-            x += cx
-            y += cy
-            dx -= cx
-            dy -= cy
-            nphm /= max_pherm
-            plt.arrow(x, y, dx, dy, ec=color, fc=color,
-                      length_includes_head=True, 
-                      head_width=8*nphm, alpha=nphm)
-          nphm = edge_map[ln[j]][ln[j - 1]]
-          if nphm > 1:
-            x = llx[i][j]
-            y = lly[i][j]
-            dx = llx[i][j - 1] - x
-            dy = lly[i][j - 1] - y
-            cx = min(max(0.05 * dx, -0.05), 0.05)
-            cy = min(max(0.05 * dy, -0.05), 0.05)
-            x += cx
-            y += cy
-            dx -= cx
-            dy -= cy
-            nphm /= max_pherm
-            plt.arrow(x, y, dx, dy, ec=color, fc=color,
-                      length_includes_head=True,
-                      head_width=8*nphm, alpha=nphm)
+        if got[i] == 1:
+          continue
+        nx.append(self.nodes[i][0])
+        ny.append(self.nodes[i][1])
+        if len(self.edges[i]) > 0:
+          nc.append((1, 0, 0))
+        else:
+          nc.append((0.7, 0.7, 0.7))
+    if self.line_cover is None:
+      self.line_cover = self.gen_network_line_cover(self.edges)
+    if self.line_cover_d is None:
+      self.line_cover_d = self.gen_network_line_cover(self.dedges)
+    plt.scatter(dx, dy, c="magenta", s=15)
+    plt.scatter(x=nx, y=ny, color=nc, s=8)
+    llx, lly, lln = self.line_cover
+    for i in range(len(llx)):
+      plt.plot(llx[i], lly[i], marker="", c="mediumblue", alpha=0.3)
+    llx, lly, lln = self.line_cover_d
+    for i in range(len(llx)):
+      plt.plot(llx[i], lly[i], marker="", c="limegreen", alpha=0.3)
+    glx, gly = [], []
+    lx, ly = [], []
+    for ind in self.lep_t[-1][self.demand[cycle[0]][0]]:
+      lx.append(self.nodes[ind][0])
+      ly.append(self.nodes[ind][1])
+    lx.append(self.nodes[self.demand[-1][0]][0])
+    ly.append(self.nodes[self.demand[-1][0]][1])
+    lx.reverse()
+    ly.reverse()
+    glx.extend(lx)
+    gly.extend(ly)
+    dem_ind = 0
+    while dem_ind < len(cycle) - 1:
+      lx, ly = [], []
+      path = self.lep_t[cycle[dem_ind]][self.demand[cycle[dem_ind + 1]][0]]
+      for i in range(len(path)):
+        lx.append(self.nodes[path[i]][0])
+        ly.append(self.nodes[path[i]][1])
+      lx.append(self.nodes[self.demand[cycle[dem_ind]][0]][0])
+      ly.append(self.nodes[self.demand[cycle[dem_ind]][0]][1])
+      lx.reverse()
+      ly.reverse()
+      glx.extend(lx)
+      gly.extend(ly)
+      dem_ind += 1
+    lx, ly = [], []
+    for ind in self.lep_t[cycle[-1]][self.demand[-1][0]]:
+      lx.append(self.nodes[ind][0])
+      ly.append(self.nodes[ind][1])
+    lx.append(self.nodes[self.demand[cycle[-1]][0]][0])
+    ly.append(self.nodes[self.demand[cycle[-1]][0]][1])
+    lx.reverse()
+    ly.reverse()
+    glx.extend(lx)
+    gly.extend(ly)
+    plt.plot(glx, gly, marker="", c="black", alpha=0.6)
+    plt.savefig("Pictures/{}.png".format(num), dpi=700)
+    plt.clf()
 
   def plot_network(self, show_drone_only_nodes, show_drone_only_edges, show_demand_nodes, 
                    show_demand_local_paths, show_for_all_edges, spec_ind=[], spec_path=[]):
@@ -912,50 +916,59 @@ class EnergyHelper:
   def get_top_right_node(self):
     max_x, max_y, ind = 0, 0, 0
     for i in range(len(self.nodes)):
-      if self.nodes[i][0] > max_x and self.nodes[i][1] > max_y:
+      if self.nodes[i][0] > max_x and \
+         self.nodes[i][1] > max_y and \
+         len(self.edges[i]) > 0:
         max_x = self.nodes[i][0]
         max_y = self.nodes[i][1]
         ind = i
     return ind
-  
+
   def get_top_left_node(self):
     max_x, min_y, ind = 0, 0, 0
     for i in range(len(self.nodes)):
-      if self.nodes[i][0] > max_x and self.nodes[i][1] < min_y:
+      if self.nodes[i][0] > max_x and \
+         self.nodes[i][1] < min_y and \
+         len(self.edges[i]) > 0:
         max_x = self.nodes[i][0]
         min_y = self.nodes[i][1]
         ind = i
     return ind
-  
+
   def get_bottom_right_node(self):
     min_x, max_y, ind = 0, 0, 0
     for i in range(len(self.nodes)):
-      if self.nodes[i][0] < min_x and self.nodes[i][1] > max_y:
+      if self.nodes[i][0] < min_x and \
+         self.nodes[i][1] > max_y and \
+         len(self.edges[i]) > 0:
         min_x = self.nodes[i][0]
         max_y = self.nodes[i][1]
         ind = i
     return ind
-  
+
   def get_bottom_left_node(self):
     min_x, min_y, ind = 0, 0, 0
     for i in range(len(self.nodes)):
-      if self.nodes[i][0] < min_x and self.nodes[i][1] < min_y:
+      if self.nodes[i][0] < min_x and \
+         self.nodes[i][1] < min_y and \
+         len(self.edges[i]) > 0:
         min_x = self.nodes[i][0]
         min_y = self.nodes[i][1]
         ind = i
     return ind
 
-  def init_phermone_system(self, R=float("inf")):
+  def init_phermone_system(self, src, R=float("inf")):
     # range is a dummy decision variable for now
     print("Generating phermones tracker...")
     nodes = self.nodes
     edges = self.edges
     dedges = self.dedges
     demand = self.demand
-    DEMAND_BASE_PHERM = 0.3
-    DEMAND_PHERM_COEFF = 0.2
+    demand.append((src, 0))
+    DEMAND_BASE_PHERM = 0.7
+    DEMAND_PHERM_COEFF = 2.0
     NODE_BASE_PHERM = 0
-    SP_PHERM_COEFF = 0.7
+    SP_PHERM_COEFF = 3.5
     got = [0 for _ in range(len(nodes))]
     q_ind = []
     lep, let, eng, ind, w_i = None, None, -1, -1, -1
@@ -1109,17 +1122,109 @@ class EnergyHelper:
     self.llep_d = llep_d
     self.lep_t = lep_t
     self.let_t = let_t
-    print("Phermone system initialized!")
+    print("Phermone system initialized!\nNOTE: Demand structures now hold source vertex with 0 weight.")
 
-  def aco(self, src):
-    """
-    src: source depot index in self.nodes
-    """
+  def aco(self, K=1000, ants_per_iter=50, q=10, degradation_factor=0.97):
     # 1% decrease in mpg for every 100 pounds
-    # implies 1 / (1 - 0.01 * num_pounds) multiplier. 
+    # implies 1 / (1 - 0.01 * num_pounds) multiplier.
     truck_coeff = 1 / (1 - (0.01 * self.total_weight / 45.359237))
+    for i in range(len(self.demand) - 1):
+      for j in range(len(self.demand) - 1):
+        if self.let_t[i][self.demand[j][0]] == float("inf"):
+          print("BAD CONNECTION:", self.demand[i], self.demand[j])
 
-    return 0
+    STAGNANT_LIMIT = 10
+    demand = self.demand
+    sp_poss = self.sp_poss
+    n_pherm = self.n_pherm
+    llep_d = self.llep_d
+    lep_t = self.lep_t
+    let_t = self.let_t
+    src = demand.pop()[0]           # source node, w = 0
+    src_local_poss = sp_poss.pop()  # list of node indexes
+    src_pherm_view = n_pherm.pop()  # phermones in view of src
+    src_local_paths = llep_d.pop()  # local best paths
+    src_lep_t = lep_t.pop()         # list of paths to all nodes
+    src_let_t = let_t.pop()         # list of path total energies
+    got = [0 for _ in range(len(demand))]
+    first_demand_possibs = [i for i in range(len(demand))]
+    first_demand_weights = [0 for _ in range(len(demand))]
+    best_cycle = [i for i in range(len(demand))]
+    best_energy = float("inf")
+    print("Starting ACO...")
+    pbar = tqdm(total=K)
+    for iter in range(K):
+      for j in range(len(first_demand_weights)):
+        first_demand_weights[j] = src_pherm_view[demand[j][0]]
+      cycles = [self.traverse_graph(got,
+                                    choices(first_demand_possibs, 
+                                            weights=first_demand_weights)[0], 
+                                    demand, n_pherm, let_t) for _ in range(ants_per_iter)]
+      for j in range(len(cycles)):
+        cycle, total_energy = cycles[j]
+        cycles[j] = (cycle, total_energy + let_t[src][cycle[0]] + let_t[cycle[-1]][src])
+      cycles.sort(key = lambda x: x[1])
+      cycles = cycles[: ants_per_iter//2]
+      cycles.append((best_cycle, best_energy))
+      if iter % 5 == 0:
+        self.plot_cycle(int(cycles[0][0], iter / 5))   # for saving pictures
+      if abs(cycles[0][1] - best_energy) / best_energy < NEWT_PREC:
+        STAGNANT_LIMIT -= 1
+        if STAGNANT_LIMIT <= 0:
+          print("Limit for iterations to stay stagnant exceeded! Stopping earlier by", K - iter,"iterations")
+          return best_cycle, best_energy
+      for cycle, total_energy in cycles:
+        if total_energy < best_energy:
+          best_energy = total_energy
+          best_cycle = cycle
+        delta = q / total_energy
+        src_pherm_view[demand[cycle[0]][0]] += delta
+        j = 0
+        while j < len(cycle) - 1:
+          n_pherm[cycle[j]][demand[cycle[j + 1]][0]] += delta
+          j += 1
+        j = 0
+        while j < len(demand):
+          i = 0
+          while i < len(self.nodes):
+            n_pherm[j][i] *= degradation_factor
+            i += 1
+          src_pherm_view[demand[j][0]] *= degradation_factor
+          j += 1
+      pbar.update()
+    pbar.close()
+    print("ACO complete!")
+    demand.append((src, 0))
+    sp_poss.append(src_local_poss)
+    n_pherm.append(src_pherm_view)
+    llep_d.append(src_local_paths)
+    lep_t.append(src_lep_t)
+    let_t.append(src_let_t)
+    return best_cycle, best_energy
+
+  def traverse_graph(self, got, start_demand_index, demand, n_pherm, let_t):
+    ALPHA = 0.9
+    BETA = 1.5
+    for i in range(len(got)):
+      got[i] = 0
+    got[start_demand_index] = 1
+    cycle = [start_demand_index]
+    curr = start_demand_index
+    total_energy, steps = 0, 1
+    while steps < len(demand):
+      # TODO: add drones
+      nbs, ws = [], []
+      for i in range(len(demand)):
+        if got[i] == 0:
+          nbs.append(i)
+          ws.append((n_pherm[curr][demand[i][0]])**ALPHA / (let_t[curr][demand[i][0]])**BETA)
+      next_demand = choices(nbs, weights=ws)[0]
+      total_energy += let_t[curr][demand[next_demand][0]]
+      got[next_demand] = 1
+      curr = next_demand
+      cycle.append(curr)
+      steps += 1
+    return cycle, total_energy
 
 def D_f(rho, V):   # correct, but prefer not used
   """
