@@ -966,8 +966,8 @@ class EnergyHelper:
     dedges = self.dedges
     demand = self.demand
     demand.append((src, 0))
-    DEMAND_BASE_PHERM = 3.0
-    DEMAND_PHERM_COEFF = 7.0
+    DEMAND_BASE_PHERM = 7.5
+    DEMAND_PHERM_COEFF = 15.5
     NODE_BASE_PHERM = 0
     SP_PHERM_COEFF = 5.0
     got = [0 for _ in range(len(nodes))]
@@ -1125,7 +1125,8 @@ class EnergyHelper:
     self.let_t = let_t
     print("Phermone system initialized!\nNOTE: Demand structures now hold source vertex with 0 weight.")
 
-  def aco(self, K=100, ants_per_iter=50, q=10, degradation_factor=0.99):
+  # 150 : basic, 200 : ideal
+  def aco(self, K=150, ants_per_iter=75, q=10, degradation_factor=0.99):
     # 1% decrease in mpg for every 100 pounds
     # implies 1 / (1 - 0.01 * num_pounds) multiplier.
     truck_coeff = 1 / (1 - (0.01 * self.total_weight / 45.359237))
@@ -1168,11 +1169,13 @@ class EnergyHelper:
       cycles.append((best_cycle, best_energy))
       # if iter % 10 == 0:
       #   self.plot_cycle(cycles[0][0], int(iter / 10))   # for saving pictures
+      if (iter + 1) % 25 == 0:
+        print("E (MJ) :", round(best_energy / 10**6, 2))
       if abs(cycles[0][1] - best_energy) / (best_energy + 0.0001) < NEWT_PREC:
         STAGNANT_LIMIT -= 1
         if STAGNANT_LIMIT <= 0:
           print("Limit for iterations to stay stagnant exceeded! Stopping earlier by", K - iter,"iterations")
-          return best_cycle, best_energy
+          break
       for cycle, total_energy in cycles:
         if total_energy < best_energy:
           best_energy = total_energy
@@ -1202,8 +1205,8 @@ class EnergyHelper:
     return best_cycle, best_energy
 
   def traverse_graph(self, got, start_demand_index, demand, n_pherm, let_t):
-    ALPHA = 0.9
-    BETA = 1.5
+    ALPHA=0.9
+    BETA=1.5
     for i in range(len(got)):
       got[i] = 0
     got[start_demand_index] = 1

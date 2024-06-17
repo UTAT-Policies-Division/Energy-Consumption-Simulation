@@ -118,21 +118,13 @@ if __name__ == '__main__':
 #   eh.demand.pop(b_ind)
 #   eh.remove_phermones(1500, b_ind)
 #   eh.append_random_demand(50, cluster_num=0, cluster_jump=0)
-  eh.append_random_demand(20, cluster_num=0, cluster_jump=0, 
+  eh.append_random_demand(170, cluster_num=0, cluster_jump=0, 
                           drone_only_possible_component=0.8)
   src = eh.get_top_right_node()
   eh.init_phermone_system(R=float(10000000), src=src)
-  lx = []
-  ly = []
-  for i in range(10, 101, 10):
-    best_cycle, best_energy = eh.aco(K=100, q=i)
-    eh.plot_cycle(best_cycle, int(i / 10)) 
-    print(i, ":", best_energy)
-    lx.append(i)
-    ly.append(best_energy)
-  plt.plot(lx, ly)
+  best_cycle, best_energy = eh.aco(K=300, q=10)
 #   eh.plot_cycle(best_cycle, 0)
-#   print("Energy of plotted cycle in MJ:", round(best_energy / 10**6, 2))
+  print("Energy of plotted cycle in MJ:", round(best_energy / 10**6, 2))
 #   pth = [eh.demand[0][0]]
 #   print(eh.nodes[eh.demand[0][0]])
 #   pth.extend(lep_t[0][0])
