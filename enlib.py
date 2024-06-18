@@ -1000,6 +1000,8 @@ class EnergyHelper:
         for e in edges[ind]:
           n_eng = eng + e[2]
           if n_eng < let[e[0]]:
+            # if e[0] in [demand[k][0] for k in range(len(demand))] and ind in [demand[k][0] for k in range(len(demand))]:
+            #   print(ind, e[0])
             let[e[0]] = n_eng
             lep[e[0]] = ind
             heapq.heappush(q_ind, (n_eng, e[0]))
@@ -1126,6 +1128,11 @@ class EnergyHelper:
     print("Phermone system initialized!\nNOTE: Demand structures now hold source vertex with 0 weight.")
 
   def aco(self, K=200, ants_per_iter=75, q=10, degradation_factor=0.99):
+    # for i in range(len(self.demand) - 1):
+    #   for j in range(len(self.demand) - 1):
+    #     if self.let_t[i][self.demand[j][0]] == float("inf"):
+    #       print("BAD CONNECTION:", self.demand[i], self.demand[j])
+    return [], 0
     print("Initializing ACO child workers...")
     STAGNANT_LIMIT = int(0.2 * K)
     BEST_HALF_SIZE = ants_per_iter // 2
