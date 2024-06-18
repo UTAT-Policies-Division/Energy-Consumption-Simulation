@@ -23,7 +23,7 @@ DRAW_PREC = 100 # power of 10, larger => more precise
 AREA = pi * (11 / meter_coeff)**2
 NEWT_PREC = 10**(-5)
 BATTERY_RESERVE_MARGIN = 0.2
-BATTERY_CAPACITY = 17.0 * 48 * 3600  # J
+BATTERY_CAPACITY = 17.0 * 48 * 0.036  # J,                           TODO: CHANGE 0.036 -> 3600
 MAX_BATTERY_USE = BATTERY_CAPACITY * (1 - BATTERY_RESERVE_MARGIN)
 MAX_BATTERY_USE_HALF = MAX_BATTERY_USE / 2
 C_D_ALPHA0, S_REF, DRONE_GROUND_SPEED = -1, -1, -1
@@ -779,30 +779,48 @@ class EnergyHelper:
     print("Generating random demand...")
     N = len(self.nodes)
     LIM = N * N
-    a, w_a = 0, 1
-    b, w_b = N - 1, len(WEIGHTS) - 1
+    a, w_a, j_a = 0, 1, 1
+    b, w_b, j_b = N - 1, len(WEIGHTS) - 1, int(0.05 * N)
     got = [0 for _ in range(N)]
-    for dem,_ in self.demand:
-      got[dem] = 1
+    if len(self.demand) > 0:
+      if isinstance(self.demand[0], tuple):
+        for dem,_ in self.demand:
+          got[dem] = 1
+      else:
+        for dem in self.demand:
+          got[dem] = 1
     n = 0
     q, verf_q = [], []
     verf_got = [0 for _ in range(len(self.nodes))]
     if cluster_num <= 0:
-      while num > 0:
-        n = randint(a, b)
-        while (got[n] > 0) or (len(self.edges[n]) == 0) or \
-              not self.verify_demand_connectivity(n, verf_q, verf_got, True):
-          n = (n + 1) % N
-          if LIM == 1:
-            self.demand = []
-            self.total_weight = 0
-            print("ERROR: could not find suitable node for demand.")
-            return
-          else:
-            LIM -= 1
-        got[n] = 1
+      n = randint(a, b)
+      while (got[n] > 0) or (len(self.edges[n]) == 0) or \
+            not self.verify_demand_connectivity(n, verf_q, verf_got, True):
+        n = (n + 1) % N
+        if LIM == 1:
+          self.demand = []
+          self.total_weight = 0
+          print("ERROR: could not find suitable node for demand.")
+          return
+        else:
+          LIM -= 1
+      edge_list = None
+      while True:
         self.demand.append(n)
+        got[n] = 1
         num -= 1
+        if num <= 0:
+          break
+        edge_list = self.edges[n]
+        for _ in range(randint(j_a, j_b)):
+          q.clear()
+          for e in edge_list:
+            if len(self.edges[e[0]]) > 0 and got[e[0]] == 0:
+              q.append(e[0])
+          if len(q) == 0:   # dangerous recursive solution
+            return self.append_random_demand(num, 0, 0, drone_only_possible_component, num_allocs)
+          n = q[randint(0, len(q) - 1)]
+          edge_list = self.edges[n]
     else:
       # cluster_jump = 0 implies immediate neighbors
       threshold = 1 + int(floor(num / cluster_num) * 0.1)
@@ -1265,8 +1283,8 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm,
   DEMAND_SIZE = len(demand)
   N_PHERM_LAST = N_PHERM_SIZE - NUM_NODES
   TOTAL_WEIGHT = sum(pr[1] for pr in demand)
-  # src_local_poss = sp_poss.pop()  # list of node indexes
-  # src_local_paths = llep_d.pop()  # local best paths
+  src_local_poss = sp_poss.pop()  # list of node indexes
+  src_local_paths = llep_d.pop()  # local best paths
   # src_lep_t = lep_t.pop()         # list of paths to all nodes
   src_let_t = let_t.pop()         # list of path total energies
   got = [0 for _ in range(DEMAND_SIZE)]

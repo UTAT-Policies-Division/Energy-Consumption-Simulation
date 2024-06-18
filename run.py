@@ -118,23 +118,23 @@ if __name__ == '__main__':
 #   eh.append_random_demand(50, cluster_num=0, cluster_jump=0)
 #   eh.enforce_graph_connections()
   eh.append_random_demand(10, cluster_num=0, cluster_jump=0, 
-                          drone_only_possible_component=0.1)
+                          drone_only_possible_component=0.7)
   src = eh.get_top_right_node()
   eh.init_phermone_system(R=float(10000000), src=src)
-  best_cycle, best_energy = eh.aco(ants_per_iter=8)
-  eh.plot_cycle(best_cycle)
+#   best_cycle, best_energy = eh.aco(ants_per_iter=8)
+#   eh.plot_cycle(best_cycle)
 #   print("Energy of plotted cycle in MJ:", round(best_energy / 10**6, 2))
 #   pth = [eh.demand[0][0]]
 #   print(eh.nodes[eh.demand[0][0]])
 #   pth.extend(lep_t[0][0])
 #   print(eh.total_weight)
-#   eh.plot_network(show_drone_only_nodes=False,
-#                   show_drone_only_edges=False,
-#                   show_demand_nodes=True,
-#                   show_demand_local_paths=False,
-#                   show_for_all_edges=True,
-#                   spec_ind=[],
-#                   spec_path=[])
+  eh.plot_network(show_drone_only_nodes=False,
+                  show_drone_only_edges=False,
+                  show_demand_nodes=True,
+                  show_demand_local_paths=True,
+                  show_for_all_edges=False,
+                  spec_ind=[],
+                  spec_path=[])
 #   el.DRONE_GROUND_SPEED = el.kph_to_mps(30)
 #   print(el.power(el.rho_air_std,
 #                  el.kgs_to_W(2.5),
