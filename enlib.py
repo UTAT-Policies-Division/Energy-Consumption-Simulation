@@ -1150,7 +1150,7 @@ class EnergyHelper:
     print("Phermone system initialized!\nNOTE: Demand structures now hold source vertex with 0 weight.")
     return -1
 
-  def aco(self, K=200, ants_per_iter=75, q=10, degradation_factor=0.99):
+  def aco(self, K=200, ants_per_iter=75, q=10, degradation_factor=0.99, truck_only=False):
     print("Initializing ACO child workers...")
     STAGNANT_LIMIT = int(0.2 * K)
     BEST_HALF_SIZE = ants_per_iter // 2
@@ -1177,10 +1177,15 @@ class EnergyHelper:
     llep_d = self.llep_d    # not changing
     lep_t = self.lep_t      # not changing
     let_t = self.let_t      # not changing
-    processes = [mp.Process(target=_aco_worker,
-                            args=(barrier, saw_zero, demand, sp_poss, 
-                                  n_pherm, cycles[i], llep_d, 
-                                  lep_t, let_t, K)) for i in range(ants_per_iter)]
+    if truck_only:
+      processes = [mp.Process(target=_aco_worker_truck_only,
+                              args=(barrier, saw_zero, demand, n_pherm, 
+                                    cycles[i], let_t, K)) for i in range(ants_per_iter)]
+    else:
+      processes = [mp.Process(target=_aco_worker,
+                              args=(barrier, saw_zero, demand, sp_poss, 
+                                    n_pherm, cycles[i], llep_d, 
+                                    lep_t, let_t, K)) for i in range(ants_per_iter)]
     print("Initialized ACO child workers!\nStarting ACO...")
     best_cycle = sample([i for i in range(DEMAND_SIZE)], k=DEMAND_SIZE)
     best_energy = float(10**50)
@@ -1285,6 +1290,67 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm,
     curr_w = TOTAL_WEIGHT - demand[curr][1]
     while steps < DEMAND_SIZE:
       # TODO: add drones
+      nbs, ws = [], []
+      for i in range(DEMAND_SIZE):
+        if got[i] == 0:
+          nbs.append(i)
+          ws.append((n_pherm[demand[i][0] + NUM_NODES * curr])**ALPHA / (let_t[curr][demand[i][0]])**BETA)
+      next_demand = choices(nbs, weights=ws)[0]
+      total_energy += let_t[curr][demand[next_demand][0]] / (1 - (curr_w / 4535.9237))
+      curr = next_demand
+      curr_w -= demand[curr][1]
+      got[curr] = 1
+      cycle[steps] = curr
+      steps += 1
+    cycle[DEMAND_SIZE] = int(total_energy + let_t[cycle[DEMAND_SIZE - 1]][src])
+    K -= 1
+    with barrier.get_lock():
+      barrier.value -= 1
+    not_got_chance = True
+    while not_got_chance:
+      with barrier.get_lock():
+        if barrier.value == 0:
+          not_got_chance = False
+    with saw_zero.get_lock():
+      saw_zero.value -= 1
+    not_got_chance = True
+    while not_got_chance:
+      with barrier.get_lock():
+        if barrier.value > 0:
+          not_got_chance = False
+
+def _aco_worker_truck_only(barrier, saw_zero, demand, 
+                           n_pherm, cycle, let_t, K):
+  # 1% decrease in mpg for every 100 pounds. Thus,
+  # 1 / (1 - 0.01 * num_pounds / hundred_pounds) multiplier.
+  ALPHA, BETA = 0.9, 1.5
+  N_PHERM_SIZE = int(len(n_pherm))
+  NUM_NODES = int(N_PHERM_SIZE / len(demand))
+  src = demand.pop()[0]           # source node, w = 0
+  DEMAND_SIZE = len(demand)
+  N_PHERM_LAST = N_PHERM_SIZE - NUM_NODES
+  TOTAL_WEIGHT = sum(pr[1] for pr in demand)
+  src_let_t = let_t.pop()         # list of path total energies
+  got = [0 for _ in range(DEMAND_SIZE)]
+  first_demand_possibs = [i for i in range(DEMAND_SIZE)]
+  first_demand_weights = [0 for _ in range(DEMAND_SIZE)]
+  not_got_chance = False
+  total_energy, next_demand = -1, -1
+  curr, curr_w, steps = -1, -1, -1
+  nbs, ws = None, None
+  while K > 0:
+    if n_pherm[0] < 0:
+      break
+    for j in range(DEMAND_SIZE):
+      first_demand_weights[j] = n_pherm[N_PHERM_LAST + demand[j][0]]
+      got[j] = 0
+    curr = choices(first_demand_possibs, weights=first_demand_weights, k=1)[0]
+    got[curr] = 1
+    cycle[0] = curr
+    steps = 1
+    total_energy = src_let_t[demand[curr][0]] / (1 - (TOTAL_WEIGHT / 4535.9237))
+    curr_w = TOTAL_WEIGHT - demand[curr][1]
+    while steps < DEMAND_SIZE:
       nbs, ws = [], []
       for i in range(DEMAND_SIZE):
         if got[i] == 0:
