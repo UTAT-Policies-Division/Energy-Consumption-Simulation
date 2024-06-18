@@ -1125,15 +1125,17 @@ class EnergyHelper:
     self.let_t = let_t
     print("Phermone system initialized!\nNOTE: Demand structures now hold source vertex with 0 weight.")
 
-  # 150 : basic, 200 : ideal
-  def aco(self, K=150, ants_per_iter=75, q=10, degradation_factor=0.99):
+  def aco(self, K=200, ants_per_iter=75, q=10, degradation_factor=0.99):
     print("Initializing ACO child workers...")
-    STAGNANT_LIMIT = int(0.15 * K)
+    STAGNANT_LIMIT = int(0.2 * K)
     BEST_HALF_SIZE = ants_per_iter // 2
     degradation_factor = degradation_factor**BEST_HALF_SIZE
     barrier = mp.Value('i',lock=True)
     with barrier.get_lock():
       barrier.value = ants_per_iter
+    saw_zero = mp.Value('i',lock=True)
+    with saw_zero.get_lock():
+      saw_zero.value = 0
     demand = self.demand    # not changing
     DEMAND_SIZE = len(demand) - 1
     NUM_NODES = len(self.nodes)
@@ -1151,7 +1153,7 @@ class EnergyHelper:
     lep_t = self.lep_t      # not changing
     let_t = self.let_t      # not changing
     processes = [mp.Process(target=_aco_worker,
-                            args=(barrier, demand, sp_poss, 
+                            args=(barrier, saw_zero, demand, sp_poss, 
                                   n_pherm, cycles[i], llep_d, 
                                   lep_t, let_t, K)) for i in range(ants_per_iter)]
     print("Initialized ACO child workers!\nStarting ACO...")
@@ -1163,17 +1165,25 @@ class EnergyHelper:
       p.start()
     pbar = tqdm(total=K)
     for iter in range(K):
-      with barrier.get_lock():
-        c = barrier.value
+      c = 1
       while c > 0:
         with barrier.get_lock():
           c = barrier.value
+      with saw_zero.get_lock():
+        saw_zero.value += ants_per_iter
       # if iter % 10 == 0:
       #   self.plot_cycle(cycles[0][0], int(iter / 10))   # for saving pictures
       cycles.sort(key = lambda x: x[DEMAND_SIZE])
       if abs(cycles[0][DEMAND_SIZE] - best_energy) / best_energy < NEWT_PREC:
         STAGNANT_LIMIT -= 1
         if STAGNANT_LIMIT <= 0:
+          n_pherm[0] = -1
+          c = 1
+          while c > 0:
+            with saw_zero.get_lock():
+              c = saw_zero.value
+          with barrier.get_lock():
+            barrier.value = ants_per_iter
           print("Limit for iterations to stay stagnant exceeded! Stopping earlier by", K - iter,"iterations")
           break
       delta = q / best_energy
@@ -1201,6 +1211,10 @@ class EnergyHelper:
         n_pherm[j] *= degradation_factor
         j += 1
       pbar.update()
+      c = 1
+      while c > 0:
+        with saw_zero.get_lock():
+          c = saw_zero.value
       with barrier.get_lock():
         barrier.value = ants_per_iter
     pbar.close()
@@ -1210,7 +1224,7 @@ class EnergyHelper:
       p.close()
     return best_cycle, best_energy
 
-def _aco_worker(barrier, demand, sp_poss, n_pherm, 
+def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, 
                 cycle, llep_d, lep_t, let_t, K):
   # 1% decrease in mpg for every 100 pounds
   # implies 1 / (1 - 0.01 * num_pounds) multiplier.
@@ -1228,15 +1242,12 @@ def _aco_worker(barrier, demand, sp_poss, n_pherm,
   got = [0 for _ in range(DEMAND_SIZE)]
   first_demand_possibs = [i for i in range(DEMAND_SIZE)]
   first_demand_weights = [0 for _ in range(DEMAND_SIZE)]
-  got_chance = False
+  not_got_signal, at_zero = False, False
   total_energy, next_demand, curr, steps = -1, -1, -1, -1
   nbs, ws = None, None
   while K > 0:
-    while not got_chance:
-      with barrier.get_lock():
-        if barrier.value > 0:
-          got_chance = True
-          barrier.value -= 1
+    if n_pherm[0] < 0:
+      break
     for j in range(DEMAND_SIZE):
       first_demand_weights[j] = n_pherm[N_PHERM_LAST + demand[j][0]]
       got[j] = 0
@@ -1260,7 +1271,20 @@ def _aco_worker(barrier, demand, sp_poss, n_pherm,
       steps += 1
     cycle[DEMAND_SIZE] = int(total_energy + let_t[cycle[DEMAND_SIZE - 1]][src])
     K -= 1
-    got_chance = False
+    with barrier.get_lock():
+      barrier.value -= 1
+    not_got_chance = True
+    while not_got_chance:
+      with barrier.get_lock():
+        if barrier.value == 0:
+          not_got_chance = False
+    with saw_zero.get_lock():
+      saw_zero.value -= 1
+    not_got_chance = True
+    while not_got_chance:
+      with barrier.get_lock():
+        if barrier.value > 0:
+          not_got_chance = False
 
 def D_f(rho, V):   # correct, but prefer not used
   """
