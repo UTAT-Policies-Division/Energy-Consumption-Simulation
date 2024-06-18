@@ -1226,15 +1226,15 @@ class EnergyHelper:
 
 def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, 
                 cycle, llep_d, lep_t, let_t, K):
-  # 1% decrease in mpg for every 100 pounds
-  # implies 1 / (1 - 0.01 * num_pounds) multiplier.
-  # truck_coeff = 1 / (1 - (0.01 * self.total_weight / 45.359237))
+  # 1% decrease in mpg for every 100 pounds. Thus,
+  # 1 / (1 - 0.01 * num_pounds / hundred_pounds) multiplier.
   ALPHA, BETA = 0.9, 1.5
   N_PHERM_SIZE = int(len(n_pherm))
   NUM_NODES = int(N_PHERM_SIZE / len(demand))
   src = demand.pop()[0]           # source node, w = 0
   DEMAND_SIZE = len(demand)
   N_PHERM_LAST = N_PHERM_SIZE - NUM_NODES
+  TOTAL_WEIGHT = sum(pr[1] for pr in demand)
   # src_local_poss = sp_poss.pop()  # list of node indexes
   # src_local_paths = llep_d.pop()  # local best paths
   # src_lep_t = lep_t.pop()         # list of paths to all nodes
@@ -1242,8 +1242,9 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm,
   got = [0 for _ in range(DEMAND_SIZE)]
   first_demand_possibs = [i for i in range(DEMAND_SIZE)]
   first_demand_weights = [0 for _ in range(DEMAND_SIZE)]
-  not_got_signal, at_zero = False, False
-  total_energy, next_demand, curr, steps = -1, -1, -1, -1
+  not_got_chance = False
+  total_energy, next_demand = -1, -1
+  curr, curr_w, steps = -1, -1, -1
   nbs, ws = None, None
   while K > 0:
     if n_pherm[0] < 0:
@@ -1255,7 +1256,8 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm,
     got[curr] = 1
     cycle[0] = curr
     steps = 1
-    total_energy = src_let_t[demand[curr][0]]
+    total_energy = src_let_t[demand[curr][0]] / (1 - (TOTAL_WEIGHT / 4535.9237))
+    curr_w = TOTAL_WEIGHT - demand[curr][1]
     while steps < DEMAND_SIZE:
       # TODO: add drones
       nbs, ws = [], []
@@ -1264,8 +1266,9 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm,
           nbs.append(i)
           ws.append((n_pherm[demand[i][0] + NUM_NODES * curr])**ALPHA / (let_t[curr][demand[i][0]])**BETA)
       next_demand = choices(nbs, weights=ws)[0]
-      total_energy += let_t[curr][demand[next_demand][0]]
+      total_energy += let_t[curr][demand[next_demand][0]] / (1 - (curr_w / 4535.9237))
       curr = next_demand
+      curr_w -= demand[curr][1]
       got[curr] = 1
       cycle[steps] = curr
       steps += 1
