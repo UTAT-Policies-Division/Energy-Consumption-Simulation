@@ -375,25 +375,12 @@ class EnergyHelper:
 
   def enforce_graph_connections(self):
     count, ind = 0, 0
-    found, tgt_edge, e = False, None, None
+    tgt_edge, e = None, None
     q, to_add = [], []
     got = [0 for _ in range(len(self.nodes))]
-    print("Finding nodes which are purely source / drain...")
-    for n in range(len(self.nodes)):
-      if len(self.edges[n]) == 0:
-        continue
-      found = False
-      for e in self.edges[n]:
-        for re in self.edges[e[0]]:
-          if n == re[0]:
-            found = True
-            break
-      if not found:
-        count += 1
-        self.edges[n] = []
-    print("Complete! About", round(count * 100 / len(self.nodes), 2), "percent of all nodes were unreachable via truck.")
     print("Finding edges which need to be added to ensure well-connectedness of drive network...")
     count = 0
+    pbar = tqdm(total=len(self.nodes))
     for n in range(len(self.nodes)):
       for i in range(len(self.edges[n])):
         e = self.edges[n][i]
@@ -418,7 +405,9 @@ class EnergyHelper:
         ind = to_add.pop()
         tgt_edge = self.edges[n][ind]
         self.edges[tgt_edge[0]].append((n, tgt_edge[1], tgt_edge[2], tgt_edge[3], tgt_edge[4]))
-    print(count, "road connections were made both-way!")
+      pbar.update()
+    pbar.close()
+    print(round(count / sum(len(e) for e in self.edges), 2), "percent road connections were made both-way!")
 
   def add_demand_node(self, index, weight):
     if index < 0 or index >= len(self.nodes):
@@ -570,7 +559,7 @@ class EnergyHelper:
     print("Line segement cover generated!")
     return (segs_x, segs_y, segs_n)
 
-  def plot_cycle(self, cycle, num):
+  def plot_cycle(self, cycle, save=False, num=-1):
     got = [0 for _ in range(len(self.nodes))]
     nx, ny, nc = [], [], []
     dx, dy = [], []
@@ -651,8 +640,9 @@ class EnergyHelper:
     glx.extend(lx)
     gly.extend(ly)
     plt.plot(glx, gly, marker="", c="black", alpha=0.6)
-    plt.savefig("Pictures/{}.png".format(num), dpi=500)
-    plt.clf()
+    if save:
+      plt.savefig("Pictures/{}.png".format(num), dpi=500)
+      plt.clf()
 
   def plot_network(self, show_drone_only_nodes, show_drone_only_edges, show_demand_nodes, 
                    show_demand_local_paths, show_for_all_edges, spec_ind=[], spec_path=[]):
@@ -751,8 +741,33 @@ class EnergyHelper:
       plt.plot(path_x, path_y, marker="", c="black", alpha=0.1)
     print("Plotted network!")
 
+  def verify_demand_connectivity(self, st_ind, q=[], got=[], refresh_got=False):
+    if len(got) == 0:
+      got = [0 for _ in range(len(self.nodes))]
+    if refresh_got:
+      for i in range(len(got)):
+        got[i] = 0
+    q.append(st_ind)
+    ind = -1
+    while len(q) > 0:
+      ind = q.pop()
+      for e in self.edges[ind]:
+        if got[e[0]] == 0:
+          got[e[0]] = 1
+          q.append(e[0])
+    if len(self.demand) > 0:
+      if isinstance(self.demand[0], tuple):
+        for i in range(len(self.demand)):
+          if got[self.demand[i][0]] == 0:
+            return False
+      else:
+        for i in range(len(self.demand)):
+          if got[self.demand[i]] == 0:
+            return False
+    return True
+
   def append_random_demand(self, num, cluster_num = 0, cluster_jump = 0, 
-                           drone_only_possible_component=0.7, num_allocs=3):
+                           drone_only_possible_component=0.7, num_allocs=10):
     """
     Demand generated ALWAYS corresponds
     to nodes reachable by the truck.
@@ -770,10 +785,13 @@ class EnergyHelper:
     for dem,_ in self.demand:
       got[dem] = 1
     n = 0
+    q, verf_q = [], []
+    verf_got = [0 for _ in range(len(self.nodes))]
     if cluster_num <= 0:
       while num > 0:
         n = randint(a, b)
-        while (got[n] > 0) or (len(self.edges[n]) == 0):
+        while (got[n] > 0) or (len(self.edges[n]) == 0) or \
+              not self.verify_demand_connectivity(n, verf_q, verf_got, True):
           n = (n + 1) % N
           if LIM == 1:
             self.demand = []
@@ -794,7 +812,8 @@ class EnergyHelper:
       lv = -1
       for cluster_rem in range(cluster_num, 0, -1):
         n = randint(a, b)
-        while (got[n] > 0) or (len(self.edges[n]) == 0):
+        while (got[n] > 0) or (len(self.edges[n]) == 0) or \
+              not self.verify_demand_connectivity(n, verf_q, verf_got, True):
           n = (n + 1) % N
           if LIM == 1:
             self.demand = []
@@ -820,7 +839,7 @@ class EnergyHelper:
             else:
               for j in range(min(len(self.edges[n]), to_add + 1)):
                 tmp = self.edges[n][j][0]
-                if got[tmp] == 0:
+                if got[tmp] == 0 and len(self.edges[tmp]) > 0:
                   got[tmp] = 3   # in queue
                   to_swap = randint(0, max(0, end))
                   end += 1
@@ -834,7 +853,7 @@ class EnergyHelper:
             lv -= 1
             for j in range(min(len(self.edges[n]), to_add + 1)):
               tmp = self.edges[n][j][0]
-              if got[tmp] == 0:
+              if got[tmp] == 0 and len(self.edges[tmp]) > 0:
                 got[tmp] = 3   # in queue
                 to_swap = randint(0, max(0, end))
                 end += 1
@@ -1000,8 +1019,6 @@ class EnergyHelper:
         for e in edges[ind]:
           n_eng = eng + e[2]
           if n_eng < let[e[0]]:
-            # if e[0] in [demand[k][0] for k in range(len(demand))] and ind in [demand[k][0] for k in range(len(demand))]:
-            #   print(ind, e[0])
             let[e[0]] = n_eng
             lep[e[0]] = ind
             heapq.heappush(q_ind, (n_eng, e[0]))
@@ -1034,6 +1051,11 @@ class EnergyHelper:
         up_arrs.clear()
       pbar.update()
     pbar.close()
+    for i in range(len(self.demand)):
+      for j in range(len(self.demand)):
+        if let_t[i][self.demand[j][0]] == float("inf"):
+          print("BAD CONNECTION FOUND:", self.demand[i][0], self.demand[j][0], ". Aborting...")
+          exit(1)
     print("Dijkstra's + Path Tracking complete!")
     print("Initializing switch point possibilities & local best paths around demands...")
     n_eng = 0
@@ -1126,13 +1148,9 @@ class EnergyHelper:
     self.lep_t = lep_t
     self.let_t = let_t
     print("Phermone system initialized!\nNOTE: Demand structures now hold source vertex with 0 weight.")
+    return -1
 
   def aco(self, K=200, ants_per_iter=75, q=10, degradation_factor=0.99):
-    # for i in range(len(self.demand) - 1):
-    #   for j in range(len(self.demand) - 1):
-    #     if self.let_t[i][self.demand[j][0]] == float("inf"):
-    #       print("BAD CONNECTION:", self.demand[i], self.demand[j])
-    return [], 0
     print("Initializing ACO child workers...")
     STAGNANT_LIMIT = int(0.2 * K)
     BEST_HALF_SIZE = ants_per_iter // 2
