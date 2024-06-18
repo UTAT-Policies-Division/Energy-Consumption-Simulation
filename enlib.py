@@ -7,7 +7,6 @@ import pickle
 import multiprocessing as mp
 from os import cpu_count
 from tqdm import tqdm
-from copy import deepcopy
 import heapq
 
 half_pi = pi / 2
@@ -211,7 +210,7 @@ def init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
   QUAD_B = -sqrt(74736280 - QUAD_C)
   QUAD_A = QUAD_B / -24.5872
 
-def copy_globals(drone_speed):
+def copy_globals_energy(drone_speed):
   global C_D_ALPHA0, S_REF, DRONE_GROUND_SPEED, \
          CHORD, BETA, SINPSI, COSPSI
   CHORD = []  # holds in millimeters
@@ -1042,6 +1041,7 @@ class EnergyHelper:
     for dem_ind in range(len(demand)):
       i, demand_weight = demand[dem_ind]
       if demand_weight > WEIGHTS[-1]:
+        pbar.update()
         continue
       for j in range(len(got)):
         got[j] = 0
@@ -1127,106 +1127,140 @@ class EnergyHelper:
 
   # 150 : basic, 200 : ideal
   def aco(self, K=150, ants_per_iter=75, q=10, degradation_factor=0.99):
-    # 1% decrease in mpg for every 100 pounds
-    # implies 1 / (1 - 0.01 * num_pounds) multiplier.
-    truck_coeff = 1 / (1 - (0.01 * self.total_weight / 45.359237))
-    # for i in range(len(self.demand) - 1):
-    #   for j in range(len(self.demand) - 1):
-    #     if self.let_t[i][self.demand[j][0]] == float("inf"):
-    #       print("BAD CONNECTION:", self.demand[i], self.demand[j])
+    print("Initializing ACO child workers...")
     STAGNANT_LIMIT = int(0.15 * K)
-    demand = self.demand
-    sp_poss = self.sp_poss
-    n_pherm = deepcopy(self.n_pherm)
-    llep_d = self.llep_d
-    lep_t = self.lep_t
-    let_t = self.let_t
-    src = demand.pop()[0]           # source node, w = 0
-    src_local_poss = sp_poss.pop()  # list of node indexes
-    src_pherm_view = n_pherm.pop()  # phermones in view of src
-    src_local_paths = llep_d.pop()  # local best paths
-    src_lep_t = lep_t.pop()         # list of paths to all nodes
-    src_let_t = let_t.pop()         # list of path total energies
-    got = [0 for _ in range(len(demand))]
-    first_demand_possibs = [i for i in range(len(demand))]
-    first_demand_weights = [0 for _ in range(len(demand))]
-    best_cycle = [i for i in range(len(demand))]
-    best_energy = float("inf")
-    print("Starting ACO...")
+    BEST_HALF_SIZE = ants_per_iter // 2
+    degradation_factor = degradation_factor**BEST_HALF_SIZE
+    barrier = mp.Value('i',lock=True)
+    with barrier.get_lock():
+      barrier.value = ants_per_iter
+    demand = self.demand    # not changing
+    DEMAND_SIZE = len(demand) - 1
+    NUM_NODES = len(self.nodes)
+    N_PHERM_LAST = int(DEMAND_SIZE * NUM_NODES)
+    N_PHERM_SIZE = N_PHERM_LAST + NUM_NODES
+    sp_poss = self.sp_poss  # not changing
+    n_pherm = mp.Array('f', N_PHERM_SIZE, lock=False)
+    c = -1
+    for i in range(DEMAND_SIZE + 1):
+      c = i * len(self.nodes)
+      for j in range(len(self.nodes)):
+        n_pherm[c + j] = self.n_pherm[i][j]
+    cycles = [mp.Array('i', DEMAND_SIZE + 1, lock=False) for _ in range(ants_per_iter)]
+    llep_d = self.llep_d    # not changing
+    lep_t = self.lep_t      # not changing
+    let_t = self.let_t      # not changing
+    processes = [mp.Process(target=_aco_worker,
+                            args=(barrier, demand, sp_poss, 
+                                  n_pherm, cycles[i], llep_d, 
+                                  lep_t, let_t, K)) for i in range(ants_per_iter)]
+    print("Initialized ACO child workers!\nStarting ACO...")
+    best_cycle = sample([i for i in range(DEMAND_SIZE)], k=DEMAND_SIZE)
+    best_energy = float(10**50)
+    best_cycle_ind, j, delta = -1, -1, -1
+    cycle = None
+    for p in processes:
+      p.start()
     pbar = tqdm(total=K)
     for iter in range(K):
-      for j in range(len(first_demand_weights)):
-        first_demand_weights[j] = src_pherm_view[demand[j][0]]
-      cycles = [self.traverse_graph(got,
-                                    choices(first_demand_possibs, 
-                                            weights=first_demand_weights)[0], 
-                                    demand, n_pherm, let_t) for _ in range(ants_per_iter)]
-      for j in range(len(cycles)):
-        cycle, total_energy = cycles[j]
-        cycles[j] = (cycle, total_energy + let_t[src][cycle[0]] + let_t[cycle[-1]][src])
-      cycles.sort(key = lambda x: x[1])
-      cycles = cycles[: ants_per_iter//2]
-      cycles.append((best_cycle, best_energy))
+      with barrier.get_lock():
+        c = barrier.value
+      while c > 0:
+        with barrier.get_lock():
+          c = barrier.value
       # if iter % 10 == 0:
       #   self.plot_cycle(cycles[0][0], int(iter / 10))   # for saving pictures
-      if (iter + 1) % 25 == 0:
-        print("E (MJ) :", round(best_energy / 10**6, 2))
-      if abs(cycles[0][1] - best_energy) / (best_energy + 0.0001) < NEWT_PREC:
+      cycles.sort(key = lambda x: x[DEMAND_SIZE])
+      if abs(cycles[0][DEMAND_SIZE] - best_energy) / best_energy < NEWT_PREC:
         STAGNANT_LIMIT -= 1
         if STAGNANT_LIMIT <= 0:
           print("Limit for iterations to stay stagnant exceeded! Stopping earlier by", K - iter,"iterations")
           break
-      for cycle, total_energy in cycles:
-        if total_energy < best_energy:
-          best_energy = total_energy
-          best_cycle = cycle
-        delta = q / total_energy
-        src_pherm_view[demand[cycle[0]][0]] += delta
+      delta = q / best_energy
+      n_pherm[N_PHERM_LAST + demand[best_cycle[0]][0]] += delta
+      j = 0
+      while j < DEMAND_SIZE - 1:
+        n_pherm[demand[best_cycle[j + 1]][0] + NUM_NODES * best_cycle[j]] += delta
+        j += 1
+      for i in range(BEST_HALF_SIZE):
+        cycle = cycles[i]
+        if cycle[DEMAND_SIZE] < best_energy:
+          best_cycle_ind = i
+          best_energy = cycle[DEMAND_SIZE]
+        delta = q / cycle[DEMAND_SIZE]
+        n_pherm[N_PHERM_LAST + demand[cycle[0]][0]] += delta
         j = 0
-        while j < len(cycle) - 1:
-          n_pherm[cycle[j]][demand[cycle[j + 1]][0]] += delta
+        while j < DEMAND_SIZE - 1:
+          n_pherm[demand[cycle[j + 1]][0] + NUM_NODES * cycle[j]] += delta
           j += 1
-        j = 0
-        while j < len(demand):
-          i = 0
-          while i < len(self.nodes):
-            n_pherm[j][i] *= degradation_factor
-            i += 1
-          src_pherm_view[demand[j][0]] *= degradation_factor
-          j += 1
+      cycle = cycles[best_cycle_ind]
+      for i in range(DEMAND_SIZE):
+        best_cycle[i] = cycle[i]
+      j = 0
+      while j < N_PHERM_SIZE:
+        n_pherm[j] *= degradation_factor
+        j += 1
       pbar.update()
+      with barrier.get_lock():
+        barrier.value = ants_per_iter
     pbar.close()
     print("ACO complete!")
-    demand.append((src, 0))
-    sp_poss.append(src_local_poss)
-    llep_d.append(src_local_paths)
-    lep_t.append(src_lep_t)
-    let_t.append(src_let_t)
+    for p in processes:
+      p.join()
+      p.close()
     return best_cycle, best_energy
 
-  def traverse_graph(self, got, start_demand_index, demand, n_pherm, let_t):
-    ALPHA=0.9
-    BETA=1.5
-    for i in range(len(got)):
-      got[i] = 0
-    got[start_demand_index] = 1
-    cycle = [start_demand_index]
-    curr = start_demand_index
-    total_energy, steps = 0, 1
-    while steps < len(demand):
+def _aco_worker(barrier, demand, sp_poss, n_pherm, 
+                cycle, llep_d, lep_t, let_t, K):
+  # 1% decrease in mpg for every 100 pounds
+  # implies 1 / (1 - 0.01 * num_pounds) multiplier.
+  # truck_coeff = 1 / (1 - (0.01 * self.total_weight / 45.359237))
+  ALPHA, BETA = 0.9, 1.5
+  N_PHERM_SIZE = int(len(n_pherm))
+  NUM_NODES = int(N_PHERM_SIZE / len(demand))
+  src = demand.pop()[0]           # source node, w = 0
+  DEMAND_SIZE = len(demand)
+  N_PHERM_LAST = N_PHERM_SIZE - NUM_NODES
+  # src_local_poss = sp_poss.pop()  # list of node indexes
+  # src_local_paths = llep_d.pop()  # local best paths
+  # src_lep_t = lep_t.pop()         # list of paths to all nodes
+  src_let_t = let_t.pop()         # list of path total energies
+  got = [0 for _ in range(DEMAND_SIZE)]
+  first_demand_possibs = [i for i in range(DEMAND_SIZE)]
+  first_demand_weights = [0 for _ in range(DEMAND_SIZE)]
+  got_chance = False
+  total_energy, next_demand, curr, steps = -1, -1, -1, -1
+  nbs, ws = None, None
+  while K > 0:
+    while not got_chance:
+      with barrier.get_lock():
+        if barrier.value > 0:
+          got_chance = True
+          barrier.value -= 1
+    for j in range(DEMAND_SIZE):
+      first_demand_weights[j] = n_pherm[N_PHERM_LAST + demand[j][0]]
+      got[j] = 0
+    curr = choices(first_demand_possibs, weights=first_demand_weights, k=1)[0]
+    got[curr] = 1
+    cycle[0] = curr
+    steps = 1
+    total_energy = src_let_t[demand[curr][0]]
+    while steps < DEMAND_SIZE:
       # TODO: add drones
       nbs, ws = [], []
-      for i in range(len(demand)):
+      for i in range(DEMAND_SIZE):
         if got[i] == 0:
           nbs.append(i)
-          ws.append((n_pherm[curr][demand[i][0]])**ALPHA / (let_t[curr][demand[i][0]])**BETA)
+          ws.append((n_pherm[demand[i][0] + NUM_NODES * curr])**ALPHA / (let_t[curr][demand[i][0]])**BETA)
       next_demand = choices(nbs, weights=ws)[0]
       total_energy += let_t[curr][demand[next_demand][0]]
-      got[next_demand] = 1
       curr = next_demand
-      cycle.append(curr)
+      got[curr] = 1
+      cycle[steps] = curr
       steps += 1
-    return cycle, total_energy
+    cycle[DEMAND_SIZE] = int(total_energy + let_t[cycle[DEMAND_SIZE - 1]][src])
+    K -= 1
+    got_chance = False
 
 def D_f(rho, V):   # correct, but prefer not used
   """
@@ -1362,7 +1396,7 @@ def power(rho, W, V_w_hd, V_w_lt):
 def fill_edge_data(edgesl, dedges, edge_work, dedge_work):
   print("Logical number of CPUs:", cpu_count())
   p = mp.Pool(processes=cpu_count(), 
-              initializer=copy_globals,
+              initializer=copy_globals_energy,
               initargs=(DRONE_GROUND_SPEED,))
   pbar = tqdm(total=(len(edge_work) + len(dedge_work)))
   def update(*a):
@@ -1373,10 +1407,10 @@ def fill_edge_data(edgesl, dedges, edge_work, dedge_work):
   truck_energy, truck_speed = 0, 0
   for i in range(len(edge_work)):
     u_ind, ind, rho, V_w_hd, V_w_lt = edge_work[i]
-    edge_work[i] = (u_ind, ind, p.apply_async(_worker, (rho, V_w_hd, V_w_lt), callback=update))
+    edge_work[i] = (u_ind, ind, p.apply_async(_energy_worker, (rho, V_w_hd, V_w_lt), callback=update))
   for i in range(len(dedge_work)):
     u_ind, ind, rho, V_w_hd, V_w_lt = dedge_work[i]
-    dedge_work[i] = (u_ind, ind, p.apply_async(_worker, (rho, V_w_hd, V_w_lt), callback=update))
+    dedge_work[i] = (u_ind, ind, p.apply_async(_energy_worker, (rho, V_w_hd, V_w_lt), callback=update))
   for i in range(len(edge_work)):
     u_ind, ind, async_obj = edge_work[i]
     v_ind, length, truck_energy, truck_speed = edgesl[u_ind][ind]
@@ -1389,7 +1423,7 @@ def fill_edge_data(edgesl, dedges, edge_work, dedge_work):
   p.join()
   pbar.close()
 
-def _worker(rho, V_w_hd, V_w_lt):
+def _energy_worker(rho, V_w_hd, V_w_lt):
   drone_power = []
   for w in WEIGHTS:
     drone_power.append(power(rho, w, V_w_hd, V_w_lt))
