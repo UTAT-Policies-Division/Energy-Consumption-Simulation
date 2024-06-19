@@ -184,6 +184,36 @@ def get_avaliable_building_data(place_name, epsg, boundary_buffer_length):
     print("WARNING: building data may contain inconsistent units.")
     return result
 
+
+def find_island_nodes(nodes, edges, start=0):
+    """Removes nodes that do not have edges connected."""
+
+    # Adjacency list trades memory for speed
+    adj_list = dict()
+
+    for edge in edges:
+        if edge[0] in adj_list.keys():
+            adj_list[edge[0]].append(edge[1])
+        else:
+            adj_list[edge[0]] = [edge[1]]
+    
+    # Breadth First Traversal through graph to find all exporable nodes
+    # through the start node
+
+    reachable = []
+
+    search_queue = [start]
+    while search_queue:
+        search_node = search_queue.pop(0)
+
+        if search_node not in reachable:
+            reachable.append(search_node)
+            search_queue.extend(adj_list[search_queue])
+    
+    
+    return reachable
+
+
 def get_decomposed_network(place_name, epsg, boundary_buffer_length, simplification_tolerance=1):
     """
     returns (nodes, edges, UID_to_ind, ind_to_UID) := 
@@ -273,6 +303,9 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, simplificat
     uld = edgesD["u_original"].values
     vld = edgesD["v_original"].values
     lenld = edgesD["length"].values
+
+    print("vlb: ", lenlb)
+
     print("Graph network decomposed!\nBuilding internal nodes structure...")
     UID_to_ind = {}
     ind_to_UID = []
