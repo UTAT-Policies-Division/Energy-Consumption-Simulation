@@ -105,7 +105,7 @@ if __name__ == '__main__':
 #   eh.save("uoft.pkl")
   NUM_STOPS = 200
   RANGE = 1500
-  eh = el.EnergyHelper.load("test.pkl")
+  eh = el.EnergyHelper.load("manhattan.pkl")
 #   b_d = 1000
 #   b_ind = -1
 #   for i in range(len(eh.demand)):
