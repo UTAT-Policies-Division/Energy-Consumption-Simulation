@@ -78,12 +78,12 @@ def RH(isMorning, month):
             return 0.59
 
 if __name__ == '__main__':
-  PLACE_NAME = MANHATTAN
-  TARGET_CRS_EPSG = LONG_ISLAND_CRS_EPSG
+  PLACE_NAME = UOFT
+  TARGET_CRS_EPSG = TORONTO_CRS_EPSG
   isMorning = False
   Month = "March"
   el.init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
-                 base_temperature=20, temp_flucts_coeff=3, drone_speed=18,
+                 base_temperature=25, temp_flucts_coeff=3, drone_speed=14,
                  relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
 #   nodes, edges, dedges, UID_to_ind, ind_to_UID = gl.get_decomposed_network(PLACE_NAME, 
 #                                                                    TARGET_CRS_EPSG, 
@@ -105,7 +105,7 @@ if __name__ == '__main__':
 #   eh.save("uoft.pkl")
   NUM_STOPS = 200
   RANGE = 1500
-  eh = el.EnergyHelper.load("manhattan.pkl")
+  eh = el.EnergyHelper.load("test.pkl")
 #   b_d = 1000
 #   b_ind = -1
 #   for i in range(len(eh.demand)):
@@ -117,24 +117,26 @@ if __name__ == '__main__':
 #   eh.demand.pop(b_ind)
 #   eh.append_random_demand(50, cluster_num=0, cluster_jump=0)
 #   eh.enforce_graph_connections()
-  eh.append_random_demand(10, cluster_num=0, cluster_jump=0, 
-                          drone_only_possible_component=0.7)
-  src = eh.get_top_right_node()
-  eh.init_phermone_system(R=float(10000000), src=src)
-#   best_cycle, best_energy = eh.aco(ants_per_iter=8)
+#   eh.append_random_demand(10, cluster_num=0, cluster_jump=0, 
+#                           drone_only_possible_component=0.05)
+#   src = eh.get_top_right_node()
+#   eh.init_phermone_system(R=float(10000000), src=src)
+  best_cycle, best_energy = eh.aco()  # returns in kJ
+  print("Energy of plotted cycle in MJ:", round(best_energy / 10**6, 2))
 #   eh.plot_cycle(best_cycle)
-#   print("Energy of plotted cycle in MJ:", round(best_energy / 10**6, 2))
+  best_cycle, best_energy = eh.aco_truck_only()
+  print("Energy of plotted cycle in MJ:", round(best_energy / 10**6, 2))
 #   pth = [eh.demand[0][0]]
 #   print(eh.nodes[eh.demand[0][0]])
 #   pth.extend(lep_t[0][0])
 #   print(eh.total_weight)
-  eh.plot_network(show_drone_only_nodes=False,
-                  show_drone_only_edges=False,
-                  show_demand_nodes=True,
-                  show_demand_local_paths=True,
-                  show_for_all_edges=False,
-                  spec_ind=[],
-                  spec_path=[])
+#   eh.plot_network(show_drone_only_nodes=False,
+#                   show_drone_only_edges=False,
+#                   show_demand_nodes=True,
+#                   show_demand_local_paths=True,
+#                   show_for_all_edges=False,
+#                   spec_ind=[],
+#                   spec_path=[])
 #   el.DRONE_GROUND_SPEED = el.kph_to_mps(30)
 #   print(el.power(el.rho_air_std,
 #                  el.kgs_to_W(2.5),
@@ -162,7 +164,7 @@ if __name__ == '__main__':
 #     return el.TH_BET(el.rho_air_std, 2.43, 23.0, 4.25, el.RPM_to_omega(rpm), CHORD, BETA, SINPSI, COSPSI)[1]
 #   el.draw_function(0,12000,1000,func)
 #   plt.legend(loc='best')
-#   plt.savefig("pic.png", dpi=700)
+  plt.savefig("pic.png", dpi=700)
   plt.show()
 
 
