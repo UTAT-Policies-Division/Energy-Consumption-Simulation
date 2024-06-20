@@ -1302,6 +1302,9 @@ class EnergyHelper:
         via 'sp'
     """
     print("Initializing ACO child workers...")
+    if cpu_count() < ants_per_iter:
+      ants_per_iter = cpu_count()
+      print("WARNING: cpu count too low, set ants/iteration to cpu count:", cpu_count())
     STAGNANT_LIMIT = int(0.2 * K)
     BEST_HALF_SIZE = ants_per_iter // 2
     degradation_factor = degradation_factor**BEST_HALF_SIZE
@@ -1542,8 +1545,102 @@ class EnergyHelper:
       p.close()
     return best_energy, best_cycle, best_swp
 
-def spm_plotter(self, spm, SPM_SIZE):
-  return None
+  def show_swp_string(self, swp, line_break_freq=20):
+    lst1, lst2, lst3 = [], [], []
+    l1, l2, l3 = "", "", ""
+    spc = "   "
+    ctr = "==="
+    splitl = "=--"
+    splitr = splitl[::-1]
+    divup = " /`"
+    divdn = " \\_"
+    condn = "`\ "
+    conup = "_/ "
+    top = "```"
+    bot = "___"
+    prev_tsj = False
+    if swp[0] >= 0:
+      l1 += divup
+      l2 += splitl
+      l3 += spc
+    else:
+      l1 += spc
+      l2 += ctr
+      l3 += spc
+    j = 1
+    cyc_ind = 0
+    while j < len(swp) - 1:
+      if swp[j] == -2:
+        if swp[j+1] == -2:
+          if prev_tsj:
+            l1 += top
+            l2 += spc
+            l3 += bot
+          else:
+            l1 += top
+            l2 += "-  "
+            l3 += divdn
+            prev_tsj = True
+        elif swp[j+1] == -1:
+          l1 += spc
+          l2 += ctr
+          l3 += spc
+        else:
+          l1 += top
+          l2 += "---"
+          l3 += spc
+      elif swp[j] >= 0:
+        if swp[j+1] >= 0:
+          if prev_tsj:
+            l1 += "\\ /"
+            l2 += " = "
+            l3 += "/ \\"
+            prev_tsj = False
+          else:
+            l1 += "`\\ /`"
+            l2 += "--=--"
+            l3 += spc
+        else:
+          if prev_tsj:
+            l1 += condn
+            l2 += "  ="
+            l3 += conup
+            prev_tsj = False
+          else:
+            l1 += condn
+            l2 += splitr
+            l3 += spc
+      else:
+        l1 += divup
+        l2 += splitl
+        l3 += spc
+      j += 2
+      if cyc_ind % line_break_freq == 0:
+        lst1.append(l1)
+        lst2.append(l2)
+        lst3.append(l3)
+        l1, l2, l3 = "", "", ""
+      cyc_ind += 1
+    if swp[j] >= 0:
+      if prev_tsj:
+        l1 += condn
+        l2 += "  ="
+        l3 += conup
+      else:
+        l1 += condn
+        l2 += splitr
+        l3 += spc
+    else:
+      l1 += spc
+      l2 += ctr
+      l3 += spc
+    for i in range(len(lst1)):
+      print(lst1[i])
+      print(lst2[i])
+      print(lst3[i])
+    print(l1)
+    print(l2)
+    print(l3)
 
 def construct_time(llep_d, to_visit, edges, dedges, demand, DS):
   rem = len(to_visit)
