@@ -78,8 +78,8 @@ def RH(isMorning, month):
             return 0.59
 
 if __name__ == '__main__':
-  PLACE_NAME = UOFT
-  TARGET_CRS_EPSG = TORONTO_CRS_EPSG
+  PLACE_NAME = MANHATTAN
+  TARGET_CRS_EPSG = LONG_ISLAND_CRS_EPSG
   isMorning = False
   Month = "March"
   el.init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
@@ -103,9 +103,12 @@ if __name__ == '__main__':
 #   print(eh.classify_turn_angle(0, 1, 3))
 #   print(eh.edge_exists(0, 3))
 #   eh.save("uoft.pkl")
-  NUM_STOPS = 200
-  RANGE = 1500
+#   NUM_STOPS = 200
+#   RANGE = float(10000000)   # dummy for now
   eh = el.EnergyHelper.load("test.pkl")
+#   eh.enforce_graph_connections()
+#   eh.demand = [(602, 11.5), (301, 8.25), (0, 0.25), (193, 0.5), (435, 9.25), 
+#                (42, 1.75), (115, 1), (56, 0.75), (223, 1.5), (348, 1)]
 #   b_d = 1000
 #   b_ind = -1
 #   for i in range(len(eh.demand)):
@@ -116,16 +119,19 @@ if __name__ == '__main__':
 #   print(b_ind, eh.nodes[eh.demand[b_ind][0]])
 #   eh.demand.pop(b_ind)
 #   eh.append_random_demand(50, cluster_num=0, cluster_jump=0)
-#   eh.enforce_graph_connections()
 #   eh.append_random_demand(10, cluster_num=0, cluster_jump=0, 
 #                           drone_only_possible_component=0.05)
 #   src = eh.get_top_right_node()
-#   eh.init_phermone_system(R=float(10000000), src=src)
-  best_cycle, best_energy = eh.aco()  # returns in kJ
-  print("Energy of plotted cycle in MJ:", round(best_energy / 10**6, 2))
-#   eh.plot_cycle(best_cycle)
-  best_cycle, best_energy = eh.aco_truck_only()
-  print("Energy of plotted cycle in MJ:", round(best_energy / 10**6, 2))
+#   eh.init_phermone_system(R=RANGE, src=src)
+#   for i in range(25, 201, 25):
+#     energy, cycle, swp = eh.aco(K=i)
+#     print(i, "Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
+#     print(cycle)
+  energy, cycle, swp = eh.aco()
+  print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
+  eh.plot_cycle(cycle, swp)
+#   energy, cycle, swp = eh.aco_truck_only()
+#   print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
 #   pth = [eh.demand[0][0]]
 #   print(eh.nodes[eh.demand[0][0]])
 #   pth.extend(lep_t[0][0])
@@ -164,7 +170,7 @@ if __name__ == '__main__':
 #     return el.TH_BET(el.rho_air_std, 2.43, 23.0, 4.25, el.RPM_to_omega(rpm), CHORD, BETA, SINPSI, COSPSI)[1]
 #   el.draw_function(0,12000,1000,func)
 #   plt.legend(loc='best')
-  plt.savefig("pic.png", dpi=700)
+#   plt.savefig("pic.png", dpi=700)
   plt.show()
 
 
