@@ -34,6 +34,7 @@ BASE_TEMP, TEMP_FLUC_COEFF, REL_HUMIDITY = -1, -1, -1
 QUAD_A, QUAD_B, QUAD_C = -1, -1, -1
 WEIGHTS = [0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
 DRONE_WEIGHT = -1
+ENG_ZERO = 10**(-50)
 
 def inner_product(d1, d2):
   """
@@ -870,7 +871,7 @@ class EnergyHelper:
     self.total_weight += w_total
     if self.total_weight >= 4500:
       print("WARNING: Total demand weight exceeds 4500kg critical point.")
-    print("Demand generated !")
+    print("Demand generated!")
 
   def save(self, filename='network_data.pkl'):
     print("Saving Energy Helper object...")
@@ -968,42 +969,119 @@ class EnergyHelper:
         ind = i
     return ind
 
-  def init_phermone_system(self, src, R=float("inf")):
+  def init_phermone_system(self, src, passed_num_alloc, R=float("inf")):
     # range is a dummy decision variable for now
-    print("Generating phermones tracker...")
-    nodes = self.nodes
-    edges = self.edges
-    dedges = self.dedges
-    demand = self.demand
+    print("Initializng phermone system...")
+    nodes, edges, dedges, demand = self.nodes, self.edges, self.dedges, self.demand
     demand.append((src, 0))
-    DEMAND_BASE_PHERM = 4
-    DEMAND_PHERM_COEFF = 9
-    NODE_BASE_PHERM = 0.5
-    SP_PHERM_COEFF = 10
-    got = [0 for _ in range(len(nodes))]
-    q_ind = []
-    lep, let, eng, ind, w_i = None, None, -1, -1, -1
-    up_arrs, curr, next = [], -1, -1
+    NODE_BASE_PHERM = 10**(-7)
+    SP_PHERM_COEFF = 10**(-5)
+    DEMAND_PHERM_ADV_COEFF = 100
+    DEMAND_BASE_PHERM = DEMAND_PHERM_ADV_COEFF * SP_PHERM_COEFF * len(demand)
+    DEMAND_WEIGHT_COEFF = DEMAND_PHERM_ADV_COEFF * NODE_BASE_PHERM / (WEIGHTS[-1] * passed_num_alloc)
     n_pherm = [[NODE_BASE_PHERM for _ in range(len(nodes))] for _ in range(len(demand))]
-    for i in range(len(demand)):
-      w_i = DEMAND_BASE_PHERM + DEMAND_PHERM_COEFF * demand[i][1]
-      for j in range(i + 1, len(demand)):
-        n_pherm[i][demand[j][0]] += w_i + DEMAND_PHERM_COEFF * demand[j][1]
-        n_pherm[j][demand[i][0]] = n_pherm[i][demand[j][0]]
-    lep_t = [[-1 for _ in range(len(nodes))] for _ in range(len(demand))]
-    let_t = [[float('inf') for _ in range(len(nodes))] for _ in range(len(demand))]
+    got = [0 for _ in range(len(nodes))]
     let_g = [float('inf') for _ in range(len(nodes))]
-    print("Running Dijkstra's + Path Tracking for all demand nodes...")
+    lep_g = [-1 for _ in range(len(nodes))]
+    # [0]: from demand to node, [1]: from node to demand
+    q, lep, let, lep2, eng, ind, cur, prv = [], lep_g, let_g, None, -1, -1, -1, -1
+    print("Initializing switch point possibilities & local best paths around demands...")
+    sp_poss = [([],[]) for _ in range(len(demand))]
+    llep_d = [({},{}) for _ in range(len(demand))]
+    # initializing paths towards all demand
+    print("Finding shortest paths for drone leading to demand...")
+    pbar = tqdm(total=len(nodes))
+    for i in range(len(nodes)):
+      let[i] = ENG_ZERO
+      q.append((ENG_ZERO, 0, i))
+      while len(q) > 0:
+        eng, dst, ind = heapq.heappop(q)
+        if got[ind] == 1:
+          continue
+        got[ind] = 1
+        for n_ind, n_dst, _, _, drone_powers in edges[ind]:
+          # loading based on maximum range i.e. 0.25kg payload
+          n_eng = eng + (drone_powers[1] * n_dst / DRONE_GROUND_SPEED)
+          n_dst += dst
+          if n_eng < MAX_BATTERY_USE and n_eng < let[n_ind] and n_dst < R:
+            let[n_ind] = n_eng
+            lep[n_ind] = ind
+            heapq.heappush(q, (n_eng, n_dst, n_ind))
+        for n_ind, n_dst, drone_powers in dedges[ind]:
+          # loading based on maximum range i.e. 0.25kg payload
+          n_eng = eng + (drone_powers[1] * n_dst / DRONE_GROUND_SPEED)
+          n_dst += dst
+          if n_eng < MAX_BATTERY_USE and n_eng < let[n_ind] and n_dst < R:
+            let[n_ind] = n_eng
+            lep[n_ind] = ind
+            heapq.heappush(q, (n_eng, n_dst, n_ind))
+      for j in range(len(demand)):
+        if got[demand[j][0]] == 1:
+          sp_poss[j][1].append(i)
+          lep2 = llep_d[j][1]
+          prv = demand[j][0]
+          cur = lep[demand[j][0]]
+          while cur != -1:
+            if cur in lep2:
+              break
+            lep2[cur] = prv
+            prv = cur
+            cur = lep[cur]          
+      for j in range(len(nodes)):
+        got[j] = 0
+        let[j] = float("inf")
+        lep[j] = -1
+      pbar.update()
+    pbar.close()
+    print("Found valid paths to demand!")
+    print("Finding shortest paths for drone from demand...")
+    # initializing paths from all demand
     pbar = tqdm(total=len(demand))
-    for i in range(len(demand)):
+    for j in range(len(demand)):
+      lep = llep_d[j][0]
+      q.append((ENG_ZERO, 0, demand[j][0]))
+      while len(q) > 0:
+        eng, dst, ind = heapq.heappop(q)
+        if got[ind] == 1:
+          continue
+        got[ind] = 1
+        sp_poss[j][0].append(ind)
+        for n_ind, n_dst, _, _, drone_powers in edges[ind]:
+          # loading based on maximum range i.e. 0.25kg payload
+          n_eng = eng + (drone_powers[1] * n_dst / DRONE_GROUND_SPEED)
+          n_dst += dst
+          if n_eng < MAX_BATTERY_USE and n_eng < let[n_ind] and n_dst < R:
+            let[n_ind] = n_eng
+            lep[n_ind] = ind
+            heapq.heappush(q, (n_eng, n_dst, n_ind))
+        for n_ind, n_dst, drone_powers in dedges[ind]:
+          # loading based on maximum range i.e. 0.25kg payload
+          n_eng = eng + (drone_powers[1] * n_dst / DRONE_GROUND_SPEED)
+          n_dst += dst
+          if n_eng < MAX_BATTERY_USE and n_eng < let[n_ind] and n_dst < R:
+            let[n_ind] = n_eng
+            lep[n_ind] = ind
+            heapq.heappush(q, (n_eng, n_dst, n_ind))
+      for j in range(len(nodes)):
+        got[j] = 0
+        let[j] = float("inf")
+      pbar.update()
+    pbar.close()
+    print("Found valid paths from demand!")
+    print("Initialization for demand complete!")
+    print("Finding shortest paths between all drive intersections...")
+    lep_t = [[-1 for _ in range(len(nodes))] for _ in range(len(nodes))]
+    let_t = [[float('inf') for _ in range(len(nodes))] for _ in range(len(nodes))]
+    pbar = tqdm(total=len(nodes))
+    for i in range(len(nodes)):
       for j in range(len(got)):
         got[j] = 0
       lep, let = lep_t[i], let_t[i]
-      let[demand[i][0]] = NEWT_PREC
+      let[i] = ENG_ZERO
       # Dijkstra's Algorithm
-      q_ind.append((0, demand[i][0]))
-      while len(q_ind) > 0:
-        eng, ind = heapq.heappop(q_ind)
+      q.append((0, i))
+      while len(q) > 0:
+        eng, ind = heapq.heappop(q)
         if got[ind] == 1:
           continue
         got[ind] = 1
@@ -1012,139 +1090,30 @@ class EnergyHelper:
           if n_eng < let[e[0]]:
             let[e[0]] = n_eng
             lep[e[0]] = ind
-            heapq.heappush(q_ind, (n_eng, e[0]))
-      # Path Construction
-      lep[demand[i][0]] = []
-      curr = -1
-      for j in range(len(nodes)):
-        if isinstance(lep[j], int):
-          if lep[j] >= 0:
-            curr = lep[j]
-            lep[j] = [j]
-            up_arrs.append(lep[j])
-          else:
-            lep[j] = []
-            continue
-        while curr >= 0:
-          if isinstance(lep[curr], int):
-            for arr in up_arrs:
-              arr.append(curr)
-            next = lep[curr]
-            lep[curr] = [curr]
-            if next >= 0:
-              up_arrs.append(lep[curr])
-            curr = next
-          else:
-            if len(lep[curr]) > 0:
-              for arr in up_arrs:
-                arr.extend(lep[curr])
-            curr = -1
-        up_arrs.clear()
+            heapq.heappush(q, (n_eng, e[0]))
       pbar.update()
     pbar.close()
-    for i in range(len(self.demand)):
-      for j in range(len(self.demand)):
-        if let_t[i][self.demand[j][0]] == float("inf"):
+    print("Complete!")
+    print("Verifying connections and setting phermones...")
+    for i in range(len(demand)):
+      for j in range(i + 1, len(demand)):
+        if let_t[self.demand[i][0]][self.demand[j][0]] == float("inf"):
           print("BAD CONNECTION FOUND:", self.demand[i][0], self.demand[j][0], ". Aborting...")
           exit(1)
-    print("Dijkstra's + Path Tracking complete!")
-    print("Initializing switch point possibilities & local best paths around demands...")
-    n_eng = 0
-    sp_poss = [[] for _ in range(len(demand))]
-    llep_d = [{} for _ in range(len(demand))]
-    pbar = tqdm(total=len(demand))
-    for dem_ind in range(len(demand)):
-      i, demand_weight = demand[dem_ind]
-      if demand_weight > WEIGHTS[-1]:
-        pbar.update()
-        continue
-      for j in range(len(got)):
-        got[j] = 0
-      let = let_g
-      for j in range(len(let)):
-        let[j] = float("inf")
-      # adding only immediate neighbors to start
-      for n_ind, n_dst, _, _, drone_powers in edges[i]:
-        n_eng = drone_powers[1] * n_dst / DRONE_GROUND_SPEED
-        if n_eng < MAX_BATTERY_USE and n_dst < R:
-          let[n_ind] = n_eng
-          heapq.heappush(q_ind, (n_eng, n_dst, n_ind))
-      while len(q_ind) > 0:
-        eng, dst, ind = heapq.heappop(q_ind)
-        if got[ind] == 1:
-          continue
-        got[ind] = 1
-        sp_poss[dem_ind].append(ind)
-        for n_ind, n_dst, _, _, drone_powers in edges[ind]:
-          # loading based on maximum range i.e. 0.25kg payload
-          n_eng = eng + (drone_powers[1] * n_dst / DRONE_GROUND_SPEED)
-          n_dst += dst
-          if n_eng < MAX_BATTERY_USE and n_eng < let[n_ind] and n_dst < R:
-            let[n_ind] = n_eng
-            heapq.heappush(q_ind, (n_eng, n_dst, n_ind))
-      for j in range(len(let)):
-        if let[j] == float("inf"):
-          continue
-        for n in range(len(demand)):
-          n_pherm[n][j] += (1 - abs(1 - (let[j] / MAX_BATTERY_USE_HALF))) * SP_PHERM_COEFF
-        let[j] = float("inf")
-      n_pherm[dem_ind][i] = 0
-      for j in range(len(got)):
-        got[j] = 0
-      lep = llep_d[dem_ind]
-      q_ind.append((0, 0, i))
-      while len(q_ind) > 0:
-        eng, dst, ind = heapq.heappop(q_ind)
-        if got[ind] == 1:
-          continue
-        got[ind] = 1
-        for n_ind, n_dst, _, _, drone_powers in edges[ind]:
-          # loading based on maximum range i.e. 0.25kg payload
-          n_eng = eng + (drone_powers[1] * n_dst / DRONE_GROUND_SPEED)
-          n_dst += dst
-          if n_eng < MAX_BATTERY_USE and n_eng < let[n_ind] and n_dst < R:
-            let[n_ind] = n_eng
-            lep[n_ind] = ind
-            heapq.heappush(q_ind, (n_eng, n_dst, n_ind))
-        for n_ind, n_dst, drone_powers in dedges[ind]:
-          # loading based on maximum range i.e. 0.25kg payload
-          n_eng = eng + (drone_powers[1] * n_dst / DRONE_GROUND_SPEED)
-          n_dst += dst
-          if n_eng < MAX_BATTERY_USE and n_eng < let[n_ind] and n_dst < R:
-            let[n_ind] = n_eng
-            lep[n_ind] = ind
-            heapq.heappush(q_ind, (n_eng, n_dst, n_ind))
-      lep[i] = []
-      curr = -1
-      for j in lep:
-        if isinstance(lep[j], int):
-          curr = lep[j]
-          lep[j] = [j]
-          up_arrs.append(lep[j])
-        while curr >= 0:
-          if isinstance(lep[curr], int):
-            for arr in up_arrs:
-              arr.append(curr)
-            next = lep[curr]
-            lep[curr] = [curr]
-            up_arrs.append(lep[curr])
-            curr = next
-          else:
-            if len(lep[curr]) > 0:
-              for arr in up_arrs:
-                arr.extend(lep[curr])
-            break
-        up_arrs.clear()
-      pbar.update()
-    pbar.close()
-    print("Initialization complete!")
+        if let_t[self.demand[j][0]][self.demand[i][0]] == float("inf"):
+          print("BAD CONNECTION FOUND:", self.demand[j][0], ",", self.demand[i][0], ". Aborting...")
+          exit(1)
+        n_pherm[i][demand[j][0]] += DEMAND_BASE_PHERM + DEMAND_WEIGHT_COEFF * demand[j][1]
+        n_pherm[j][demand[i][0]] = n_pherm[i][demand[j][0]]
+    print("Verified connections and set phermones!")
+    print(sp_poss)
     self.sp_poss = sp_poss
     self.n_pherm = n_pherm
     self.llep_d = llep_d
+    print(llep_d)
     self.lep_t = lep_t
     self.let_t = let_t
     print("Phermone system initialized!\nNOTE: Demand structures now hold source vertex with 0 weight.")
-    return -1
 
   def aco_truck_only(self, K=150, ants_per_iter=50, q=10**6, degradation_factor=0.99):
     print("Initializing ACO child workers...")
@@ -1298,7 +1267,7 @@ class EnergyHelper:
     N_PHERM_SIZE = N_PHERM_LAST + NUM_NODES
     SWP_SIZE = 2 * DEMAND_SIZE
     SP_PHERM_SIZE = DEMAND_SIZE * DEMAND_SIZE
-    SP_PHERM_INIT, DELTA_SP_COEFF = 3.0, 0.5
+    SP_PHERM_INIT, DELTA_SP_COEFF = 0.1, 0.75
     n_pherm = mp.Array('f', N_PHERM_SIZE, lock=False)
     sp_pherm = mp.Array('f', SP_PHERM_SIZE, lock=False)
     c = -1
@@ -1512,7 +1481,7 @@ class EnergyHelper:
       p.close()
     return best_energy, best_cycle, best_swp
 
-  def show_swp_string(self, swp, line_break_freq=20):
+  def show_swp_string(self, swp, line_break_freq=50):
     lst1, lst2, lst3 = [], [], []
     l1, l2, l3 = "", "", ""
     spc = "   "
@@ -1616,7 +1585,7 @@ def construct_time(llep_d, to_visit, edges, dedges, demand, DS):
   while rem > 2:
     dem_ind = to_visit[tvs_ind + 1]
     tgt = demand[dem_ind][0]
-    path = llep_d[dem_ind][to_visit[tvs_ind]]
+    path = llep_d[dem_ind][1][to_visit[tvs_ind]]
     k = 0
     while k < len(path) - 1:
       found = False
@@ -1643,7 +1612,7 @@ def construct_time(llep_d, to_visit, edges, dedges, demand, DS):
           if e[0] == tgt:
             time += e[1] / DS
             break
-    path = llep_d[dem_ind][to_visit[tvs_ind + 2]]
+    path = llep_d[dem_ind][0][to_visit[tvs_ind + 2]]
     k = 0
     while k < len(path) - 1:
       found = False
@@ -1674,7 +1643,7 @@ def construct_time(llep_d, to_visit, edges, dedges, demand, DS):
     rem -= 2
   dem_ind = to_visit[tvs_ind + 1]
   tgt = demand[dem_ind][0]
-  path = llep_d[dem_ind][to_visit[tvs_ind]]
+  path = llep_d[dem_ind][1][to_visit[tvs_ind]]
   k = 0
   while k < len(path) - 1:
     found = False
@@ -1705,6 +1674,8 @@ def construct_time(llep_d, to_visit, edges, dedges, demand, DS):
 
 def construct_time_truck_spec(lep_t, node, dem_ind, demand, edges, node_to_dem=True):
   path = lep_t[dem_ind][node]
+  if len(path) == 0:
+    return float('inf')
   dem_node = demand[dem_ind][0]
   time, k = 0, 0
   if node_to_dem:
@@ -1752,12 +1723,12 @@ def construct_time_truck(lep_t, dem_ind_from, dem_ind_to, demand, edges):
 
 def construct_energy(llep_d, to_visit, edges, dedges, demand, dron_w, DS):
   rem = len(to_visit)
-  eng, tvs_ind, k = NEWT_PREC, 0, -1
+  eng, tvs_ind, k = ENG_ZERO, 0, -1
   found = False
   while rem > 2:
     dem_ind = to_visit[tvs_ind + 1]
     tgt = demand[dem_ind][0]
-    path = llep_d[dem_ind][to_visit[tvs_ind]]
+    path = llep_d[dem_ind][1][to_visit[tvs_ind]]
     k = 0
     while k < len(path) - 1:
       found = False
@@ -1785,7 +1756,7 @@ def construct_energy(llep_d, to_visit, edges, dedges, demand, dron_w, DS):
             eng += e[2][int(dron_w * 4)] * e[1] / DS
             break
     dron_w -= demand[dem_ind][1]
-    path = llep_d[dem_ind][to_visit[tvs_ind + 2]]
+    path = llep_d[dem_ind][0][to_visit[tvs_ind + 2]]
     k = 0
     while k < len(path) - 1:
       found = False
@@ -1816,7 +1787,7 @@ def construct_energy(llep_d, to_visit, edges, dedges, demand, dron_w, DS):
     rem -= 2
   dem_ind = to_visit[tvs_ind + 1]
   tgt = demand[dem_ind][0]
-  path = llep_d[dem_ind][to_visit[tvs_ind]]
+  path = llep_d[dem_ind][1][to_visit[tvs_ind]]
   k = 0
   while k < len(path) - 1:
     found = False
@@ -1848,8 +1819,8 @@ def construct_energy(llep_d, to_visit, edges, dedges, demand, dron_w, DS):
 def construct_energy_launch(llep_d, to_dem, sp, edges, dedges, demand, DS):
   dron_w = demand[to_dem][1]
   tgt = demand[to_dem][0]
-  path = llep_d[to_dem][sp]
-  eng, k = 0, 0
+  path = llep_d[to_dem][1][sp]
+  eng, k = ENG_ZERO, 0
   while k < len(path) - 1:
     found = False
     for e in edges[path[k]]:
@@ -1878,11 +1849,11 @@ def construct_energy_launch(llep_d, to_dem, sp, edges, dedges, demand, DS):
   return eng
 
 def construct_energy_spef(llep_d, from_dem, sp, to_dem, edges, dedges, demand, DS):
-  eng, k, dron_w = NEWT_PREC, -1, demand[to_dem][1]
+  eng, k, dron_w = ENG_ZERO, -1, demand[to_dem][1]
   from_dem_node = demand[from_dem][0]
   to_dem_node = demand[to_dem][0]
   found = False
-  path = llep_d[from_dem][sp]
+  path = llep_d[from_dem][0][sp]
   k = 0
   while k < len(path) - 1:
     found = False
@@ -1909,7 +1880,7 @@ def construct_energy_spef(llep_d, from_dem, sp, to_dem, edges, dedges, demand, D
         if e[0] == path[k]:
           eng += e[2][int(dron_w * 4)] * e[1] / DS
           break
-  path = llep_d[to_dem][sp]
+  path = llep_d[to_dem][1][sp]
   k = 0
   while k < len(path) - 1:
     found = False
@@ -1939,10 +1910,10 @@ def construct_energy_spef(llep_d, from_dem, sp, to_dem, edges, dedges, demand, D
   return eng
 
 def construct_energy_meetup(llep_d, at_dem, sp, edges, dedges, demand, DS):
-  eng, k = NEWT_PREC, 0
+  eng, k = ENG_ZERO, 0
   at_dem_node = demand[at_dem][0]
   found = False
-  path = llep_d[at_dem][sp]
+  path = llep_d[at_dem][0][sp]
   while k < len(path) - 1:
     found = False
     for e in edges[path[k+1]]:
@@ -1994,13 +1965,13 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
   let = [float('inf') for _ in range(NUM_NODES)]
   _got = [0 for _ in range(NUM_NODES)]
   for i in range(len(sp_poss)):
-    sp_poss_set.append(set(sp_poss[i]))
+    sp_poss_set.append((set(sp_poss[i][0]),set(sp_poss[i][1])))
   not_got_chance = False
   total_energy, next_demand, w_coeff, lval, curr_shft = -1, -1, -1, -1, -1
   state, dron_w, dron_loc, w_coeff_oth = 0, 0, 0, -1
   curr, curr_w, steps, sp, swp_ind, ws_sum, curr_ws = -1, -1, -1, -1, -1, -1, -1
   nbs, ws, common_sps = None, None, None
-  eng_so_far, eng_to_add, time_taken = -1, -1, -1
+  eng_so_far, eng_to_add, time_taken, csp = -1, -1, -1, -1
   best_sp, best_eng, best_to_add, tmp = -1, -1, -1, -1
   # ---------------------------------------
   # CONT = 0
@@ -2022,34 +1993,33 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
     got[curr] = 1
     cycle[0] = curr
     steps = 1
-    if demand[curr][1] > MAX_WEIGHT:
-      total_energy = src_let_t[demand[curr][0]] / (1 - (TOTAL_WEIGHT / 4535.9237))
-      # print("Truck initial too heavy to switch", total_energy)
-      curr_w = TOTAL_WEIGHT - demand[curr][1]
-      swp[0] = -1
-    else:
+    sp = -1
+    if demand[curr][1] <= MAX_WEIGHT:
       nbs, ws = [], []
       eng_rem = MAX_BATTERY_USE - MIN_MEETUP_BATTERY_REM
-      for ind in sp_poss[curr]:
+      for ind in sp_poss[curr][1]:
         eng_to_add = construct_energy_launch(llep_d, curr, ind, edges, dedges, demand, DS)
         if eng_rem - eng_to_add > 0 and len(edges[ind]) > 0:
           nbs.append(ind)
           ws.append((n_pherm[N_PHERM_LAST + ind])**ALPHA / (src_let_t[ind] / w_coeff)**BETA)
       if len(nbs) > 0:
         sp = choices(nbs, weights=ws)[0]
-        swp[0] = sp
-        total_energy = src_let_t[sp] / w_coeff
-        # print("Truck initial switching", total_energy)
-        dron_w = demand[curr][1]
-        curr_w = TOTAL_WEIGHT
-        state = 1
-        to_visit.append(sp)
-        to_visit.append(curr)
-      else:
-        total_energy = src_let_t[demand[curr][0]] / (1 - (TOTAL_WEIGHT / 4535.9237))
-        # print("Truck initial couldn't switch", total_energy)
-        curr_w = TOTAL_WEIGHT - demand[curr][1]
-        swp[0] = -1
+        if sp == demand[curr][0]:
+          sp = -1
+    if sp == -1:
+      total_energy = src_let_t[demand[curr][0]] / (1 - (TOTAL_WEIGHT / 4535.9237))
+      # print("Truck initial no switch", total_energy)
+      curr_w = TOTAL_WEIGHT - demand[curr][1]
+      swp[0] = -1
+    else:
+      swp[0] = sp
+      total_energy = src_let_t[sp] / w_coeff
+      # print("Truck initial switching", total_energy)
+      dron_w = demand[curr][1]
+      curr_w = TOTAL_WEIGHT
+      state = 1
+      to_visit.append(sp)
+      to_visit.append(curr)
     swp_ind = 1
     while steps < DEMAND_SIZE:
       nbs, ws = [], []
@@ -2057,7 +2027,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
         curr_shft = NUM_NODES * curr
         for i in range(DEMAND_SIZE):
           if got[i] == 0 and dron_w + demand[i][1] < MAX_WEIGHT:
-            common_sps = sp_poss_set[curr] & sp_poss_set[i]
+            common_sps = sp_poss_set[curr][0] & sp_poss_set[i][1]
             if len(common_sps) > 0:
               eng_so_far = construct_energy(llep_d, to_visit, edges, dedges, demand, dron_w + demand[i][1], DS)
               if eng_so_far > MAX_BATTERY_USE:
@@ -2175,7 +2145,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
               # switch point to minimize total
               # consumption, phermone free !
               best_eng = float('inf')
-              for ind in sp_poss[dron_loc]:
+              for ind in sp_poss[dron_loc][0]:
                 eng_to_add = construct_energy_meetup(llep_d, dron_loc, ind, edges, dedges, demand, DS)
                 if eng_rem - eng_to_add > 0 and len(edges[ind]) > 0:
                   tmp = eng_to_add + (let[ind] / w_coeff) + (let_t[next_demand][ind] / w_coeff_oth)
@@ -2204,7 +2174,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
               steps += 1
               nbs, ws = [], []
               ws_sum = 0
-              for ind in sp_poss[dron_loc]:
+              for ind in sp_poss[dron_loc][0]:
                 eng_to_add = construct_energy_meetup(llep_d, dron_loc, ind, edges, dedges, demand, DS)
                 if eng_rem - eng_to_add > 0 and len(edges[ind]) > 0:
                   nbs.append((ind, eng_to_add))
@@ -2249,7 +2219,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
               nbs, ws = [], []
               eng_rem = MAX_BATTERY_USE - MIN_MEETUP_BATTERY_REM
               ws_sum = 0
-              for ind in sp_poss[next_demand]:
+              for ind in sp_poss[next_demand][1]:
                 eng_to_add = construct_energy_launch(llep_d, next_demand, ind, edges, dedges, demand, DS)
                 if eng_rem - eng_to_add > 0 and len(edges[ind]) > 0:
                   nbs.append(ind)
@@ -2302,7 +2272,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
           nbs, ws = [], []
           eng_rem = MAX_BATTERY_USE - MIN_MEETUP_BATTERY_REM
           ws_sum = 0
-          for ind in sp_poss[next_demand]:
+          for ind in sp_poss[next_demand][1]:
             eng_to_add = construct_energy_launch(llep_d, next_demand, ind, edges, dedges, demand, DS)
             if eng_rem - eng_to_add > 0 and len(edges[ind]) > 0:
               nbs.append(ind)
@@ -2359,7 +2329,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
               let[e[0]] = n_eng
               heapq.heappush(q, (n_eng, e[0]))
         # phermone free decision since going back!
-        for ind in sp_poss[dron_loc]:
+        for ind in sp_poss[dron_loc][0]:
           eng_to_add = construct_energy_meetup(llep_d, dron_loc, ind, edges, dedges, demand, DS)
           if eng_rem - eng_to_add > 0 and len(edges[ind]) > 0:
             tmp = eng_to_add + (let[ind] / w_coeff) + (src_let_t[ind] / w_coeff_oth)
@@ -2376,7 +2346,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
         swp[swp_ind] = sp   # end sequence for "meetup": sp
       else:
         # truck completed work after drone.
-        for ind in sp_poss[dron_loc]:
+        for ind in sp_poss[dron_loc][0]:
           eng_to_add = construct_energy_meetup(llep_d, dron_loc, ind, edges, dedges, demand, DS)
           if eng_rem - eng_to_add > 0 and len(edges[ind]) > 0:
             tmp = eng_to_add + (let_t[curr][ind] / w_coeff) + (src_let_t[ind] / w_coeff_oth)
