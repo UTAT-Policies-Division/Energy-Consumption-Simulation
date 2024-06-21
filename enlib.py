@@ -744,13 +744,11 @@ class EnergyHelper:
       plt.plot(path_x, path_y, marker="", c="black", alpha=0.1)
     print("Plotted network!")
 
-  def verify_demand_connectivity(self, st_ind, q=[], got=[], refresh_got=False):
-    if len(got) == 0:
-      got = [0 for _ in range(len(self.nodes))]
-    if refresh_got:
-      for i in range(len(got)):
-        got[i] = 0
+  def verify_demand_connectivity(self, st_ind, q, got):
+    for i in range(len(got)):
+      got[i] = 0
     q.append(st_ind)
+    got[st_ind] = 1
     ind = -1
     while len(q) > 0:
       ind = q.pop()
@@ -769,7 +767,7 @@ class EnergyHelper:
             return False
     return True
 
-  def append_random_demand(self, num, cluster_num = 0, cluster_jump = 0, 
+  def append_random_demand(self, num, cluster_num=0, cluster_jump=0, 
                            drone_only_possible_component=0.7, num_allocs=10):
     """
     Demand generated ALWAYS corresponds
@@ -779,113 +777,87 @@ class EnergyHelper:
     responsible for allocating pure
     drone only possible deliveries
     """
-    N = len(self.nodes)
-    LIM = N * N
-    a, w_a, j_a = 0, 1, 1
-    b, w_b, j_b = N - 1, len(WEIGHTS) - 1, int(0.05 * N)
+    if num == 0:
+      return
+    print("Generating demand...")
+    N, num_clone = len(self.nodes), num
+    ind, tgt, bst_ind, cnt = -1, -1, -1, -1
+    q, data = [], None
     got = [0 for _ in range(N)]
-    if len(self.demand) > 0:
-      if isinstance(self.demand[0], tuple):
-        for dem,_ in self.demand:
-          got[dem] = 1
-      else:
-        for dem in self.demand:
-          got[dem] = 1
-    n = 0
-    q, verf_q = [], []
-    verf_got = [0 for _ in range(len(self.nodes))]
-    if cluster_num <= 0:
-      n = randint(a, b)
-      while (got[n] > 0) or (len(self.edges[n]) == 0) or \
-            not self.verify_demand_connectivity(n, verf_q, verf_got, True):
-        n = (n + 1) % N
-        if LIM == 1:
-          self.demand = []
-          self.total_weight = 0
-          print("ERROR: could not find suitable node for demand.")
-          return
-        else:
-          LIM -= 1
-      edge_list = None
-      while True:
-        self.demand.append(n)
-        got[n] = 1
-        num -= 1
-        if num <= 0:
-          break
-        edge_list = self.edges[n]
-        for _ in range(randint(j_a, j_b)):
-          q.clear()
-          for e in edge_list:
-            if len(self.edges[e[0]]) > 0 and got[e[0]] == 0:
-              q.append(e[0])
-          if len(q) == 0:   # dangerous recursive solution
-            return self.append_random_demand(num, 0, 0, drone_only_possible_component, num_allocs)
-          n = q[randint(0, len(q) - 1)]
-          edge_list = self.edges[n]
+    cnt, lim, lim2 = 0, N, -1
+    i = randint(0, N - 1)
+    while lim > 0:
+      collec = []
+      for j in range(len(got)):
+        got[j] = 0
+      q.append(i)
+      got[i] = 1
+      while len(q) > 0:
+        ind = q.pop(0)
+        collec.append(ind)
+        for e in self.edges[ind]:
+          if got[e[0]] == 0:
+            got[e[0]] = 1
+            q.append(e[0])
+      if len(collec) > cnt:
+        cnt = len(collec)
+        bst_ind = i
+      if cnt >= num:
+        data = collec
+        break
+      lim -= 1
+      i = randint(0, N - 1)
+    print("Quick BFS discovered", round(100 * len(data) / N, 2), "percent of stored nodes.")
+    if len(data) < num:
+      print("ERROR: couldn't find enough reachable nodes to generate demand.")
+      exit(0)
+    _got = [0 for _ in range(N)]
+    for i in range(len(got)):
+      got[i] = 0
+    if cluster_num > 0:
+      ind = 0
+      lim2 = N
+      tgt = ceil(num / cluster_num)
+      while tgt > 0 and lim2 > 0:
+        num -= tgt
+        while tgt > 0:
+          lim = N
+          while got[data[ind]] == 1 and lim > 0:
+            ind = (ind + 1) % len(data)
+            lim -= 1
+          got[data[ind]] = 1
+          if self.verify_demand_connectivity(data[ind], q, _got):
+            self.demand.append(data[ind])
+            ind = (ind + cluster_jump) % len(data)
+            tgt -= 1
+          else:
+            lim2 -= 1
+            break
+        num += tgt
+        tgt = ceil(num / cluster_num)
+        ind = randint(0, len(data) - 1)
     else:
-      # cluster_jump = 0 implies immediate neighbors
-      threshold = 1 + int(floor(num / cluster_num) * 0.1)
-      to_add = 0
-      q = [-1 for _ in range(N)]
-      end = -1
-      lv = -1
-      for cluster_rem in range(cluster_num, 0, -1):
-        n = randint(a, b)
-        while (got[n] > 0) or (len(self.edges[n]) == 0) or \
-              not self.verify_demand_connectivity(n, verf_q, verf_got, True):
-          n = (n + 1) % N
-          if LIM == 1:
-            self.demand = []
-            self.total_weight = 0
-            print("ERROR: could not find suitable node for demand.")
-            return
-          else:
-            LIM -= 1
-        end = 0
-        q[end] = (n, 0)
-        to_add = max(1, ceil(num / cluster_rem))
-        to_swap = -1
-        tmp = -1
-        while end >= 0:
-          n, lv = q[end]
-          end -= 1
-          if lv == 0:
-            got[n] = 1   # targeted & visited
-            self.demand.append(n)
-            num -= 1
-            if to_add == 1:
-              break
-            else:
-              for j in range(min(len(self.edges[n]), to_add + 1)):
-                tmp = self.edges[n][j][0]
-                if got[tmp] == 0 and len(self.edges[tmp]) > 0:
-                  got[tmp] = 3   # in queue
-                  to_swap = randint(0, max(0, end))
-                  end += 1
-                  q[end] = (tmp, cluster_jump)
-                  tmp = q[to_swap]
-                  q[to_swap] = q[end]
-                  q[end] = tmp
-              to_add -= 1
-          else:
-            got[n] = 2   # not targted
-            lv -= 1
-            for j in range(min(len(self.edges[n]), to_add + 1)):
-              tmp = self.edges[n][j][0]
-              if got[tmp] == 0 and len(self.edges[tmp]) > 0:
-                got[tmp] = 3   # in queue
-                to_swap = randint(0, max(0, end))
-                end += 1
-                q[end] = (tmp, lv)
-                tmp = q[to_swap]
-                q[to_swap] = q[end]
-                q[end] = tmp
-        if to_add > threshold:
-          print("WARNING: cluster generation suppressed in area.")
+      ind = 0
+      lim2 = N
+      while num > 0 and lim2 > 0:
+        lim = N
+        while got[data[ind]] == 1 and lim > 0:
+          ind = (ind + 1) % len(data)
+          lim -= 1
+        got[data[ind]] = 1
+        if self.verify_demand_connectivity(data[ind], q, _got):
+          self.demand.append(data[ind])
+          num -= 1
+        else:
+          lim2 -= 1
+        ind = randint(0, len(data) - 1)
+    if num > 0:
+      print("Error: Failed to generate well connected data from available nodes.")
     w_total, w = 0, 0
-    pure_drone = sample([i for i in range(len(self.demand))], ceil(drone_only_possible_component * len(self.demand)))
-    for i in range(len(self.demand)):
+    w_a, w_b = 1, len(WEIGHTS) - 1 
+    iters = [i for i in range(len(self.demand) - num_clone, len(self.demand))]
+    pure_drone = sample(iters, ceil(drone_only_possible_component * num_clone))
+    for i in iters:
       w = 0
       if i in pure_drone:
         w = WEIGHTS[randint(w_a, w_b)]
@@ -895,9 +867,10 @@ class EnergyHelper:
           w += WEIGHTS[randint(w_a, w_b)]
       self.demand[i] = (self.demand[i], w)
       w_total += w
-    self.total_weight = w_total
+    self.total_weight += w_total
     if self.total_weight >= 4500:
       print("WARNING: Total demand weight exceeds 4500kg critical point.")
+    print("Demand generated !")
 
   def save(self, filename='network_data.pkl'):
     print("Saving Energy Helper object...")
@@ -1173,9 +1146,12 @@ class EnergyHelper:
     print("Phermone system initialized!\nNOTE: Demand structures now hold source vertex with 0 weight.")
     return -1
 
-  def aco_truck_only(self, K=200, ants_per_iter=75, q=10**6, degradation_factor=0.98):
+  def aco_truck_only(self, K=150, ants_per_iter=50, q=10**6, degradation_factor=0.99):
     print("Initializing ACO child workers...")
-    STAGNANT_LIMIT = int(0.2 * K)
+    if cpu_count() < ants_per_iter:
+      ants_per_iter = cpu_count()
+      print("WARNING: cpu count too low, set ants/iteration to cpu count:", cpu_count())
+    STAGNANT_LIMIT = int(0.3 * K)
     BEST_HALF_SIZE = ants_per_iter // 2
     degradation_factor = degradation_factor**BEST_HALF_SIZE
     barrier = mp.Value('i',lock=True)
@@ -1195,14 +1171,15 @@ class EnergyHelper:
       c = i * len(self.nodes)
       for j in range(len(self.nodes)):
         n_pherm[c + j] = self.n_pherm[i][j]
-    cycles = [mp.Array('i', DEMAND_SIZE + 1, lock=False) for _ in range(ants_per_iter)]
+    cycles = [(mp.Array('i', DEMAND_SIZE, lock=False),
+               mp.Value('f', lock=False)) for _ in range(ants_per_iter)]
     let_t = self.let_t      # not changing
     processes = [mp.Process(target=_aco_worker_truck_only,
                             args=(barrier, saw_zero, demand, n_pherm, 
-                                  cycles[i], let_t, K)) for i in range(ants_per_iter)]
+                                  cycles[i][0], let_t, K, cycles[i][1])) for i in range(ants_per_iter)]
     print("Initialized ACO child workers!\nStarting ACO...")
     best_cycle = sample([i for i in range(DEMAND_SIZE)], k=DEMAND_SIZE)
-    best_energy = float(10**50)
+    best_energy = float(10**90)
     best_cycle_ind, j, delta = -1, -1, -1
     cycle = None
     for p in processes:
@@ -1217,8 +1194,8 @@ class EnergyHelper:
         saw_zero.value += ants_per_iter
       # if iter % 10 == 0:
       #   self.plot_cycle(cycles[0][0], int(iter / 10))   # for saving pictures
-      cycles.sort(key = lambda x: x[DEMAND_SIZE])
-      if abs(cycles[0][DEMAND_SIZE] - best_energy) / best_energy < NEWT_PREC:
+      cycles.sort(key = lambda x: x[1].value)
+      if abs(cycles[0][1].value - best_energy) / best_energy < NEWT_PREC:
         STAGNANT_LIMIT -= 1
         if STAGNANT_LIMIT <= 0:
           n_pherm[0] = -1
@@ -1237,17 +1214,17 @@ class EnergyHelper:
         n_pherm[demand[best_cycle[j + 1]][0] + NUM_NODES * best_cycle[j]] += delta
         j += 1
       for i in range(BEST_HALF_SIZE):
-        cycle = cycles[i]
-        if cycle[DEMAND_SIZE] < best_energy:
+        cycle = cycles[i][0]
+        if cycles[i][1].value < best_energy:
           best_cycle_ind = i
-          best_energy = cycle[DEMAND_SIZE]
-        delta = q / cycle[DEMAND_SIZE]
+          best_energy = cycles[i][1].value
+        delta = q / cycles[i][1].value
         n_pherm[N_PHERM_LAST + demand[cycle[0]][0]] += delta
         j = 0
         while j < DEMAND_SIZE - 1:
           n_pherm[demand[cycle[j + 1]][0] + NUM_NODES * cycle[j]] += delta
           j += 1
-      cycle = cycles[best_cycle_ind]
+      cycle = cycles[best_cycle_ind][0]
       for i in range(DEMAND_SIZE):
         best_cycle[i] = cycle[i]
       j = 0
@@ -1266,7 +1243,7 @@ class EnergyHelper:
     for p in processes:
       p.join()
       p.close()
-    return best_cycle, best_energy
+    return best_energy, best_cycle
 
   def aco(self, K=100, ants_per_iter=50, q=10**6, degradation_factor=0.99):
     """
@@ -1376,8 +1353,6 @@ class EnergyHelper:
             barrier.value = ants_per_iter
           print("Limit for iterations to stay stagnant exceeded! Stopping earlier by", K - iter,"iterations")
           break
-      # print(delta, n_pherm[3])
-      # print(' '.join([str(cycles[0][2][i]) for i in range(SWP_SIZE)]))
       # elitism loading below
       delta = q / best_energy
       delta_sp = DELTA_SP_COEFF * delta
@@ -1395,10 +1370,7 @@ class EnergyHelper:
       j = 1
       cyc_ind = 0
       prev_tsj = False
-      # print("---------------------------------")
-      # print(0, swp[0])
       while j < SWP_SIZE - 1:
-        # print(j, swp[j])
         if swp[j] == -2:
           if swp[j+1] == -2:
             if prev_tsj:
@@ -1446,7 +1418,6 @@ class EnergyHelper:
                 n_pherm[e[0] + shft] += delta_sp_hlf
         j += 2
         cyc_ind += 1
-      # print(j, swp[-1])
       # loading from top 50% of population
       for i in range(BEST_HALF_SIZE):
         energy, cycle, swp = cycles[i]
@@ -1469,10 +1440,7 @@ class EnergyHelper:
         j = 1
         cyc_ind = 0
         prev_tsj = False
-        # print("---------------------------------")
-        # print(0, swp[0])
         while j < SWP_SIZE - 1:
-          # print(j, swp[j], swp[j+1])
           if swp[j] == -2:
             if swp[j+1] == -2:
               if prev_tsj:
@@ -1520,7 +1488,6 @@ class EnergyHelper:
                   n_pherm[e[0] + shft] += delta_sp_hlf
           j += 2
           cyc_ind += 1
-        # print(j, swp[-1])
       # updating best cycle data
       _, cycle, swp = cycles[best_ind]
       for i in range(DEMAND_SIZE):
@@ -2031,7 +1998,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
   not_got_chance = False
   total_energy, next_demand, w_coeff, lval, curr_shft = -1, -1, -1, -1, -1
   state, dron_w, dron_loc, w_coeff_oth = 0, 0, 0, -1
-  curr, curr_w, steps, sp, swp_ind = -1, -1, -1, -1, -1
+  curr, curr_w, steps, sp, swp_ind, ws_sum, curr_ws = -1, -1, -1, -1, -1, -1, -1
   nbs, ws, common_sps = None, None, None
   eng_so_far, eng_to_add, time_taken = -1, -1, -1
   best_sp, best_eng, best_to_add, tmp = -1, -1, -1, -1
@@ -2236,13 +2203,20 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
               cycle[steps] = next_demand
               steps += 1
               nbs, ws = [], []
+              ws_sum = 0
               for ind in sp_poss[dron_loc]:
                 eng_to_add = construct_energy_meetup(llep_d, dron_loc, ind, edges, dedges, demand, DS)
                 if eng_rem - eng_to_add > 0 and len(edges[ind]) > 0:
                   nbs.append((ind, eng_to_add))
-                  ws.append(((n_pherm[ind + NUM_NODES * curr])**ALPHA / (let_t[curr][ind] / w_coeff)**BETA))
+                  curr_ws = ((n_pherm[ind + NUM_NODES * curr])**ALPHA / (let_t[curr][ind] / w_coeff)**BETA)
+                  ws_sum += curr_ws
+                  ws.append(curr_ws)
               if len(nbs) > 0:
-                sp, eng = choices(nbs, weights=ws)[0]
+                if ws_sum == 0:
+                  sp = nbs[randint(0, len(nbs) - 1)]
+                  eng = 0
+                else:
+                  sp, eng = choices(nbs, weights=ws)[0]
                 total_energy += eng
               else:
                 sp = demand[dron_loc][0]
@@ -2274,13 +2248,19 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
                     heapq.heappush(q, (n_eng, e[0]))
               nbs, ws = [], []
               eng_rem = MAX_BATTERY_USE - MIN_MEETUP_BATTERY_REM
+              ws_sum = 0
               for ind in sp_poss[next_demand]:
                 eng_to_add = construct_energy_launch(llep_d, next_demand, ind, edges, dedges, demand, DS)
                 if eng_rem - eng_to_add > 0 and len(edges[ind]) > 0:
                   nbs.append(ind)
-                  ws.append((n_pherm[ind + NUM_NODES * dron_loc])**ALPHA / (let[ind] / w_coeff_oth)**BETA)
+                  curr_ws = (n_pherm[ind + NUM_NODES * dron_loc])**ALPHA / (let[ind] / w_coeff_oth)**BETA
+                  ws_sum += curr_ws
+                  ws.append(curr_ws)
               if len(nbs) > 0:
-                sp = choices(nbs, weights=ws)[0]
+                if ws_sum == 0:
+                  sp = nbs[randint(0, len(nbs) - 1)]
+                else:
+                  sp = choices(nbs, weights=ws)[0]
                 swp[swp_ind + 1] = sp
                 total_energy += let[sp] / w_coeff_oth
                 # print("Drone meet truck, split again", total_energy)
@@ -2321,14 +2301,20 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
         else:
           nbs, ws = [], []
           eng_rem = MAX_BATTERY_USE - MIN_MEETUP_BATTERY_REM
+          ws_sum = 0
           for ind in sp_poss[next_demand]:
             eng_to_add = construct_energy_launch(llep_d, next_demand, ind, edges, dedges, demand, DS)
             if eng_rem - eng_to_add > 0 and len(edges[ind]) > 0:
               nbs.append(ind)
-              ws.append((n_pherm[ind + NUM_NODES * curr])**ALPHA / (let_t[curr][ind] / w_coeff)**BETA)
+              curr_ws = (n_pherm[ind + NUM_NODES * curr])**ALPHA / (let_t[curr][ind] / w_coeff)**BETA
+              ws_sum += curr_ws
+              ws.append(curr_ws)
           if len(nbs) > 0:
             # able to make it via switch !
-            sp = choices(nbs, weights=ws)[0]
+            if ws_sum == 0:
+              sp = nbs[randint(0, len(nbs) - 1)]
+            else:
+              sp = choices(nbs, weights=ws)[0]
             swp[swp_ind] = -1
             swp[swp_ind + 1] = sp      # code sequence for truck -> drone
             swp_ind += 2
@@ -2428,32 +2414,35 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
         if barrier.value > 0:
           not_got_chance = False
 
-def _aco_worker_truck_only(barrier, saw_zero, demand, 
-                           n_pherm, cycle, let_t, K):
-  # 1% decrease in mpg for every 100 pounds. Thus,
-  # 1 / (1 - 0.01 * num_pounds / hundred_pounds) multiplier.
+def _aco_worker_truck_only(barrier, saw_zero, demand, n_pherm, cycle, let_t, K, result):
   ALPHA, BETA = 0.9, 1.5
   N_PHERM_SIZE = int(len(n_pherm))
   NUM_NODES = int(N_PHERM_SIZE / len(demand))
   src = demand.pop()[0]           # source node, w = 0
+  TOTAL_WEIGHT = sum(pr[1] for pr in demand)
   DEMAND_SIZE = len(demand)
   N_PHERM_LAST = N_PHERM_SIZE - NUM_NODES
-  TOTAL_WEIGHT = sum(pr[1] for pr in demand)
   src_let_t = let_t.pop()         # list of path total energies
   got = [0 for _ in range(DEMAND_SIZE)]
   first_demand_possibs = [i for i in range(DEMAND_SIZE)]
   first_demand_weights = [0 for _ in range(DEMAND_SIZE)]
+  q = []
+  let = [float('inf') for _ in range(NUM_NODES)]
+  _got = [0 for _ in range(NUM_NODES)]
   not_got_chance = False
-  total_energy, next_demand = -1, -1
+  total_energy, next_demand, w_coeff = -1, -1, -1
   curr, curr_w, steps = -1, -1, -1
   nbs, ws = None, None
+  best_sp, best_eng, best_to_add = -1, -1, -1
   while K > 0:
     if n_pherm[0] < 0:
       break
+    w_coeff = 1 - (TOTAL_WEIGHT / 4535.9237)
     for j in range(DEMAND_SIZE):
-      first_demand_weights[j] = n_pherm[N_PHERM_LAST + demand[j][0]]
+      first_demand_weights[j] = (n_pherm[N_PHERM_LAST + demand[j][0]])**ALPHA \
+                                 / (src_let_t[demand[j][0]] / w_coeff)**BETA
       got[j] = 0
-    curr = choices(first_demand_possibs, weights=first_demand_weights, k=1)[0]
+    curr = choices(first_demand_possibs, weights=first_demand_weights)[0]
     got[curr] = 1
     cycle[0] = curr
     steps = 1
@@ -2461,18 +2450,22 @@ def _aco_worker_truck_only(barrier, saw_zero, demand,
     curr_w = TOTAL_WEIGHT - demand[curr][1]
     while steps < DEMAND_SIZE:
       nbs, ws = [], []
+      # truck logic
+      w_coeff = 1 - (curr_w / 4535.9237)
       for i in range(DEMAND_SIZE):
         if got[i] == 0:
           nbs.append(i)
-          ws.append((n_pherm[demand[i][0] + NUM_NODES * curr])**ALPHA / (let_t[curr][demand[i][0]])**BETA)
+          ws.append((n_pherm[demand[i][0] + NUM_NODES * curr])**ALPHA / 
+                    (let_t[curr][demand[i][0]] / w_coeff)**BETA)
       next_demand = choices(nbs, weights=ws)[0]
-      total_energy += let_t[curr][demand[next_demand][0]] / (1 - (curr_w / 4535.9237))
-      curr = next_demand
-      curr_w -= demand[curr][1]
-      got[curr] = 1
-      cycle[steps] = curr
+      got[next_demand] = 1
+      cycle[steps] = next_demand
       steps += 1
-    cycle[DEMAND_SIZE] = int(total_energy + let_t[cycle[DEMAND_SIZE - 1]][src])
+      total_energy += let_t[curr][demand[next_demand][0]] / w_coeff
+      curr_w -= demand[next_demand][1]
+      curr = next_demand
+    # add truck energy to go to source and we are done.
+    result.value = total_energy + let_t[curr][src] / (1 - (curr_w / 4535.9237))
     K -= 1
     with barrier.get_lock():
       barrier.value -= 1

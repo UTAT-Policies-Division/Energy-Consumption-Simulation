@@ -105,7 +105,8 @@ if __name__ == '__main__':
 #   eh.save("uoft.pkl")
   NUM_STOPS = 200
   RANGE = float(10000000)   # dummy for now
-  eh = el.EnergyHelper.load("uoft.pkl")
+  eh = el.EnergyHelper.load("manhattan.pkl")
+  print(eh.edges[0][0])
 #   eh.enforce_graph_connections()
 #   eh.demand = [(602, 11.5), (301, 8.25), (0, 0.25), (193, 0.5), (435, 9.25), 
 #                (42, 1.75), (115, 1), (56, 0.75), (223, 1.5), (348, 1)]
@@ -128,9 +129,13 @@ if __name__ == '__main__':
 #     print(i, "Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
 #     print(cycle)
   energy, cycle, swp = eh.aco()
+#   energy, cycle = eh.aco_truck_only()
   print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
-  eh.show_swp_string(swp)
-  eh.plot_cycle(cycle, swp)
+  print(cycle)
+  eh.plot_cycle(cycle, [])
+#   print(cycle, swp)
+#   eh.show_swp_string(swp)
+#   eh.plot_cycle(cycle, swp)
 #   energy, cycle, swp = eh.aco_truck_only()
 #   print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
 #   pth = [eh.demand[0][0]]
@@ -171,7 +176,7 @@ if __name__ == '__main__':
 #     return el.TH_BET(el.rho_air_std, 2.43, 23.0, 4.25, el.RPM_to_omega(rpm), CHORD, BETA, SINPSI, COSPSI)[1]
 #   el.draw_function(0,12000,1000,func)
 #   plt.legend(loc='best')
-#   plt.savefig("pic.png", dpi=700)
+  plt.savefig("pic.png", dpi=700)
   plt.show()
 
 
