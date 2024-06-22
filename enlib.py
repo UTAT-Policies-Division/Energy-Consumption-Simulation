@@ -975,7 +975,7 @@ class EnergyHelper:
     print("Initializng phermone system...")
     nodes, edges, dedges, demand = self.nodes, self.edges, self.dedges, self.demand
     demand.append((src, 0))
-    NODE_BASE_PHERM = 10**(-7)
+    NODE_BASE_PHERM = 10**(-6)
     SP_PHERM_COEFF = 10**(-5)
     DEMAND_PHERM_ADV_COEFF = 100
     DEMAND_BASE_PHERM = DEMAND_PHERM_ADV_COEFF * SP_PHERM_COEFF * len(demand)
@@ -1036,9 +1036,11 @@ class EnergyHelper:
             prv = cur
             cur, cur_ty = lep[cur]
         if i == demand[j][0]:
+          sp_poss[j][0].append(i)
           lep2 = llep_d[j][0]
           for k1 in range(len(nodes)):
             if lep[k1][0] != -1:
+              sp_poss[j][0].append(k1)
               cur, cur_ty = lep[k1]
               edge_data = edges
               if not cur_ty:
