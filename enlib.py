@@ -976,8 +976,8 @@ class EnergyHelper:
     print("Initializng phermone system...")
     nodes, edges, dedges, demand = self.nodes, self.edges, self.dedges, self.demand
     demand.append((src, 0))
-    NODE_BASE_PHERM = 10**(-2)
-    SP_PHERM_COEFF = 10**(-1)
+    NODE_BASE_PHERM = 10**(-4)
+    SP_PHERM_COEFF = 10**(-3)
     DEMAND_PHERM_ADV_COEFF = 1
     DEMAND_BASE_PHERM = DEMAND_PHERM_ADV_COEFF * SP_PHERM_COEFF * len(demand)
     DEMAND_WEIGHT_COEFF = DEMAND_PHERM_ADV_COEFF * NODE_BASE_PHERM / (WEIGHTS[-1] * passed_num_alloc)
@@ -1088,16 +1088,25 @@ class EnergyHelper:
     pbar.close()
     print("Complete!")
     print("Verifying connections and setting phermones...")
+    avg_dem_phm, tmp = 0, 0
     for i in range(len(demand)):
-      for j in range(i + 1, len(demand)):
+      for j in range(len(demand)):
         if let_t[self.demand[i][0]][self.demand[j][0]] == float("inf"):
           print("BAD CONNECTION FOUND:", self.demand[i][0], self.demand[j][0], ". Aborting...")
           exit(1)
-        if let_t[self.demand[j][0]][self.demand[i][0]] == float("inf"):
-          print("BAD CONNECTION FOUND:", self.demand[j][0], ",", self.demand[i][0], ". Aborting...")
-          exit(1)
-        n_pherm[i][demand[j][0]] += DEMAND_BASE_PHERM + DEMAND_WEIGHT_COEFF * demand[j][1]
-        n_pherm[j][demand[i][0]] = n_pherm[i][demand[j][0]]
+        tmp = DEMAND_BASE_PHERM + DEMAND_WEIGHT_COEFF * demand[j][1]
+        n_pherm[i][demand[j][0]] += tmp
+        avg_dem_phm += tmp
+    # -------------------------------
+    # Scaling demand phermone
+    # to be around 0.3 - 0.7
+    # -------------------------------
+    avg_dem_phm /= len(demand) * len(demand)
+    scl = 10**(-(log10(avg_dem_phm) + 0.1))
+    for i in range(len(demand)):
+      for j in range(len(demand)):
+        n_pherm[i][demand[j][0]] *= scl
+    # -------------------------------
     print("Verified connections and set phermones!")
     self.sp_poss = sp_poss
     self.n_pherm = n_pherm
@@ -1621,18 +1630,23 @@ class EnergyHelper:
         max_y = self.nodes[i][1]
     w_sc, h_sc = 0.5 * width / max_x, 0.5 * height / max_y
     src = self.n_pherm[dem_ind]
-    max_val = max(i for i in src)
+    max_val, max_comp = max(i for i in src), 0.7
+    print(max_comp * max_val)
     img = Image.new( 'RGB', (width+5, height+5), "black")
     pixels = img.load()
     for i in range(len(self.nodes)):
       R, G, B = pixels[int((self.nodes[i][0] + max_x) * w_sc), 
                        int((self.nodes[i][1] + max_y) * h_sc)]
-      if src[i] == 10**(-2):
-        R = 50
+      if src[i] > max_comp * max_val:
+        R = 0
+        G = 250
+        B = 250
       else:
-        R = min(R + int(100 + 150 * src[i] / max_val), 250)
+        comp = int(100 + 150 * src[i] / max_val)
+        R = min(R + comp, 250)
+        G = min(G + (250 - comp), 250)
       pixels[int((self.nodes[i][0] + max_x) * w_sc), 
-             int((self.nodes[i][1] + max_y) * h_sc)] = (R, R, 50)
+             int((self.nodes[i][1] + max_y) * h_sc)] = (R, G, B)
     img.show()
     # img.save(filename)
 
