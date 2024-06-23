@@ -120,10 +120,12 @@ if __name__ == '__main__':
 #   print(b_ind, eh.nodes[eh.demand[b_ind][0]])
 #   eh.demand.pop(b_ind)
 #   eh.append_random_demand(50, cluster_num=0, cluster_jump=0)
-  eh.append_random_demand(5, cluster_num=0, cluster_jump=0,
-                          drone_only_possible_component=0.2, num_allocs=NUM_ALLOCS)
-  src = eh.get_top_right_node()
-  eh.init_phermone_system(src, NUM_ALLOCS, R=RANGE)
+  for _ in range(1):
+    eh.append_random_demand(150, cluster_num=0, cluster_jump=0,
+                          drone_only_possible_component=0.6, num_allocs=NUM_ALLOCS)
+    src = eh.get_top_right_node()
+    eh.init_phermone_system(src, NUM_ALLOCS, R=RANGE)
+    # eh.demand = []
 #   eh.make_phermone_plot(50, 50)
 #   print(eh.edges[0][0])
 #   print(max(max(v for v in arr) for arr in eh.n_pherm))
@@ -131,11 +133,11 @@ if __name__ == '__main__':
 #     energy, cycle, swp = eh.aco(K=i)
 #     print(i, "Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
 #     print(cycle)
-  energy, cycle, swp = eh.aco(ants_per_iter=1)
+  energy, cycle, swp = eh.aco(K=50, ants_per_iter=2)
 #   energy, cycle = eh.aco_truck_only()
   print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
   print(cycle)
-  eh.plot_cycle(cycle, [])
+#   eh.plot_cycle(cycle, [])
 #   print(cycle, swp)
 #   eh.show_swp_string(swp)
 #   eh.plot_cycle(cycle, swp)
@@ -179,7 +181,7 @@ if __name__ == '__main__':
 #     return el.TH_BET(el.rho_air_std, 2.43, 23.0, 4.25, el.RPM_to_omega(rpm), CHORD, BETA, SINPSI, COSPSI)[1]
 #   el.draw_function(0,12000,1000,func)
 #   plt.legend(loc='best')
-  plt.savefig("pic.png", dpi=700)
+#   plt.savefig("pic.png", dpi=700)
   plt.show()
 
 
