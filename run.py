@@ -120,7 +120,7 @@ if __name__ == '__main__':
 #   print(b_ind, eh.nodes[eh.demand[b_ind][0]])
 #   eh.demand.pop(b_ind)
 #   eh.append_random_demand(50, cluster_num=0, cluster_jump=0)
-  eh.append_random_demand(50, cluster_num=0, cluster_jump=0,
+  eh.append_random_demand(5, cluster_num=0, cluster_jump=0,
                           drone_only_possible_component=0.2, num_allocs=NUM_ALLOCS)
   src = eh.get_top_right_node()
   eh.init_phermone_system(src, NUM_ALLOCS, R=RANGE)
