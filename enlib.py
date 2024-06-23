@@ -1,12 +1,13 @@
 from math import sqrt, acos, atan2, pi, \
                  sin, cos, tan, exp, \
-                 floor, ceil
+                 floor, ceil, log10
 from random import randint, sample, choices
 import matplotlib.pyplot as plt
 import pickle
 import multiprocessing as mp
 from os import cpu_count
 from tqdm import tqdm
+from PIL import Image
 import heapq
 
 half_pi = pi / 2
@@ -23,7 +24,7 @@ DRAW_PREC = 100 # power of 10, larger => more precise
 AREA = pi * (11 / meter_coeff)**2
 NEWT_PREC = 10**(-5)
 BATTERY_RESERVE_MARGIN = 0.2
-BATTERY_CAPACITY = 17.0 * 42 * 360  # J,                           TODO: CHANGE 360 -> 3600
+BATTERY_CAPACITY = 17.0 * 42 * 3600 / 500 # J,        TODO: remove divider
 MAX_BATTERY_USE = BATTERY_CAPACITY * (1 - BATTERY_RESERVE_MARGIN)
 MAX_BATTERY_USE_HALF = MAX_BATTERY_USE / 2
 MIN_MEETUP_BATTERY_REM = MAX_BATTERY_USE * 0.15
@@ -975,9 +976,9 @@ class EnergyHelper:
     print("Initializng phermone system...")
     nodes, edges, dedges, demand = self.nodes, self.edges, self.dedges, self.demand
     demand.append((src, 0))
-    NODE_BASE_PHERM = 10**(-6)
-    SP_PHERM_COEFF = 10**(-5)
-    DEMAND_PHERM_ADV_COEFF = 100
+    NODE_BASE_PHERM = 10**(-2)
+    SP_PHERM_COEFF = 10**(-1)
+    DEMAND_PHERM_ADV_COEFF = 1
     DEMAND_BASE_PHERM = DEMAND_PHERM_ADV_COEFF * SP_PHERM_COEFF * len(demand)
     DEMAND_WEIGHT_COEFF = DEMAND_PHERM_ADV_COEFF * NODE_BASE_PHERM / (WEIGHTS[-1] * passed_num_alloc)
     n_pherm = [[NODE_BASE_PHERM for _ in range(len(nodes))] for _ in range(len(demand))]
@@ -1026,6 +1027,7 @@ class EnergyHelper:
             if cur in lep2:
               break
             n_pherm[j][cur] += (1 - abs(1 - ((eng - let[cur]) / MAX_BATTERY_USE_HALF))) * SP_PHERM_COEFF
+            # print(demand[j][0], cur, n_pherm[j][cur])
             ed_ind = 0
             edge_data = edges
             if not cur_ty:
@@ -1041,6 +1043,8 @@ class EnergyHelper:
           for k1 in range(len(nodes)):
             if lep[k1][0] != -1:
               sp_poss[j][0].append(k1)
+              n_pherm[j][k1] += (1 - abs(1 - (let[k1] / MAX_BATTERY_USE_HALF))) * SP_PHERM_COEFF
+              # print(demand[j][0], k1, n_pherm[j][k1])
               cur, cur_ty = lep[k1]
               edge_data = edges
               if not cur_ty:
@@ -1567,6 +1571,30 @@ class EnergyHelper:
     print(l2)
     print(l3)
 
+  def make_phermone_plot(self, dem_ind=0, width=500, height=500, filename="phermone plot.png"):
+    max_x, max_y, max_val = 0, 0, 0
+    for i in range(len(self.nodes)):
+      if abs(self.nodes[i][0]) > max_x:
+        max_x = self.nodes[i][0]
+      if abs(self.nodes[i][1]) > max_y:
+        max_y = self.nodes[i][1]
+    w_sc, h_sc = 0.5 * width / max_x, 0.5 * height / max_y
+    src = self.n_pherm[dem_ind]
+    max_val = max(i for i in src)
+    img = Image.new( 'RGB', (width+5, height+5), "black")
+    pixels = img.load()
+    for i in range(len(self.nodes)):
+      R, G, B = pixels[int((self.nodes[i][0] + max_x) * w_sc), 
+                       int((self.nodes[i][1] + max_y) * h_sc)]
+      if src[i] == 10**(-2):
+        R = 50
+      else:
+        R = min(R + int(100 + 150 * src[i] / max_val), 250)
+      pixels[int((self.nodes[i][0] + max_x) * w_sc), 
+             int((self.nodes[i][1] + max_y) * h_sc)] = (R, R, 50)
+    img.show()
+    # img.save(filename)
+
 def construct_time(llep_d, start_ind, to_visit, edges, dedges, DS):
   """
   assumes no switch point for a demand is the demand node itself.
@@ -1768,7 +1796,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
       eng_rem = ENG_LEVL - MIN_MEETUP_BATTERY_REM
       for sp in sp_poss[next_dem][1]:
         eng_to_add = construct_energy_launch(llep_d, next_dem, sp, edges, dedges, demand[next_dem][1], DS)
-        if eng_rem - eng_to_add > 0 and len(edges[ind]) > 0:
+        if eng_rem - eng_to_add > 0:
           nbs.append((sp, eng_to_add))
           ws.append((n_pherm[N_PHERM_LAST + sp])**ALPHA / (let_t[src][sp] / w_coeff)**BETA)
       if len(nbs) > 0:
@@ -1905,10 +1933,9 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
             parent_loc_node = demand[parent_loc][0]
             truck_side_w_lost += demand[parent_loc][1]
             tvs_ind_st += 1
-            if phm_src == n_pherm:
-              continue
-            phm_src = n_pherm
-            phm_src_shft = NUM_NODES
+            if phm_src != n_pherm:
+              phm_src = n_pherm
+              phm_src_shft = NUM_NODES
           eng_rem = ENG_LEVL - to_visit[i][1]
           truck_w -= truck_side_w_lost + demand[drone_loc][1]
           pot_dem = demand[to_visit[i + 2][0]][0]   # now holds node
@@ -1919,13 +1946,14 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
           # consumption, phermone free !
           best_eng, best_sp = float('inf'), -1
           for ind in sp_poss[drone_loc][0]:
-            eng_to_add = construct_energy_meetup(llep_d, drone_loc, ind, edges, dedges, DS)
-            if eng_rem - eng_to_add > 0 and len(edges[ind]) > 0:
-              tmp = eng_to_add + (let_t[parent_loc_node][ind] / w_coeff) + (let_t[ind][pot_dem] / w_coeff_oth)
-              if tmp < best_eng:
-                best_eng = tmp
-                best_sp = ind
-                best_eng_to_add = eng_to_add
+            if len(edges[ind]) > 0:
+              eng_to_add = construct_energy_meetup(llep_d, drone_loc, ind, edges, dedges, DS)
+              if eng_rem - eng_to_add > 0: 
+                tmp = eng_to_add + (let_t[parent_loc_node][ind] / w_coeff) + (let_t[ind][pot_dem] / w_coeff_oth)
+                if tmp < best_eng:
+                  best_eng = tmp
+                  best_sp = ind
+                  best_eng_to_add = eng_to_add
           if best_eng == float('inf'):   # drone can't move at all.
             best_sp = drone_loc
             best_eng_to_add = ENG_ZERO
@@ -1943,10 +1971,9 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
             parent_loc_node = demand[parent_loc][0]
             truck_side_w_lost += demand[parent_loc][1]
             tvs_ind_st += 1
-            if phm_src == n_pherm:
-              continue
-            phm_src = n_pherm
-            phm_src_shft = NUM_NODES
+            if phm_src != n_pherm:
+              phm_src = n_pherm
+              phm_src_shft = NUM_NODES
         truck_w -= truck_side_w_lost
         drone_loc = to_visit[-1][0]
         eng_rem = ENG_LEVL - to_visit[-1][1]
@@ -1956,13 +1983,14 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
           pot_dem = src
           best_eng, best_sp = float('inf'), -1
           for ind in sp_poss[drone_loc][0]:
-            eng_to_add = construct_energy_meetup(llep_d, drone_loc, ind, edges, dedges, DS)
-            if eng_rem - eng_to_add > 0 and len(edges[ind]) > 0:
-              tmp = eng_to_add + (let_t[parent_loc_node][ind] / w_coeff) + (let_t[ind][pot_dem] / w_coeff_oth)
-              if tmp < best_eng:
-                best_eng = tmp
-                best_sp = ind
-                best_eng_to_add = eng_to_add
+            if len(edges[ind]) > 0:
+              eng_to_add = construct_energy_meetup(llep_d, drone_loc, ind, edges, dedges, DS)
+              if eng_rem - eng_to_add > 0:
+                tmp = eng_to_add + (let_t[parent_loc_node][ind] / w_coeff) + (let_t[ind][pot_dem] / w_coeff_oth)
+                if tmp < best_eng:
+                  best_eng = tmp
+                  best_sp = ind
+                  best_eng_to_add = eng_to_add
           if best_eng == float('inf'):   # drone can't move at all.
             best_sp = drone_loc
             best_eng_to_add = 0
@@ -1978,13 +2006,14 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
             if got[i] == 0:
               best_eng, best_sp = float('inf'), -1
               for ind in sp_poss[drone_loc][0]:
-                eng_to_add = construct_energy_meetup(llep_d, drone_loc, ind, edges, dedges, DS)
-                if eng_rem - eng_to_add > 0 and len(edges[ind]) > 0:
-                  tmp = eng_to_add + (let_t[parent_loc_node][ind] / w_coeff) + (let_t[ind][demand[i][0]] / w_coeff_oth)
-                  if tmp < best_eng:
-                    best_eng = tmp
-                    best_sp = ind
-                    best_eng_to_add = eng_to_add
+                if len(edges[ind]) > 0:
+                  eng_to_add = construct_energy_meetup(llep_d, drone_loc, ind, edges, dedges, DS)
+                  if eng_rem - eng_to_add > 0:
+                    tmp = eng_to_add + (let_t[parent_loc_node][ind] / w_coeff) + (let_t[ind][demand[i][0]] / w_coeff_oth)
+                    if tmp < best_eng:
+                      best_eng = tmp
+                      best_sp = ind
+                      best_eng_to_add = eng_to_add
               if best_eng == float('inf'):   # drone can't move at all.
                 best_sp = drone_loc
                 best_eng_to_add = ENG_ZERO
@@ -2053,6 +2082,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
         to_visit, to_visit_truck = [], []
         # drone just came back to the truck at switch point.
         truck_loc_node = sel_sp  #  holds current selected switch point.
+        sel_sp = -1
         if demand[next_dem][1] <= MAX_WEIGHT:
           nbs, ws = [], []
           for sp in sp_poss[next_dem][1]:
@@ -2097,7 +2127,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
         got[next_dem] = 0
         cycle[num_delvd] = next_dem
         num_delvd += 1
-        if demand[next_dem] <= MAX_WEIGHT:
+        if demand[next_dem][0] <= MAX_WEIGHT:
           # sample a switch point, if delivery node itself then none.
           nbs, ws = [], []
           for sp in sp_poss[next_dem][1]:
