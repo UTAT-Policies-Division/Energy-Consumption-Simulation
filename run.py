@@ -106,7 +106,7 @@ if __name__ == '__main__':
   NUM_STOPS = 200
   NUM_ALLOCS = 10
   RANGE = float(10000000)   # dummy for now
-  eh = el.EnergyHelper.load("manhattan.pkl")
+  eh = el.EnergyHelper.load("uoft.pkl")
 #   eh.enforce_graph_connections()
 #   eh.demand = [(602, 11.5), (301, 8.25), (0, 0.25), (193, 0.5), (435, 9.25), 
 #                (42, 1.75), (115, 1), (56, 0.75), (223, 1.5), (348, 1)]
@@ -121,27 +121,29 @@ if __name__ == '__main__':
 #   eh.demand.pop(b_ind)
 #   eh.append_random_demand(50, cluster_num=0, cluster_jump=0)
   for _ in range(1):
-    eh.append_random_demand(200, cluster_num=0, cluster_jump=0,
+    eh.append_random_demand(150, cluster_num=0, cluster_jump=0,
                           drone_only_possible_component=0.2, num_allocs=NUM_ALLOCS)
     src = eh.get_top_right_node()
     eh.init_phermone_system(src, NUM_ALLOCS, R=RANGE)
     # eh.demand = []
 #   eh.make_phermone_plot()
-  eh.save("manhattan-processed.pkl")
-  lst = eh.n_pherm
-  N = len(eh.demand)
-  for i in range(N):
-    for j in range(N):
-      print(i, j, lst[i][eh.demand[j][0]])
-  exit(0)
+#   lst = eh.n_pherm
+#   N = len(eh.demand)
+#   for i in range(N):
+#     for j in range(N):
+#       print(i, j, lst[i][eh.demand[j][0]])
 #   print(eh.edges[0][0])
 #   print(max(max(v for v in arr) for arr in eh.n_pherm))
 #   for i in range(25, 201, 25):
 #     energy, cycle, swp = eh.aco(K=i)
 #     print(i, "Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
 #     print(cycle)
+  print(eh.demand)
   energy, cycle, swp = eh.aco(K=50, ants_per_iter=2)
-#   energy, cycle = eh.aco_truck_only()
+  print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
+  print(cycle)
+  print(swp)
+  energy, cycle = eh.aco_truck_only(K=50, ants_per_iter=2)
   print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
   print(cycle)
 #   eh.plot_cycle(cycle, [])

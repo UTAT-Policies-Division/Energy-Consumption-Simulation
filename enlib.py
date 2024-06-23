@@ -1099,13 +1099,20 @@ class EnergyHelper:
         avg_dem_phm += tmp
     # -------------------------------
     # Scaling demand phermone
-    # to be around 0.3 - 0.7
+    # to be around upto 0.8
     # -------------------------------
     avg_dem_phm /= len(demand) * len(demand)
-    scl = 10**(-(log10(avg_dem_phm) + 0.1))
-    for i in range(len(demand)):
-      for j in range(len(demand)):
+    scl = 10**(-(log10(avg_dem_phm) + 0.15))
+    for i in range(len(demand) - 1):
+      for j in range(len(demand) - 1):
         n_pherm[i][demand[j][0]] *= scl
+    avg_dem_phm = 0
+    for i in range(len(demand)):
+      avg_dem_phm += n_pherm[i][len(demand) - 1]
+    avg_dem_phm /= len(demand)
+    scl = 10**(-(log10(avg_dem_phm) + 0.15))
+    for i in range(len(demand)):
+      n_pherm[i][len(demand) - 1] *= scl
     # -------------------------------
     print("Verified connections and set phermones!")
     self.sp_poss = sp_poss
@@ -1329,6 +1336,11 @@ class EnergyHelper:
     lep_t = self.lep_t      # not changing
     edges = self.edges      # not changing
     dedges = self.dedges    # not changing
+    # print("Setting up delta hyperparamter...")
+    # sample_eng = _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm,
+    #                          cycles[i][1], llep_d, lep_t, cycles[i][2], let_t, 1, 
+    #                          DRONE_GROUND_SPEED, edges, dedges, cycles[i][0])
+    # print("Set up delta hyperparamter!")
     processes = [mp.Process(target=_aco_worker,
                             args=(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm,
                                   cycles[i][1], llep_d, lep_t, cycles[i][2], let_t, K, 
@@ -1847,7 +1859,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
   next_dem, eng_tot, num_delvd, swp_ind, eng_acc, pot_dem, parent_loc = None, None, None, None, None, None, None
   w_coeff_oth, truck_w_og, best_eng, best_sp, best_eng_to_add, sel_sp = None, None, None, None, None, None
   time_taken, prev_t_eng, truck_w_og, truck_side_eng, truck_side_w_lost = None, None, None, None, None
-  pot_dem_node, phm_src, phm_shft, phm_col = None, None, None, None
+  pot_dem_node = None
   # -----------------------------
   while K > 0:
     # -----------------------------
@@ -2388,16 +2400,12 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
     # -----------------------------
 
 def _aco_worker_truck_only(barrier, saw_zero, demand, n_pherm, cycle, let_t, K, result):
-  src = demand.pop()[0]     # DRONE WEIGHT NEEDS MANUAL SYNC
-  ALPHA, BETA, TW_DENM = 0.9, 1.5, 4535.9237
-  N_PHERM_SIZE, DEMAND_SIZE = int(len(n_pherm)), len(demand), 10**(-4)
+  src = demand.pop()[0]
+  ALPHA, BETA, DRONE_WEIGHT, TW_DENM = 0.9, 1.5, 12, 4535.9237
+  N_PHERM_SIZE, DEMAND_SIZE = int(len(n_pherm)), len(demand)
   NUM_NODES = int(N_PHERM_SIZE / (DEMAND_SIZE + 1))
   N_PHERM_LAST = N_PHERM_SIZE - NUM_NODES
-  TOTAL_WEIGHT = sum(pr[1] for pr in demand)
-  # src_local_poss = sp_poss.pop()  # list of node indexes
-  # src_local_paths = llep_d.pop()  # local best paths
-  # src_lep_t = lep_t.pop()         # list of paths to all nodes
-  # src_let_t = let_t.pop()         # list of path total energies
+  TOTAL_WEIGHT = sum(pr[1] for pr in demand) + DRONE_WEIGHT
   got = [0 for _ in range(DEMAND_SIZE)]
   f_dem_ps, f_dem_ws = [i for i in range(DEMAND_SIZE)], [0 for _ in range(DEMAND_SIZE)]
   nbs, ws, not_got_chance = [], [], False
@@ -2428,13 +2436,12 @@ def _aco_worker_truck_only(barrier, saw_zero, demand, n_pherm, cycle, let_t, K, 
     got[next_dem] = 1
     cycle[num_delvd] = next_dem
     num_delvd += 1
-    eng_tot += let_t[src][truck_loc_node] / w_coeff
     truck_loc, truck_loc_node = next_dem, demand[next_dem][0]
+    eng_tot += let_t[src][truck_loc_node] / w_coeff
     truck_w -= demand[next_dem][1]
     w_coeff = 1 - (truck_w / TW_DENM)
     # -----------------------------
     while num_delvd < DEMAND_SIZE:
-      # letting truck continue and decide whether to allocate a switch point.
       nbs, ws = [], []
       for i in range(DEMAND_SIZE):
         if got[i] == 0:
@@ -2453,7 +2460,7 @@ def _aco_worker_truck_only(barrier, saw_zero, demand, n_pherm, cycle, let_t, K, 
     # -----------------------------
     # Final Deployment
     # -----------------------------
-    assert abs(truck_w - DRONE_WEIGHT) < 0.1, "WEIGHT NOT GOOD"
+    assert abs(truck_w - DRONE_WEIGHT) < 0.1, "WEIGHT ERROR"
     result.value = eng_tot + let_t[truck_loc_node][src] / w_coeff
     K -= 1
     # -----------------------------
