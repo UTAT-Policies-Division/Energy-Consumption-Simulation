@@ -121,7 +121,7 @@ if __name__ == '__main__':
 #   eh.demand.pop(b_ind)
 #   eh.append_random_demand(50, cluster_num=0, cluster_jump=0)
   for _ in range(1):
-    eh.append_random_demand(50, cluster_num=0, cluster_jump=0,
+    eh.append_random_demand(200, cluster_num=0, cluster_jump=0,
                           drone_only_possible_component=0.6, num_allocs=NUM_ALLOCS)
     src = eh.get_top_right_node()
     eh.init_phermone_system(src, NUM_ALLOCS, R=RANGE)
@@ -138,17 +138,17 @@ if __name__ == '__main__':
 #     energy, cycle, swp = eh.aco(K=i)
 #     print(i, "Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
 #     print(cycle)
-  for sp in eh.sp_poss[25][1]:
-      print(eh.n_pherm[23][sp])
-      if sp in [x[0] for x in eh.demand]:
-          print("demand^")
-  exit(0)
+  # for sp in eh.sp_poss[25][1]:
+  #     print(eh.n_pherm[23][sp])
+  #     if sp in [x[0] for x in eh.demand]:
+  #         print("demand^")
+  # eh.make_phermone_plot()
   print(eh.demand)
-  energy, cycle, swp = eh.aco(K=150, ants_per_iter=6)
+  energy, cycle, swp = eh.aco(K=100, ants_per_iter=50)
   print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
   print(cycle)
   print(swp)
-  energy, cycle = eh.aco_truck_only(K=150, ants_per_iter=6)
+  energy, cycle = eh.aco_truck_only(K=100, ants_per_iter=50)
   print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
   print(cycle)
 #   eh.plot_cycle(cycle, [])

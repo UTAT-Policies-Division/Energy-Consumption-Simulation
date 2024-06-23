@@ -24,7 +24,7 @@ DRAW_PREC = 100 # power of 10, larger => more precise
 AREA = pi * (11 / meter_coeff)**2
 NEWT_PREC = 10**(-5)
 BATTERY_RESERVE_MARGIN = 0.2
-BATTERY_CAPACITY = 17.0 * 42 * 3600 / 10 # J,        TODO: remove divider
+BATTERY_CAPACITY = 17.0 * 42 * 3600 / 30 # J,        TODO: remove divider
 MAX_BATTERY_USE = BATTERY_CAPACITY * (1 - BATTERY_RESERVE_MARGIN)
 MAX_BATTERY_USE_HALF = MAX_BATTERY_USE / 2
 MIN_MEETUP_BATTERY_REM = MAX_BATTERY_USE * 0.15
@@ -1316,7 +1316,7 @@ class EnergyHelper:
     N_PHERM_SIZE = N_PHERM_LAST + NUM_NODES
     SWP_SIZE = 2 * DEMAND_SIZE
     SP_PHERM_SIZE = (DEMAND_SIZE + 1) * (DEMAND_SIZE + 1)
-    SP_PHERM_INIT, DELTA_SP_COEFF = 0.55, 0.75
+    SP_PHERM_INIT, DELTA_SP_COEFF, DELTA_SP_NBH_COEFF = 0.55, 1.15, 0.75
     n_pherm = mp.Array('f', N_PHERM_SIZE, lock=False)
     sp_pherm = mp.Array('f', SP_PHERM_SIZE, lock=False)
     c = -1
@@ -1346,9 +1346,9 @@ class EnergyHelper:
                                   DRONE_GROUND_SPEED, edges, dedges, cycles[i][0])) for i in range(ants_per_iter)]
     print("Initialized ACO child workers!\nStarting ACO...")
     best_cycle = sample([i for i in range(DEMAND_SIZE)], k=DEMAND_SIZE)
-    best_swp = [-3 for _ in range(SWP_SIZE)]  # ensures no initial activation
-    best_energy = float(10**95)
-    best_ind, j, delta, delta_sp, delta_sp_hlf, cyc_ind = -1, -1, -1, -1, -1, -1
+    best_swp = [-3 for _ in range(SWP_SIZE)]  # -3 ensures no initial activation
+    best_energy = float(10**50)  # large enough number to compare against for us
+    best_ind, j, delta, delta_sp, delta_sp_nbh, cyc_ind = -1, -1, -1, -1, -1, -1
     shft, prev_tsj = -1, False
     cycle, swp, energy, last_drone_del = None, None, None, None
     for p in processes:
@@ -1361,8 +1361,6 @@ class EnergyHelper:
           c = barrier.value
       with saw_zero.get_lock():
         saw_zero.value += ants_per_iter
-      # if iter % 10 == 0:
-      #   self.plot_cycle(cycles[0][0], int(iter / 10))   # for saving change pictures
       cycles.sort(key = lambda x: x[0].value)
       if abs(cycles[0][0].value - best_energy) / best_energy < NEWT_PREC:
         STAGNANT_LIMIT -= 1
@@ -1379,20 +1377,17 @@ class EnergyHelper:
       # elitism loading below
       delta = q / best_energy
       delta_sp = DELTA_SP_COEFF * delta
-      delta_sp_hlf = delta_sp * 0.5
+      delta_sp_nbh = DELTA_SP_NBH_COEFF * delta_sp
       first_parent, last_drone_del = None, None
       cycle, swp = best_cycle, best_swp
+      j, cyc_ind, prev_tsj = 1, 0, False
       n_pherm[N_PHERM_LAST + demand[cycle[0]][0]] += delta
       if swp[0] >= 0:
         n_pherm[N_PHERM_LAST + swp[0]] += delta_sp
         for e in edges[swp[0]]:
-          if len(edges[e[0]]) > 0:
-            n_pherm[N_PHERM_LAST + e[0]] += delta_sp_hlf
+          n_pherm[N_PHERM_LAST + e[0]] += delta_sp_nbh
         first_parent = cycle[0]
         last_drone_del = first_parent
-      j = 1
-      cyc_ind = 0
-      prev_tsj = False
       while j < SWP_SIZE - 1:
         if swp[j] == -2:
           if swp[j+1] == -2:
@@ -1404,28 +1399,18 @@ class EnergyHelper:
           elif swp[j+1] == -1:
             n_pherm[demand[cycle[cyc_ind + 1]][0] + NUM_NODES * cycle[cyc_ind]] += delta
           else:
-            shft = NUM_NODES * cycle[cyc_ind]
             last_drone_del = cycle[cyc_ind + 1]
-            n_pherm[demand[last_drone_del][0] + shft] += delta
-            n_pherm[swp[j+1] + shft] += delta_sp
-            for e in edges[swp[j+1]]:
-              if len(edges[e[0]]) > 0:
-                n_pherm[e[0] + shft] += delta_sp_hlf
+            n_pherm[demand[last_drone_del][0] + NUM_NODES * cycle[cyc_ind]] += delta
         elif swp[j] >= 0:
           n_pherm[demand[cycle[cyc_ind + 1]][0] + NUM_NODES * last_drone_del] += delta
           if prev_tsj:
             n_pherm[demand[cycle[cyc_ind + 1]][0] + NUM_NODES * cycle[cyc_ind]] += delta
-            n_pherm[swp[j] + NUM_NODES * cycle[cyc_ind]] += delta_sp
-            for e in edges[swp[j]]:
-              if len(edges[e[0]]) > 0:
-                n_pherm[e[0] + shft] += delta_sp_hlf
           else:
             sp_pherm[cycle[cyc_ind + 1] + DEMAND_SIZE * first_parent] += delta
           if swp[j+1] >= 0:
             n_pherm[swp[j+1] + NUM_NODES * last_drone_del] += delta_sp
             for e in edges[swp[j+1]]:
-              if len(edges[e[0]]) > 0:
-                n_pherm[e[0] + shft] += delta_sp_hlf
+              n_pherm[e[0] + shft] += delta_sp_nbh
             last_drone_del = cycle[cyc_ind + 1]
           else:
             last_drone_del = None
@@ -1437,8 +1422,7 @@ class EnergyHelper:
           n_pherm[demand[cycle[cyc_ind + 1]][0] + shft] += delta
           n_pherm[swp[j+1] + shft] += delta_sp
           for e in edges[swp[j+1]]:
-              if len(edges[e[0]]) > 0:
-                n_pherm[e[0] + shft] += delta_sp_hlf
+            n_pherm[e[0] + shft] += delta_sp_nbh
         j += 2
         cyc_ind += 1
       # loading from top 50% of population
@@ -1450,19 +1434,16 @@ class EnergyHelper:
           best_energy = energy
         delta = q / energy
         delta_sp = DELTA_SP_COEFF * delta
-        delta_sp_hlf = delta_sp * 0.5
+        delta_sp_nbh = DELTA_SP_NBH_COEFF * delta_sp
         first_parent, last_drone_del = None, None
+        j, cyc_ind, prev_tsj = 1, 0, False
         n_pherm[N_PHERM_LAST + demand[cycle[0]][0]] += delta
         if swp[0] >= 0:
           n_pherm[N_PHERM_LAST + swp[0]] += delta_sp
           for e in edges[swp[0]]:
-            if len(edges[e[0]]) > 0:
-              n_pherm[N_PHERM_LAST + e[0]] += delta_sp_hlf
+            n_pherm[N_PHERM_LAST + e[0]] += delta_sp_nbh
           first_parent = cycle[0]
           last_drone_del = first_parent
-        j = 1
-        cyc_ind = 0
-        prev_tsj = False
         while j < SWP_SIZE - 1:
           if swp[j] == -2:
             if swp[j+1] == -2:
@@ -1474,28 +1455,18 @@ class EnergyHelper:
             elif swp[j+1] == -1:
               n_pherm[demand[cycle[cyc_ind + 1]][0] + NUM_NODES * cycle[cyc_ind]] += delta
             else:
-              shft = NUM_NODES * cycle[cyc_ind]
               last_drone_del = cycle[cyc_ind + 1]
-              n_pherm[demand[last_drone_del][0] + shft] += delta
-              n_pherm[swp[j+1] + shft] += delta_sp
-              for e in edges[swp[j+1]]:
-                if len(edges[e[0]]) > 0:
-                  n_pherm[e[0] + shft] += delta_sp_hlf
+              n_pherm[demand[last_drone_del][0] + NUM_NODES * cycle[cyc_ind]] += delta
           elif swp[j] >= 0:
             n_pherm[demand[cycle[cyc_ind + 1]][0] + NUM_NODES * last_drone_del] += delta
             if prev_tsj:
               n_pherm[demand[cycle[cyc_ind + 1]][0] + NUM_NODES * cycle[cyc_ind]] += delta
-              n_pherm[swp[j] + NUM_NODES * cycle[cyc_ind]] += delta_sp
-              for e in edges[swp[j]]:
-                if len(edges[e[0]]) > 0:
-                  n_pherm[e[0] + shft] += delta_sp_hlf
             else:
               sp_pherm[cycle[cyc_ind + 1] + DEMAND_SIZE * first_parent] += delta
             if swp[j+1] >= 0:
               n_pherm[swp[j+1] + NUM_NODES * last_drone_del] += delta_sp
               for e in edges[swp[j+1]]:
-                if len(edges[e[0]]) > 0:
-                  n_pherm[e[0] + shft] += delta_sp_hlf
+                n_pherm[e[0] + shft] += delta_sp_nbh
               last_drone_del = cycle[cyc_ind + 1]
             else:
               last_drone_del = None
@@ -1507,10 +1478,7 @@ class EnergyHelper:
             n_pherm[demand[cycle[cyc_ind + 1]][0] + shft] += delta
             n_pherm[swp[j+1] + shft] += delta_sp
             for e in edges[swp[j+1]]:
-                if len(edges[e[0]]) > 0:
-                  n_pherm[e[0] + shft] += delta_sp_hlf
-          j += 2
-          cyc_ind += 1
+              n_pherm[e[0] + shft] += delta_sp_nbh
       # updating best cycle data
       _, cycle, swp = cycles[best_ind]
       for i in range(DEMAND_SIZE):
@@ -1522,6 +1490,8 @@ class EnergyHelper:
         n_pherm[j] *= degradation_factor
         j += 1
       pbar.update()
+      if iter % 25 == 0:
+        print("Update: best energy cycle found so far:", round(best_energy / 10**6, 2), "MJ")
       c = 1
       while c > 0:
         with saw_zero.get_lock():
@@ -1633,7 +1603,7 @@ class EnergyHelper:
     print(l3)
 
   def make_phermone_plot(self, dem_ind=0, width=500, height=500, filename="phermone plot.png"):
-    max_x, max_y, max_val = 0, 0, 0
+    max_x, max_y = 0, 0
     for i in range(len(self.nodes)):
       if abs(self.nodes[i][0]) > max_x:
         max_x = self.nodes[i][0]
@@ -1641,21 +1611,14 @@ class EnergyHelper:
         max_y = self.nodes[i][1]
     w_sc, h_sc = 0.5 * width / max_x, 0.5 * height / max_y
     src = self.n_pherm[dem_ind]
-    max_val, max_comp = max(i for i in src), 0.7
-    print(max_comp * max_val)
     img = Image.new( 'RGB', (width+5, height+5), "black")
     pixels = img.load()
     for i in range(len(self.nodes)):
       R, G, B = pixels[int((self.nodes[i][0] + max_x) * w_sc), 
                        int((self.nodes[i][1] + max_y) * h_sc)]
-      if src[i] > max_comp * max_val:
-        R = 0
-        G = 250
-        B = 250
-      else:
-        comp = int(100 + 150 * src[i] / max_val)
-        R = min(R + comp, 250)
-        G = min(G + (250 - comp), 250)
+      comp = int(10 + 10 * src[i])
+      R = min(R + comp, 250)
+      G = min(G + (250 - comp), 250)
       pixels[int((self.nodes[i][0] + max_x) * w_sc), 
              int((self.nodes[i][1] + max_y) * h_sc)] = (R, G, B)
     img.show()
@@ -1975,16 +1938,18 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
               common_sps = sp_poss_set[drone_loc][0] & sp_poss_set[i][1]
               if len(common_sps) > 0:
                 eng_so_far = construct_energy(llep_d, to_visit, edges, dedges, drone_w + demand[i][1], DS)
-                if eng_so_far > MAX_BATTERY_USE:
-                  continue
                 eng_rem = ENG_LEVL - eng_so_far - MIN_MEETUP_BATTERY_REM
-                # lval = (n_pherm[demand[i][0] + curr_shft])**ALPHA / (eng_so_far)**BETA
-                lval = 0
-                for sp in common_sps:
-                  eng_to_add = construct_energy_spef(llep_d, drone_loc, sp, i, edges, dedges, demand, demand[i][1], DS)
-                  if eng_rem - eng_to_add > 0:
-                    nbs.append((i, sp, eng_so_far + eng_to_add))
-                    ws.append(lval + ((n_pherm[sp + curr_shft])**ALPHA / (eng_to_add)**BETA))
+                if eng_rem <= 0:
+                  continue
+                best_sp = -1
+                for ind in common_sps:
+                  eng_to_add = construct_energy_spef(llep_d, drone_loc, ind, i, edges, dedges, demand, demand[i][1], DS)
+                  if eng_to_add < eng_rem:
+                    eng_rem = eng_to_add
+                    best_sp = ind
+                if best_sp >= 0:
+                  nbs.append((i, best_sp, eng_so_far + eng_rem))
+                  ws.append((n_pherm[demand[i][0] + curr_shft])**ALPHA / (eng_so_far)**BETA)
           if len(nbs) == 0:
             break
           drone_loc, sp, eng_acc = choices(nbs, weights=ws)[0]
