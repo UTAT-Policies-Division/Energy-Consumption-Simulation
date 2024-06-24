@@ -1470,7 +1470,7 @@ class EnergyHelper:
     if cpu_count() < ants_per_iter:
       ants_per_iter = cpu_count()
       print("WARNING: cpu count too low, set ants/iteration to cpu count:", cpu_count())
-    STAGNANT_LIMIT, STATUS_BREAK = int(0.2 * K), int(K / 6)
+    STAGNANT_LIMIT, STATUS_BREAK = int(0.2 * K), max(int(K / 6), 1)
     BEST_HALF_SIZE = ants_per_iter // 2
     degradation_factor = degradation_factor**BEST_HALF_SIZE
     barrier = mp.Value('i',lock=True)

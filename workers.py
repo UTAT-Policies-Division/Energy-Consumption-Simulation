@@ -234,6 +234,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
       _glb_cons_eng_meetup[i][j] = eng
   # -----------------------------
   while K > 0:
+    print("Entered Iteration")
     # -----------------------------
     # Early Exit Signal
     # -----------------------------
@@ -809,6 +810,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
     assert abs(truck_w - DRONE_WEIGHT) < 0.1, "WEIGHT ERROR"
     result.value = eng_tot
     K -= 1
+    print("Ended Iteration")
     # -----------------------------
     # Synchronizer
     # -----------------------------
