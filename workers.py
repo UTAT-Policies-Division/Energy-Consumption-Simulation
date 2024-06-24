@@ -343,6 +343,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
         cur = drone_w + 0.25
         while cur <= MAX_WEIGHT:
           lmem.append(construct_energy(llep_d, to_visit, edges, dedges, cur, DS))
+          cur += 0.25
         while ENG_LEVL - eng_acc > 0:
           nbs, ws = [], []
           curr_shft = NUM_NODES * drone_loc
