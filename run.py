@@ -103,9 +103,6 @@ if __name__ == '__main__':
 #   print(eh.classify_turn_angle(0, 1, 3))
 #   print(eh.edge_exists(0, 3))
 #   eh.save("uoft.pkl")
-  NUM_STOPS = 200
-  NUM_ALLOCS = 10
-  RANGE = float(10000000)   # dummy for now
   eh = el.EnergyHelper.load("manhattan.pkl")
 #   eh.enforce_graph_connections()
 #   eh.demand = [(602, 11.5), (301, 8.25), (0, 0.25), (193, 0.5), (435, 9.25), 
@@ -120,8 +117,11 @@ if __name__ == '__main__':
 #   print(b_ind, eh.nodes[eh.demand[b_ind][0]])
 #   eh.demand.pop(b_ind)
 #   eh.append_random_demand(50, cluster_num=0, cluster_jump=0)
+  NUM_STOPS = 200
+  NUM_ALLOCS = 10
+  RANGE = float(10000000)   # dummy for now
   for _ in range(1):
-    eh.append_random_demand(200, cluster_num=0, cluster_jump=0,
+    eh.append_random_demand(NUM_STOPS, cluster_num=0, cluster_jump=0,
                           drone_only_possible_component=0.6, num_allocs=NUM_ALLOCS)
     src = eh.get_top_right_node()
     eh.init_phermone_system(src, NUM_ALLOCS, R=RANGE)
@@ -144,11 +144,11 @@ if __name__ == '__main__':
   #         print("demand^")
   # eh.make_phermone_plot()
   print(eh.demand)
-  energy, cycle, swp = eh.aco(K=100, ants_per_iter=50)
+  energy, cycle, swp = eh.aco(K=100, ants_per_iter=10)
   print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
   print(cycle)
   print(swp)
-  energy, cycle = eh.aco_truck_only(K=100, ants_per_iter=50)
+  energy, cycle = eh.aco_truck_only(K=100, ants_per_iter=10)
   print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
   print(cycle)
 #   eh.plot_cycle(cycle, [])
