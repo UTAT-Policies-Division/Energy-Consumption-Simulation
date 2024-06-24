@@ -213,7 +213,9 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
   pot_dem_node, lep_frm, lep_to, eng, prv, cur, cur_ty, cur_id, w_ind = None, None, None, -1, -1, -1, -1, -1, -1
   _glb_cons_eng_meetup = [[float('inf') for _ in range(NUM_NODES)] for _ in range(DEMAND_SIZE)]
   for i in range(DEMAND_SIZE):
-    for j in range(NUM_NODES):
+    for j in sp_poss[i][0]:
+      if _glb_cons_eng_meetup[i][j] == float('inf'):
+        continue
       eng = ENG_ZERO
       lep_frm = llep_d[i][0]
       cur, cur_id, cur_ty = lep_frm[j]
