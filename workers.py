@@ -194,8 +194,9 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
   # src_lep_t = lep_t.pop()         # list of paths to all nodes
   # src_let_t = let_t.pop()         # list of path total energies
   got = [0 for _ in range(DEMAND_SIZE)]
+  RELV_WS = WEIGHTS[0:len(WEIGHTS) - 1]
   f_dem_ps, f_dem_ws = [i for i in range(DEMAND_SIZE)], [0 for _ in range(DEMAND_SIZE)]
-  sp_poss_set, nbs, ws, not_got_chance = [], [], [], False
+  sp_poss_set, nbs, ws, seen, lmem, not_got_chance = [], [], [], [], [], False
   for i in range(len(sp_poss)):
     sp_poss_set.append((set(sp_poss[i][0]),set(sp_poss[i][1])))
   eng_rem, eng_to_add, eng_at_sp, next_dem_node, curr_shft, flag = 0, 0, 0, -1, -1, -1
@@ -208,8 +209,27 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
   drone_loc, drone_loc_node, drone_w, to_visit, to_visit_truck, tvs_ind_st = None, None, None, [], [], None
   next_dem, eng_tot, num_delvd, swp_ind, eng_acc, pot_dem, parent_loc = None, None, None, None, None, None, None
   w_coeff_oth, truck_w_og, best_eng, best_sp, best_eng_to_add, sel_sp = None, None, None, None, None, None
-  time_taken, prev_t_eng, truck_w_og, truck_side_eng, truck_side_w_lost = None, None, None, None, None
-  pot_dem_node = None
+  time_taken, prev_t_eng, truck_w_og, truck_side_eng, truck_side_w_lost, e = None, None, None, None, None, None
+  pot_dem_node, lep_frm, lep_to, eng, prv, cur, cur_ty, cur_id, w_ind = None, None, None, -1, -1, -1, -1, -1, -1
+  _glb_cons_eng_meetup = [[float('inf') for _ in range(NUM_NODES)] for _ in range(DEMAND_SIZE)]
+  for i in range(DEMAND_SIZE):
+    for j in range(NUM_NODES):
+      eng = ENG_ZERO
+      lep_frm = llep_d[i][0]
+      cur, cur_id, cur_ty = lep_frm[j]
+      if cur == -1:
+        if j == demand[i][0]:
+          _glb_cons_eng_meetup[i][j] = ENG_ZERO
+        continue
+      while cur != -1:
+        if cur_ty:
+          e = edges[cur][cur_id]
+          eng += e[4][0] * e[1] / DS
+        else:
+          e = dedges[cur][cur_id]
+          eng += e[2][0] * e[1] / DS
+        cur, cur_id, cur_ty = lep_frm[cur]
+      _glb_cons_eng_meetup[i][j] = eng
   # -----------------------------
   while K > 0:
     # -----------------------------
@@ -318,6 +338,9 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
                 nbs.append((i, time_taken))
                 ws.append((sp_pherm[i + DEMAND_SIZE * parent_loc])**ALPHA /
                           (let_t[parent_loc_node][demand[i][0]] / w_coeff)**BETA)
+        lmem = []
+        for i in RELV_WS:
+          lmem.append(construct_energy(llep_d, to_visit, edges, dedges, drone_w + i, DS))
         while ENG_LEVL - eng_acc > 0:
           nbs, ws = [], []
           curr_shft = NUM_NODES * drone_loc
@@ -325,13 +348,42 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
             if got[i] == 0 and drone_w + demand[i][1] < MAX_WEIGHT:
               common_sps = sp_poss_set[drone_loc][0] & sp_poss_set[i][1]
               if len(common_sps) > 0:
-                eng_so_far = construct_energy(llep_d, to_visit, edges, dedges, drone_w + demand[i][1], DS)
+                eng_so_far = lmem[(int(demand[i][1]) * 4) - 1]
                 eng_rem = ENG_LEVL - eng_so_far - MIN_MEETUP_BATTERY_REM
                 if eng_rem <= 0:
                   continue
                 best_sp = -1
                 for ind in common_sps:
-                  eng_to_add = construct_energy_spef(llep_d, drone_loc, ind, i, edges, dedges, demand, demand[i][1], DS)
+                  # from_dem = drone_loc, sp = ind, to_dem = i
+                  eng_to_add, w_ind = ENG_ZERO, int(demand[i][1] * 4)
+                  lep_frm = llep_d[drone_loc][0]
+                  lep_to = llep_d[i][1]
+                  prv = ind
+                  cur, cur_ty = lep_to[prv]
+                  if cur == -1:
+                    if ind != demand[i][0]:
+                      continue
+                  while cur != -1:
+                    if cur_ty:
+                      e = edges[prv][cur]
+                      eng_to_add += e[4][w_ind] * e[1] / DS
+                    else:
+                      e = dedges[prv][cur]
+                      eng_to_add += e[2][w_ind] * e[1] / DS
+                    prv = e[0]
+                    cur, cur_ty = lep_to[prv]
+                  cur, cur_id, cur_ty = lep_frm[ind]
+                  if cur == -1:
+                    if ind != demand[drone_loc][0]:
+                      continue
+                  while cur != -1:
+                    if cur_ty:
+                      e = edges[cur][cur_id]
+                      eng_to_add += e[4][w_ind] * e[1] / DS
+                    else:
+                      e = dedges[cur][cur_id]
+                      eng_to_add += e[2][w_ind] * e[1] / DS
+                    cur, cur_id, cur_ty = lep_frm[cur]
                   if eng_to_add < eng_rem:
                     eng_rem = eng_to_add
                     best_sp = ind
@@ -430,7 +482,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
           for ind in sp_poss[drone_loc][0]:
             tmp = let_t[parent_loc_node][ind] + let_t[ind][pot_dem_node]
             if tmp != float('inf'):
-              eng_to_add = construct_energy_meetup(llep_d, drone_loc, ind, edges, dedges, demand, DS)
+              eng_to_add = _glb_cons_eng_meetup[drone_loc][ind]
               if eng_rem - eng_to_add > 0: 
                 tmp = eng_to_add + (let_t[parent_loc_node][ind] / w_coeff) + (let_t[ind][pot_dem_node] / w_coeff_oth)
                 if tmp < best_eng:
@@ -475,7 +527,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
           for ind in sp_poss[drone_loc][0]:
             tmp = let_t[parent_loc_node][ind] + let_t[ind][src]
             if tmp != float('inf'):
-              eng_to_add = construct_energy_meetup(llep_d, drone_loc, ind, edges, dedges, demand, DS)
+              eng_to_add = _glb_cons_eng_meetup[drone_loc][ind]
               if eng_rem - eng_to_add > 0:
                 tmp = eng_to_add + (let_t[parent_loc_node][ind] / w_coeff) + (let_t[ind][src] / w_coeff_oth)
                 if tmp < best_eng:
@@ -507,7 +559,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
               for ind in sp_poss[drone_loc][0]:
                 tmp = let_t[parent_loc_node][ind] + let_t[ind][demand[i][0]]
                 if tmp != float('inf'):
-                  eng_to_add = construct_energy_meetup(llep_d, drone_loc, ind, edges, dedges, demand, DS)
+                  eng_to_add = _glb_cons_eng_meetup[drone_loc][ind]
                   if eng_rem - eng_to_add > 0:
                     tmp = eng_to_add + (let_t[parent_loc_node][ind] / w_coeff) + (let_t[ind][demand[i][0]] / w_coeff_oth)
                     if tmp < best_eng:
