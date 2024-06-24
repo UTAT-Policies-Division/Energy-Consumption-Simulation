@@ -210,6 +210,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
   w_coeff_oth, truck_w_og, best_eng, best_sp, best_eng_to_add, sel_sp = None, None, None, None, None, None
   time_taken, prev_t_eng, truck_w_og, truck_side_eng, truck_side_w_lost = None, None, None, None, None
   pot_dem_node, lep_frm, lep_to, eng, prv, cur, cur_ty, cur_id, w_ind = None, None, None, -1, -1, -1, -1, -1, -1
+  lmem = [-1 for _ in range(len(WEIGHTS))]
   _glb_cons_eng_meetup = [[float('inf') for _ in range(NUM_NODES)] for _ in range(DEMAND_SIZE)]
   for i in range(DEMAND_SIZE):
     for j in sp_poss[i][0]:
@@ -339,11 +340,12 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
                 nbs.append((i, time_taken))
                 ws.append((sp_pherm[i + DEMAND_SIZE * parent_loc])**ALPHA /
                           (let_t[parent_loc_node][demand[i][0]] / w_coeff)**BETA)
-        lmem = []
         cur = drone_w + 0.25
+        cur_id = int(4 * cur)
         while cur <= MAX_WEIGHT:
-          lmem.append(construct_energy(llep_d, to_visit, edges, dedges, cur, DS))
+          lmem[cur_id] = construct_energy(llep_d, to_visit, edges, dedges, cur, DS)
           cur += 0.25
+          cur_id += 1
         while ENG_LEVL - eng_acc > 0:
           nbs, ws = [], []
           curr_shft = NUM_NODES * drone_loc
@@ -351,7 +353,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
             if got[i] == 0 and drone_w + demand[i][1] <= MAX_WEIGHT:
               common_sps = sp_poss_set[drone_loc][0] & sp_poss_set[i][1]
               if len(common_sps) > 0:
-                eng_so_far = lmem[(int(demand[i][1]) * 4) - 1]
+                eng_so_far = lmem[int((drone_w + demand[i][1]) * 4)]
                 eng_rem = ENG_LEVL - eng_so_far - MIN_MEETUP_BATTERY_REM
                 if eng_rem <= 0:
                   continue

@@ -567,7 +567,213 @@ class EnergyHelper:
     print("Line segement cover generated!")
     return (segs_x, segs_y, segs_n)
 
-  def plot_cycle(self, cycle, swp, save=False, pic_number=0):
+  def plot_cycle(self, src, cycle, swp, save=False, pic_number=0):
+    drone_color, drone_alpha = "blue", 0.6
+    truck_color, truck_alpha = "black", 0.4
+    curr_drone_plot_x, curr_drone_plot_y = [], []
+    truck_plot_x, truck_plot_y = [], []
+    tmp_x, tmp_y = [], []
+    prev_node, limit = src, 2 * len(self.demand) - 1
+    truck_plot_x.append(self.nodes[src][0])
+    truck_plot_y.append(self.nodes[src][1])
+    first_parent, last_drone_del, next_location = None, None, None
+    j, cyc_ind = 1, 0
+    if swp[0] >= 0:
+      first_parent = cycle[0]
+      last_drone_del = first_parent
+      lep_to = self.llep_d[last_drone_del][1]
+      prv = swp[0]
+      cur, cur_ty = lep_to[prv]
+      while cur != -1:
+        if cur_ty:
+          e = self.edges[prv][cur]
+        else:
+          e = self.dedges[prv][cur]
+        prv = e[0]
+        curr_drone_plot_x.append(self.nodes[prv][0])
+        curr_drone_plot_y.append(self.nodes[prv][1])
+        cur, cur_ty = lep_to[prv]
+      prev_node = swp[0]
+      next_location = prev_node
+    else:
+      prev_node = cycle[0]
+      next_location = prev_node
+    cur, _ = self.lep_t[src][next_location]
+    while cur != -1:
+      tmp_x.append(self.nodes[cur][0])
+      tmp_y.append(self.nodes[cur][1])
+      cur, _ = self.lep_t[prev_node][cur]
+    tmp_x.reverse()
+    tmp_y.reverse()
+    truck_plot_x.extend(tmp_x)
+    truck_plot_y.extend(tmp_y)
+    while j < limit:
+      if swp[j] == -2:
+        if swp[j+1] < 0:
+          tmp_x, tmp_y = [], []
+          cur, _ = self.lep_t[prev_node][cycle[cyc_ind + 1]]
+          while cur != -1:
+            tmp_x.append(self.nodes[cur][0])
+            tmp_y.append(self.nodes[cur][1])
+            cur, _ = self.lep_t[prev_node][cur]
+          tmp_x.reverse()
+          tmp_y.reverse()
+          truck_plot_x.extend(tmp_x)
+          truck_plot_y.extend(tmp_y)
+        else:
+          last_drone_del = cycle[cyc_ind + 1]
+          lep_frm = self.llep_d[prev_node][0]
+          lep_to = self.llep_d[last_drone_del][1]
+          tmp_x, tmp_y = [], []
+          cur, _, _ = lep_frm[swp[j+1]]
+          while cur != -1:
+            tmp_x.append(self.nodes[cur][0])
+            tmp_y.append(self.nodes[cur][1])
+            cur, _, _ = lep_frm[cur]
+          tmp_x.reverse()
+          tmp_y.reverse()
+          curr_drone_plot_x.extend(tmp_x)
+          curr_drone_plot_y.extend(tmp_y)
+          prv = swp[j+1]
+          cur, cur_ty = lep_to[prv]
+          while cur != -1:
+            if cur_ty:
+              e = self.edges[prv][cur]
+            else:
+              e = self.dedges[prv][cur]
+            prv = e[0]
+            curr_drone_plot_x.append(self.nodes[prv][0])
+            curr_drone_plot_y.append(self.nodes[prv][1])
+            cur, cur_ty = lep_to[prv]
+      elif swp[j] >= 0:
+        lep_frm = self.llep_d[last_drone_del][0]
+        tmp_x, tmp_y = [], []
+        cur, _, _ = lep_frm[swp[j]]
+        while cur != -1:
+          tmp_x.append(self.nodes[cur][0])
+          tmp_y.append(self.nodes[cur][1])
+          cur, _, _ = lep_frm[cur]
+        tmp_x.reverse()
+        tmp_y.reverse()
+        curr_drone_plot_x.extend(tmp_x)
+        curr_drone_plot_y.extend(tmp_y)
+        tmp_x, tmp_y = [], []
+        cur, _ = self.lep_t[prev_node][swp[j]]
+        while cur != -1:
+          tmp_x.append(self.nodes[cur][0])
+          tmp_y.append(self.nodes[cur][1])
+          cur, _ = self.lep_t[prev_node][cur]
+        tmp_x.reverse()
+        tmp_y.reverse()
+        truck_plot_x.extend(tmp_x)
+        truck_plot_y.extend(tmp_y)
+        plt.plot(curr_drone_plot_x, curr_drone_plot_y, marker="", c=drone_color, alpha=drone_alpha)
+        curr_drone_plot_x, curr_drone_plot_y = [], []
+        if swp[j+1] >= 0:
+          last_drone_del = cycle[cyc_ind + 1]
+          lep_to = self.llep_d[last_drone_del][1]
+          prv = swp[j+1]
+          cur, cur_ty = lep_to[prv]
+          while cur != -1:
+            if cur_ty:
+              e = self.edges[prv][cur]
+            else:
+              e = self.dedges[prv][cur]
+            prv = e[0]
+            curr_drone_plot_x.append(self.nodes[prv][0])
+            curr_drone_plot_y.append(self.nodes[prv][1])
+            cur, cur_ty = lep_to[prv]
+          next_location = swp[j+1]
+        else:
+          last_drone_del = None
+          next_location = cycle[cyc_ind + 1]
+        tmp_x, tmp_y = [], []
+        cur, _ = self.lep_t[swp[j]][next_location]
+        while cur != -1:
+          tmp_x.append(self.nodes[cur][0])
+          tmp_y.append(self.nodes[cur][1])
+          cur, _ = self.lep_t[prev_node][cur]
+        tmp_x.reverse()
+        tmp_y.reverse()
+        truck_plot_x.extend(tmp_x)
+        truck_plot_y.extend(tmp_y)
+      else:
+        first_parent = cycle[cyc_ind + 1]
+        last_drone_del = first_parent
+        cur, _ = self.lep_t[prev_node][swp[j+1]]
+        while cur != -1:
+          truck_plot_x.append(self.nodes[cur][0])
+          truck_plot_y.append(self.nodes[cur][1])
+          cur, _ = self.lep_t[prev_node][cur]
+        lep_to = self.llep_d[last_drone_del][1]
+        prv = swp[j+1]
+        cur, cur_ty = lep_to[prv]
+        while cur != -1:
+          if cur_ty:
+            e = self.edges[prv][cur]
+          else:
+            e = self.dedges[prv][cur]
+          prv = e[0]
+          curr_drone_plot_x.append(self.nodes[prv][0])
+          curr_drone_plot_y.append(self.nodes[prv][1])
+          cur, cur_ty = lep_to[prv]
+      prev_node = cycle[cyc_ind + 1]
+      j += 2
+      cyc_ind += 1
+    tmp_x, tmp_y = [], []
+    if swp[j] >= 0:
+      lep_frm = self.llep_d[last_drone_del][0]
+      tmp_x, tmp_y = [], []
+      cur, _, _ = lep_frm[swp[j]]
+      while cur != -1:
+        tmp_x.append(self.nodes[cur][0])
+        tmp_y.append(self.nodes[cur][1])
+        cur, _, _ = lep_frm[cur]
+      tmp_x.reverse()
+      tmp_y.reverse()
+      curr_drone_plot_x.extend(tmp_x)
+      curr_drone_plot_y.extend(tmp_y)
+      plt.plot(curr_drone_plot_x, curr_drone_plot_y, marker="", c="green", alpha=0.6)
+      tmp_x, tmp_y = [], []
+      cur, _ = self.lep_t[prev_node][swp[j]]
+      while cur != -1:
+        tmp_x.append(self.nodes[cur][0])
+        tmp_y.append(self.nodes[cur][1])
+        cur, _ = self.lep_t[prev_node][cur]
+      tmp_x.reverse()
+      tmp_y.reverse()
+      truck_plot_x.extend(tmp_x)
+      truck_plot_y.extend(tmp_y)
+      prev_node = swp[j]
+
+
+
+
+
+
+      lep_to = self.llep_d[last_drone_del][1]
+      prv = swp[0]
+      cur, cur_ty = lep_to[prv]
+      while cur != -1:
+        if cur_ty:
+          e = self.edges[prv][cur]
+        else:
+          e = self.dedges[prv][cur]
+        prv = e[0]
+        curr_drone_plot_x.append(self.nodes[prv][0])
+        curr_drone_plot_y.append(self.nodes[prv][1])
+        cur, cur_ty = lep_to[prv]
+      prev_node = swp[0]
+      next_location = prev_node
+    cur, _ = self.lep_t[prev_node][src]
+    while cur != -1:
+      tmp_x.append(self.nodes[cur][0])
+      tmp_y.append(self.nodes[cur][1])
+      cur, _ = self.lep_t[prev_node][cur]
+    tmp_x.reverse()
+    tmp_y.reverse()
+    truck_plot_x.extend(tmp_x)
+    truck_plot_y.extend(tmp_y)
     got = [0 for _ in range(len(self.nodes))]
     nx, ny, nc = [], [], []
     dx, dy = [], []
@@ -612,42 +818,7 @@ class EnergyHelper:
     llx, lly, lln = self.line_cover_d
     for i in range(len(llx)):
       plt.plot(llx[i], lly[i], marker="", c="limegreen", alpha=0.3)
-    glx, gly = [], []
-    lx, ly = [], []
-    for ind in self.lep_t[-1][self.demand[cycle[0]][0]]:
-      lx.append(self.nodes[ind][0])
-      ly.append(self.nodes[ind][1])
-    lx.append(self.nodes[self.demand[-1][0]][0])
-    ly.append(self.nodes[self.demand[-1][0]][1])
-    lx.reverse()
-    ly.reverse()
-    glx.extend(lx)
-    gly.extend(ly)
-    dem_ind = 0
-    while dem_ind < len(cycle) - 1:
-      lx, ly = [], []
-      path = self.lep_t[cycle[dem_ind]][self.demand[cycle[dem_ind + 1]][0]]
-      for i in range(len(path)):
-        lx.append(self.nodes[path[i]][0])
-        ly.append(self.nodes[path[i]][1])
-      lx.append(self.nodes[self.demand[cycle[dem_ind]][0]][0])
-      ly.append(self.nodes[self.demand[cycle[dem_ind]][0]][1])
-      lx.reverse()
-      ly.reverse()
-      glx.extend(lx)
-      gly.extend(ly)
-      dem_ind += 1
-    lx, ly = [], []
-    for ind in self.lep_t[cycle[-1]][self.demand[-1][0]]:
-      lx.append(self.nodes[ind][0])
-      ly.append(self.nodes[ind][1])
-    lx.append(self.nodes[self.demand[cycle[-1]][0]][0])
-    ly.append(self.nodes[self.demand[cycle[-1]][0]][1])
-    lx.reverse()
-    ly.reverse()
-    glx.extend(lx)
-    gly.extend(ly)
-    plt.plot(glx, gly, marker="", c="black", alpha=0.6)
+    plt.plot(truck_plot_x, truck_plot_y, marker="", c=truck_color, alpha=truck_alpha)
     if save:
       plt.savefig("Pictures/{}.png".format(pic_number), dpi=500)
       plt.clf()
@@ -1372,7 +1543,7 @@ class EnergyHelper:
             with saw_zero.get_lock():
               c = saw_zero.value
           with barrier.get_lock():
-            barrier.value = ants_per_iter
+            barrier.value += ants_per_iter
           print("Limit for iterations to stay stagnant exceeded! Stopping earlier by", K - iter,"iterations")
           break
       # elitism loading below
@@ -1495,12 +1666,21 @@ class EnergyHelper:
       pbar.update()
       if iter % 25 == 0:
         print("Update: best energy cycle found so far:", round(best_energy / 10**6, 2), "MJ")
+      if iter < 0.1 * K:
+        # Dynamic initial delta loading.
+        q = 0.001 * best_energy
+      for p in processes:
+        if not p.is_alive():
+          print("NOTE: Ant", p.pid, "got killed.")
+          p.join()
+          p.close()
+          ants_per_iter -= 1
       c = 1
       while c > 0:
         with saw_zero.get_lock():
           c = saw_zero.value
       with barrier.get_lock():
-        barrier.value = ants_per_iter
+        barrier.value += ants_per_iter
     pbar.close()
     print("ACO complete!")
     for p in processes:
