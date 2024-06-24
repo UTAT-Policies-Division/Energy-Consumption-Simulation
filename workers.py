@@ -349,7 +349,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
           w_coeff = 1 - (truck_w / TW_DENM)
           to_visit.append(sp)
           to_visit.append((drone_loc, eng_acc))
-          time_passed += construct_time(llep_d, tvs_ind_st, to_visit, edges, dedges, DRONE_GROUND_SPEED)
+          time_passed += construct_time(llep_d, tvs_ind_st, to_visit, edges, dedges, DS)
           nbs, ws = [], []
           if len(to_visit_truck) == 0:
             prev_t_eng = 0
