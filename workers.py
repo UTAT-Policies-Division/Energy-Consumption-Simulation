@@ -194,7 +194,6 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
   # src_lep_t = lep_t.pop()         # list of paths to all nodes
   # src_let_t = let_t.pop()         # list of path total energies
   got = [0 for _ in range(DEMAND_SIZE)]
-  RELV_WS = WEIGHTS[0:len(WEIGHTS) - 1]
   f_dem_ps, f_dem_ws = [i for i in range(DEMAND_SIZE)], [0 for _ in range(DEMAND_SIZE)]
   sp_poss_set, nbs, ws, seen, lmem, not_got_chance = [], [], [], [], [], False
   for i in range(len(sp_poss)):
@@ -341,13 +340,14 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
                 ws.append((sp_pherm[i + DEMAND_SIZE * parent_loc])**ALPHA /
                           (let_t[parent_loc_node][demand[i][0]] / w_coeff)**BETA)
         lmem = []
-        for i in RELV_WS:
-          lmem.append(construct_energy(llep_d, to_visit, edges, dedges, drone_w + i, DS))
+        cur = drone_w + 0.25
+        while cur <= MAX_WEIGHT:
+          lmem.append(construct_energy(llep_d, to_visit, edges, dedges, cur, DS))
         while ENG_LEVL - eng_acc > 0:
           nbs, ws = [], []
           curr_shft = NUM_NODES * drone_loc
           for i in range(DEMAND_SIZE):
-            if got[i] == 0 and drone_w + demand[i][1] < MAX_WEIGHT:
+            if got[i] == 0 and drone_w + demand[i][1] <= MAX_WEIGHT:
               common_sps = sp_poss_set[drone_loc][0] & sp_poss_set[i][1]
               if len(common_sps) > 0:
                 eng_so_far = lmem[(int(demand[i][1]) * 4) - 1]
