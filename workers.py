@@ -181,7 +181,7 @@ def construct_energy_meetup(llep_d, from_dem, sp, edges, dedges, demand, DS):
     cur, cur_id, cur_ty = lep_frm[cur]
   return eng
 
-def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle, 
+def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle, 
                 llep_d, lep_t, swp, let_t, K, DS, edges, dedges, result):
   src = demand.pop()[0]     # DRONE WEIGHT NEEDS MANUAL SYNC
   ALPHA, BETA, MAX_WEIGHT, DRONE_WEIGHT, TW_DENM = 0.9, 1.5, WEIGHTS[-1], 12, 4535.9237
@@ -314,9 +314,9 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
         for i in range(DEMAND_SIZE):
           if got[i] == 0:
             time_taken = construct_time_truck(lep_t, parent_loc_node, demand[i][0], edges)
-            if time_passed - time_taken > 0:
+            if time_passed - time_taken > 0 and let_t[demand[i][0]][drone_loc] != float('inf'):
               nbs.append((i, time_taken))
-              ws.append((sp_pherm[i + DEMAND_SIZE * parent_loc])**ALPHA /
+              ws.append((sji_pherm[i + DEMAND_SIZE * parent_loc])**ALPHA /
                         (let_t[parent_loc_node][demand[i][0]] / w_coeff)**BETA)
         while len(nbs) > 0:
           # can move away from switch point for work!
@@ -336,9 +336,9 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
           for i in range(DEMAND_SIZE):
             if got[i] == 0:
               time_taken = construct_time_truck(lep_t, parent_loc_node, demand[i][0], edges)
-              if time_passed - time_taken > 0:
+              if time_passed - time_taken > 0 and let_t[demand[i][0]][drone_loc] != float('inf'):
                 nbs.append((i, time_taken))
-                ws.append((sp_pherm[i + DEMAND_SIZE * parent_loc])**ALPHA /
+                ws.append((n_pherm[demand[i][0] + DEMAND_SIZE * parent_loc])**ALPHA /
                           (let_t[parent_loc_node][demand[i][0]] / w_coeff)**BETA)
         cur = drone_w + 0.25
         cur_id = int(4 * cur)
@@ -350,7 +350,9 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
           nbs, ws = [], []
           curr_shft = NUM_NODES * drone_loc
           for i in range(DEMAND_SIZE):
-            if got[i] == 0 and drone_w + demand[i][1] <= MAX_WEIGHT:
+            if got[i] == 0 and \
+               drone_w + demand[i][1] <= MAX_WEIGHT and \
+               let_t[parent_loc_node][demand[i][0]] != float('inf'):
               common_sps = sp_poss_set[drone_loc][0] & sp_poss_set[i][1]
               if len(common_sps) > 0:
                 eng_so_far = lmem[int((drone_w + demand[i][1]) * 4)]
@@ -409,23 +411,23 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
           time_passed += construct_time(llep_d, tvs_ind_st, to_visit, edges, dedges, DS)
           nbs, ws = [], []
           if len(to_visit_truck) == 0:
-            prev_t_eng = 0
-            parent_loc = to_visit[1][0]
-            parent_loc_node = to_visit[0]
+            # prev_t_eng = 0
+            # parent_loc = to_visit[1][0]
+            # parent_loc_node = to_visit[0]
             for i in range(DEMAND_SIZE):
               if got[i] == 0:
                 time_taken = construct_time_truck(lep_t, parent_loc_node, demand[i][0], edges)
-                if time_passed - time_taken > 0:
+                if time_passed - time_taken > 0 and let_t[demand[i][0]][drone_loc] != float('inf'):
                   nbs.append((i, time_taken))
-                  ws.append((sp_pherm[i + DEMAND_SIZE * parent_loc])**ALPHA /
+                  ws.append((sji_pherm[i + DEMAND_SIZE * parent_loc])**ALPHA /
                             (let_t[parent_loc_node][demand[i][0]] / w_coeff)**BETA)
           else:
-            parent_loc, _, prev_t_eng = to_visit_truck[-1]
-            parent_loc_node = demand[parent_loc][0]
+            # parent_loc, _, prev_t_eng = to_visit_truck[-1]
+            # parent_loc_node = demand[parent_loc][0]
             for i in range(DEMAND_SIZE):
               if got[i] == 0:
                 time_taken = construct_time_truck(lep_t, parent_loc_node, demand[i][0], edges)
-                if time_passed - time_taken > 0:
+                if time_passed - time_taken > 0 and let_t[demand[i][0]][drone_loc] != float('inf'):
                   nbs.append((i, time_taken))
                   ws.append((n_pherm[demand[i][0] + DEMAND_SIZE * parent_loc])**ALPHA /
                             (let_t[parent_loc_node][demand[i][0]] / w_coeff)**BETA)
@@ -445,7 +447,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
             for i in range(DEMAND_SIZE):
               if got[i] == 0:
                 time_taken = construct_time_truck(lep_t, parent_loc_node, demand[i][0], edges)
-                if time_passed - time_taken > 0:
+                if time_passed - time_taken > 0 and let_t[demand[i][0]][drone_loc] != float('inf'):
                   nbs.append((i, time_taken))
                   ws.append((n_pherm[demand[i][0] + DEMAND_SIZE * parent_loc])**ALPHA /
                             (let_t[parent_loc_node][demand[i][0]] / w_coeff)**BETA)
@@ -494,9 +496,10 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
                   best_eng = tmp
                   best_sp = ind
                   best_eng_to_add = eng_to_add
-          if best_eng == float('inf'):   # drone can't move at all.
-            best_sp = drone_loc
-            best_eng_to_add = ENG_ZERO
+          if best_eng == float('inf'):
+            # best_sp = drone_loc
+            # best_eng_to_add = ENG_ZERO
+            assert False, "Should always have a solution"
           nbs.append((i + 2, -2, best_sp, best_eng_to_add))
           if tvs_ind_st > 0:
             ws.append(((n_pherm[pot_dem_node + NUM_NODES * parent_loc] + 
@@ -505,7 +508,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
                         (let_t[best_sp][pot_dem_node] / w_coeff_oth) +
                         best_eng_to_add + truck_side_eng)**BETA))
           else:
-            ws.append(((sp_pherm[pot_dem + DEMAND_SIZE * parent_loc] + 
+            ws.append(((sji_pherm[pot_dem + DEMAND_SIZE * parent_loc] + 
                         (truck_w_og - truck_w) * PCKG_BONUS_COEFF)**ALPHA / 
                        ((let_t[parent_loc_node][best_sp] / w_coeff) + 
                         (let_t[best_sp][pot_dem_node] / w_coeff_oth) +
@@ -540,8 +543,9 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
                   best_sp = ind
                   best_eng_to_add = eng_to_add
           if best_eng == float('inf'):   # drone can't move at all.
-            best_sp = drone_loc
-            best_eng_to_add = 0
+            # best_sp = drone_loc
+            # best_eng_to_add = ENG_ZERO
+            assert False, "Should always have a solution"
           nbs.append((len(to_visit) + 1, -1, best_sp, best_eng_to_add))
           if tvs_ind_st > 0:
             ws.append(((n_pherm[src + NUM_NODES * parent_loc] + 
@@ -551,7 +555,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
                         (let_t[best_sp][src] / w_coeff_oth) +
                         best_eng_to_add + truck_side_eng)**BETA))
           else:
-            ws.append(((sp_pherm[DEMAND_SIZE + DEMAND_SIZE * parent_loc] + 
+            ws.append(((sji_pherm[DEMAND_SIZE + DEMAND_SIZE * parent_loc] + 
                         (truck_w_og - truck_w) * PCKG_BONUS_COEFF +
                         n_pherm[src + NUM_NODES * drone_loc])**ALPHA / 
                        ((let_t[parent_loc_node][best_sp] / w_coeff) + 
@@ -572,8 +576,9 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
                       best_sp = ind
                       best_eng_to_add = eng_to_add
               if best_eng == float('inf'):   # drone can't move at all.
-                best_sp = drone_loc
-                best_eng_to_add = ENG_ZERO
+                # best_sp = drone_loc
+                # best_eng_to_add = ENG_ZERO
+                assert False, "Should always have a solution"
               nbs.append((len(to_visit) + 1, i, best_sp, best_eng_to_add))
               if tvs_ind_st > 0:
                 ws.append(((n_pherm[demand[i][0] + NUM_NODES * parent_loc] + 
@@ -583,7 +588,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
                           (let_t[best_sp][demand[i][0]] / w_coeff_oth) +
                           best_eng_to_add + truck_side_eng)**BETA))
               else:
-                ws.append(((sp_pherm[i + DEMAND_SIZE * parent_loc] + 
+                ws.append(((sji_pherm[i + DEMAND_SIZE * parent_loc] + 
                           (truck_w_og - truck_w) * PCKG_BONUS_COEFF +
                           n_pherm[demand[i][0] + NUM_NODES * drone_loc])**ALPHA / 
                          ((let_t[parent_loc_node][best_sp] / w_coeff) + 

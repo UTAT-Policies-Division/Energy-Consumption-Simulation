@@ -567,20 +567,29 @@ class EnergyHelper:
     print("Line segement cover generated!")
     return (segs_x, segs_y, segs_n)
 
-  def plot_cycle(self, src, cycle, swp, save=False, pic_number=0):
-    drone_color, drone_alpha = "blue", 0.6
-    truck_color, truck_alpha = "black", 0.4
+  def get_node_to_dem_ind_map(self):
+   dct = {}
+   for i in range(len(self.demand)):
+     dct[self.demand[i][0]] = i
+   return dct
+
+  def plot_cycle(self, cycle, swp=None, save=False, pic_number=0):
+    if swp == None:
+      swp = [-2 for _ in range(2 * len(self.demand))]
+    src = self.demand.pop()[0]
+    # node_to_dem_ind = self.get_node_to_dem_ind_map()
+    drone_color, drone_alpha = "blue", 0.4
+    truck_color, truck_alpha = "black", 0.2
     curr_drone_plot_x, curr_drone_plot_y = [], []
     truck_plot_x, truck_plot_y = [], []
     tmp_x, tmp_y = [], []
     prev_node, limit = src, 2 * len(self.demand) - 1
     truck_plot_x.append(self.nodes[src][0])
     truck_plot_y.append(self.nodes[src][1])
-    first_parent, last_drone_del, next_location = None, None, None
+    last_drone_del, next_location = None, None
     j, cyc_ind = 1, 0
     if swp[0] >= 0:
-      first_parent = cycle[0]
-      last_drone_del = first_parent
+      last_drone_del = cycle[0]
       lep_to = self.llep_d[last_drone_del][1]
       prv = swp[0]
       cur, cur_ty = lep_to[prv]
@@ -596,13 +605,13 @@ class EnergyHelper:
       prev_node = swp[0]
       next_location = prev_node
     else:
-      prev_node = cycle[0]
+      prev_node = self.demand[cycle[0]][0]
       next_location = prev_node
     cur, _ = self.lep_t[src][next_location]
     while cur != -1:
       tmp_x.append(self.nodes[cur][0])
       tmp_y.append(self.nodes[cur][1])
-      cur, _ = self.lep_t[prev_node][cur]
+      cur, _ = self.lep_t[src][cur]
     tmp_x.reverse()
     tmp_y.reverse()
     truck_plot_x.extend(tmp_x)
@@ -611,7 +620,7 @@ class EnergyHelper:
       if swp[j] == -2:
         if swp[j+1] < 0:
           tmp_x, tmp_y = [], []
-          cur, _ = self.lep_t[prev_node][cycle[cyc_ind + 1]]
+          cur, _ = self.lep_t[prev_node][self.demand[cycle[cyc_ind + 1]][0]]
           while cur != -1:
             tmp_x.append(self.nodes[cur][0])
             tmp_y.append(self.nodes[cur][1])
@@ -620,9 +629,10 @@ class EnergyHelper:
           tmp_y.reverse()
           truck_plot_x.extend(tmp_x)
           truck_plot_y.extend(tmp_y)
+          prev_node = self.demand[cycle[cyc_ind + 1]][0]
         else:
+          lep_frm = self.llep_d[last_drone_del][0]
           last_drone_del = cycle[cyc_ind + 1]
-          lep_frm = self.llep_d[prev_node][0]
           lep_to = self.llep_d[last_drone_del][1]
           tmp_x, tmp_y = [], []
           cur, _, _ = lep_frm[swp[j+1]]
@@ -647,7 +657,8 @@ class EnergyHelper:
             cur, cur_ty = lep_to[prv]
       elif swp[j] >= 0:
         lep_frm = self.llep_d[last_drone_del][0]
-        tmp_x, tmp_y = [], []
+        stx, sty = self.nodes[self.demand[last_drone_del][0]]
+        tmp_x, tmp_y = [stx], [sty]
         cur, _, _ = lep_frm[swp[j]]
         while cur != -1:
           tmp_x.append(self.nodes[cur][0])
@@ -683,28 +694,30 @@ class EnergyHelper:
             curr_drone_plot_x.append(self.nodes[prv][0])
             curr_drone_plot_y.append(self.nodes[prv][1])
             cur, cur_ty = lep_to[prv]
+          stx, sty = self.nodes[self.demand[last_drone_del][0]]
+          # curr_drone_plot_x.append(stx)
+          # curr_drone_plot_y.append(sty)
           next_location = swp[j+1]
         else:
           last_drone_del = None
-          next_location = cycle[cyc_ind + 1]
+          next_location = self.demand[cycle[cyc_ind + 1]][0]
         tmp_x, tmp_y = [], []
         cur, _ = self.lep_t[swp[j]][next_location]
         while cur != -1:
           tmp_x.append(self.nodes[cur][0])
           tmp_y.append(self.nodes[cur][1])
-          cur, _ = self.lep_t[prev_node][cur]
+          cur, _ = self.lep_t[swp[j]][cur]
         tmp_x.reverse()
         tmp_y.reverse()
         truck_plot_x.extend(tmp_x)
         truck_plot_y.extend(tmp_y)
       else:
-        first_parent = cycle[cyc_ind + 1]
-        last_drone_del = first_parent
         cur, _ = self.lep_t[prev_node][swp[j+1]]
         while cur != -1:
           truck_plot_x.append(self.nodes[cur][0])
           truck_plot_y.append(self.nodes[cur][1])
           cur, _ = self.lep_t[prev_node][cur]
+        last_drone_del = cycle[cyc_ind + 1]
         lep_to = self.llep_d[last_drone_del][1]
         prv = swp[j+1]
         cur, cur_ty = lep_to[prv]
@@ -717,7 +730,6 @@ class EnergyHelper:
           curr_drone_plot_x.append(self.nodes[prv][0])
           curr_drone_plot_y.append(self.nodes[prv][1])
           cur, cur_ty = lep_to[prv]
-      prev_node = cycle[cyc_ind + 1]
       j += 2
       cyc_ind += 1
     tmp_x, tmp_y = [], []
@@ -745,26 +757,6 @@ class EnergyHelper:
       truck_plot_x.extend(tmp_x)
       truck_plot_y.extend(tmp_y)
       prev_node = swp[j]
-
-
-
-
-
-
-      lep_to = self.llep_d[last_drone_del][1]
-      prv = swp[0]
-      cur, cur_ty = lep_to[prv]
-      while cur != -1:
-        if cur_ty:
-          e = self.edges[prv][cur]
-        else:
-          e = self.dedges[prv][cur]
-        prv = e[0]
-        curr_drone_plot_x.append(self.nodes[prv][0])
-        curr_drone_plot_y.append(self.nodes[prv][1])
-        cur, cur_ty = lep_to[prv]
-      prev_node = swp[0]
-      next_location = prev_node
     cur, _ = self.lep_t[prev_node][src]
     while cur != -1:
       tmp_x.append(self.nodes[cur][0])
@@ -814,11 +806,12 @@ class EnergyHelper:
     plt.scatter(x=nx, y=ny, color=nc, s=8)
     llx, lly, lln = self.line_cover
     for i in range(len(llx)):
-      plt.plot(llx[i], lly[i], marker="", c="mediumblue", alpha=0.3)
+      plt.plot(llx[i], lly[i], marker="", c="red", alpha=0.05)
     llx, lly, lln = self.line_cover_d
     for i in range(len(llx)):
-      plt.plot(llx[i], lly[i], marker="", c="limegreen", alpha=0.3)
+      plt.plot(llx[i], lly[i], marker="", c="limegreen", alpha=0.05)
     plt.plot(truck_plot_x, truck_plot_y, marker="", c=truck_color, alpha=truck_alpha)
+    self.demand.append((src, 0))
     if save:
       plt.savefig("Pictures/{}.png".format(pic_number), dpi=500)
       plt.clf()
@@ -1308,6 +1301,11 @@ class EnergyHelper:
     #         cur, cur_id = lep_t[0][cur]
     #       print(tpr)
     #   break
+    for i in range(len(nodes)):
+      for j in range(len(nodes)):
+        if let_t[i][j] == float('inf'):
+          if lep_t[i][j][0] != -1:
+            print("Error: these nodes have malformed path data:", i, j, lep_t[i][j])
     # print(llep_d[0])
     # print(sp_poss[0])
     # lep_frm, lep_to = llep_d[0]
@@ -1472,7 +1470,7 @@ class EnergyHelper:
     if cpu_count() < ants_per_iter:
       ants_per_iter = cpu_count()
       print("WARNING: cpu count too low, set ants/iteration to cpu count:", cpu_count())
-    STAGNANT_LIMIT = int(0.2 * K)
+    STAGNANT_LIMIT, STATUS_BREAK = int(0.2 * K), int(K / 6)
     BEST_HALF_SIZE = ants_per_iter // 2
     degradation_factor = degradation_factor**BEST_HALF_SIZE
     barrier = mp.Value('i',lock=True)
@@ -1487,17 +1485,17 @@ class EnergyHelper:
     N_PHERM_LAST = int(DEMAND_SIZE * NUM_NODES)
     N_PHERM_SIZE = N_PHERM_LAST + NUM_NODES
     SWP_SIZE = 2 * DEMAND_SIZE
-    SP_PHERM_SIZE = (DEMAND_SIZE + 1) * (DEMAND_SIZE + 1)
-    SP_PHERM_INIT, DELTA_SP_COEFF, DELTA_SP_NBH_COEFF = 0.55, 1.15, 0.75
+    SJI_PHERM_SIZE = (DEMAND_SIZE + 1) * (DEMAND_SIZE + 1)
+    SJI_PHERM_INIT, DELTA_SP_COEFF, DELTA_SP_NBH_COEFF = 0.55, 1.15, 0.75
     n_pherm = mp.Array('f', N_PHERM_SIZE, lock=False)
-    sp_pherm = mp.Array('f', SP_PHERM_SIZE, lock=False)
+    sji_pherm = mp.Array('f', SJI_PHERM_SIZE, lock=False)
     c = -1
     for i in range(DEMAND_SIZE + 1):
       c = i * NUM_NODES
       for j in range(NUM_NODES):
         n_pherm[c + j] = self.n_pherm[i][j]
-    for i in range(SP_PHERM_SIZE):
-      sp_pherm[i] = SP_PHERM_INIT
+    for i in range(SJI_PHERM_SIZE):
+      sji_pherm[i] = SJI_PHERM_INIT
     cycles = [(mp.Value('f', lock=False),
                mp.Array('i', DEMAND_SIZE, lock=False),
                mp.Array('i', SWP_SIZE, lock=False)) for _ in range(ants_per_iter)]
@@ -1508,12 +1506,12 @@ class EnergyHelper:
     edges = self.edges      # not changing
     dedges = self.dedges    # not changing
     # print("Setting up delta hyperparamter...")
-    # sample_eng = _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm,
+    # sample_eng = _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm,
     #                          cycles[i][1], llep_d, lep_t, cycles[i][2], let_t, 1, 
     #                          DRONE_GROUND_SPEED, edges, dedges, cycles[i][0])
     # print("Set up delta hyperparamter!")
     processes = [mp.Process(target=_aco_worker,
-                            args=(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm,
+                            args=(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm,
                                   cycles[i][1], llep_d, lep_t, cycles[i][2], let_t, K, 
                                   DRONE_GROUND_SPEED, edges, dedges, cycles[i][0])) for i in range(ants_per_iter)]
     print("Initialized ACO child workers!\nStarting ACO...")
@@ -1566,7 +1564,7 @@ class EnergyHelper:
             if prev_tsj:
               n_pherm[demand[cycle[cyc_ind + 1]][0] + NUM_NODES * cycle[cyc_ind]] += delta
             else:
-              sp_pherm[cycle[cyc_ind + 1] + DEMAND_SIZE * first_parent] += delta
+              sji_pherm[cycle[cyc_ind + 1] + DEMAND_SIZE * first_parent] += delta
               prev_tsj = True
           elif swp[j+1] == -1:
             n_pherm[demand[cycle[cyc_ind + 1]][0] + NUM_NODES * cycle[cyc_ind]] += delta
@@ -1578,7 +1576,7 @@ class EnergyHelper:
           if prev_tsj:
             n_pherm[demand[cycle[cyc_ind + 1]][0] + NUM_NODES * cycle[cyc_ind]] += delta
           else:
-            sp_pherm[cycle[cyc_ind + 1] + DEMAND_SIZE * first_parent] += delta
+            sji_pherm[cycle[cyc_ind + 1] + DEMAND_SIZE * first_parent] += delta
           if swp[j+1] >= 0:
             n_pherm[swp[j+1] + NUM_NODES * last_drone_del] += delta_sp
             for e in edges[swp[j+1]]:
@@ -1622,7 +1620,7 @@ class EnergyHelper:
               if prev_tsj:
                 n_pherm[demand[cycle[cyc_ind + 1]][0] + NUM_NODES * cycle[cyc_ind]] += delta
               else:
-                sp_pherm[cycle[cyc_ind + 1] + DEMAND_SIZE * first_parent] += delta
+                sji_pherm[cycle[cyc_ind + 1] + DEMAND_SIZE * first_parent] += delta
                 prev_tsj = True
             elif swp[j+1] == -1:
               n_pherm[demand[cycle[cyc_ind + 1]][0] + NUM_NODES * cycle[cyc_ind]] += delta
@@ -1634,7 +1632,7 @@ class EnergyHelper:
             if prev_tsj:
               n_pherm[demand[cycle[cyc_ind + 1]][0] + NUM_NODES * cycle[cyc_ind]] += delta
             else:
-              sp_pherm[cycle[cyc_ind + 1] + DEMAND_SIZE * first_parent] += delta
+              sji_pherm[cycle[cyc_ind + 1] + DEMAND_SIZE * first_parent] += delta
             if swp[j+1] >= 0:
               n_pherm[swp[j+1] + NUM_NODES * last_drone_del] += delta_sp
               for e in edges[swp[j+1]]:
@@ -1664,11 +1662,11 @@ class EnergyHelper:
         n_pherm[j] *= degradation_factor
         j += 1
       pbar.update()
-      if iter % 25 == 0:
-        print("Update: best energy cycle found so far:", round(best_energy / 10**6, 2), "MJ")
+      if iter % STATUS_BREAK == 0:
+        print("\nUpdate: best energy cycle found so far:", round(best_energy / 10**6, 2), "MJ")
       if iter < 0.1 * K:
         # Dynamic initial delta loading.
-        q = 0.001 * best_energy
+        q = 0.01 * best_energy
       for p in processes:
         if not p.is_alive():
           print("NOTE: Ant", p.pid, "got killed.")
