@@ -122,7 +122,7 @@ if __name__ == '__main__':
   RANGE = float(10000000)   # dummy for now
   for _ in range(1):
     eh.append_random_demand(NUM_STOPS, cluster_num=0, cluster_jump=0,
-                          drone_only_possible_component=0.6, num_allocs=NUM_ALLOCS)
+                          drone_only_possible_component=0.2, num_allocs=NUM_ALLOCS)
     src = eh.get_top_right_node()
     eh.init_phermone_system(src, NUM_ALLOCS, R=RANGE)
     # eh.demand = []
@@ -144,11 +144,11 @@ if __name__ == '__main__':
   #         print("demand^")
   # eh.make_phermone_plot()
   print(eh.demand)
-  energy, cycle, swp = eh.aco(K=100, ants_per_iter=10)
+  energy, cycle, swp = eh.aco(K=50, ants_per_iter=50)
   print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
   print(cycle)
   print(swp)
-  energy, cycle = eh.aco_truck_only(K=100, ants_per_iter=10)
+  energy, cycle = eh.aco_truck_only(K=50, ants_per_iter=50)
   print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
   print(cycle)
 #   eh.plot_cycle(cycle, [])
