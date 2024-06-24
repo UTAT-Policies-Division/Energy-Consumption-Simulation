@@ -206,10 +206,10 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
   # if truck waiting at a switch point, sel_sp is set.
   # -----------------------------
   truck_loc, truck_loc_node, truck_w, w_coeff, parent_loc_node, sp = None, None, None, None, None, None
-  drone_loc, drone_loc_node, drone_w, to_visit, to_visit_truck, tvs_ind_st = None, None, None, [], [], None
-  next_dem, eng_tot, num_delvd, swp_ind, eng_acc, pot_dem, parent_loc = None, None, None, None, None, None, None
+  drone_loc, drone_w, to_visit, to_visit_truck, tvs_ind_st, parent_loc = None, None, [], [], None, None
+  next_dem, eng_tot, num_delvd, swp_ind, eng_acc, pot_dem, e = None, None, None, None, None, None, None
   w_coeff_oth, truck_w_og, best_eng, best_sp, best_eng_to_add, sel_sp = None, None, None, None, None, None
-  time_taken, prev_t_eng, truck_w_og, truck_side_eng, truck_side_w_lost, e = None, None, None, None, None, None
+  time_taken, prev_t_eng, truck_w_og, truck_side_eng, truck_side_w_lost = None, None, None, None, None
   pot_dem_node, lep_frm, lep_to, eng, prv, cur, cur_ty, cur_id, w_ind = None, None, None, -1, -1, -1, -1, -1, -1
   _glb_cons_eng_meetup = [[float('inf') for _ in range(NUM_NODES)] for _ in range(DEMAND_SIZE)]
   for i in range(DEMAND_SIZE):
@@ -242,7 +242,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
     # -----------------------------
     truck_w, eng_tot, num_delvd, sel_sp = TOTAL_WEIGHT, 0, 0, -1
     w_coeff, swp_ind = 1 - (TOTAL_WEIGHT / TW_DENM), 0
-    drone_loc, drone_loc_node, drone_w, ENG_LEVL = -1, -1, 0, MAX_BATTERY_USE
+    drone_loc, drone_w, ENG_LEVL = -1, 0, MAX_BATTERY_USE
     for j in range(DEMAND_SIZE):
       f_dem_ws[j] = (n_pherm[N_PHERM_LAST + demand[j][0]])**ALPHA / \
                     (let_t[src][demand[j][0]] / w_coeff)**BETA
@@ -277,7 +277,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
       swp[swp_ind] = -1
     else:
       # allocated a switch point.
-      truck_loc, truck_loc_node, drone_loc, drone_loc_node = -1, -1, next_dem, demand[next_dem][0]
+      truck_loc, truck_loc_node, drone_loc = -1, -1, next_dem
       drone_w = demand[next_dem][1]
       # print("initial deployment with switch point", truck_w)
       truck_w -= DRONE_WEIGHT + drone_w
@@ -700,7 +700,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
           truck_w -= demand[next_dem][1]
           # print("Removed", demand[next_dem][1], "to get", truck_w)
           ENG_LEVL = min(MAX_BATTERY_USE, ENG_LEVL + construct_time_truck(lep_t, truck_loc_node, next_dem_node, edges) * RECARGE_RATE)
-          truck_loc, truck_loc_node, drone_loc, drone_loc_node = next_dem, next_dem_node, -1, -1
+          truck_loc, truck_loc_node, drone_loc = next_dem, next_dem_node, -1
           swp[swp_ind] = -1
         else:
           # allocated a switch point.
@@ -708,7 +708,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
           eng_tot += (let_t[truck_loc_node][sel_sp] / w_coeff)
           # print("eng total after adding", (let_t[truck_loc_node][sel_sp] / w_coeff), ", is", eng_tot)
           ENG_LEVL = eng_at_sp
-          truck_loc, truck_loc_node, drone_loc, drone_loc_node = -1, -1, next_dem, demand[next_dem][0]
+          truck_loc, truck_loc_node, drone_loc = -1, -1, next_dem
           drone_w = demand[next_dem][1]
           # print("At switch point after meetin up with drone, allocating again, before:", truck_w)
           # jk = 0
@@ -774,7 +774,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sp_pherm, cycle,
           eng_tot += (let_t[truck_loc_node][sel_sp] / w_coeff)
           # print("eng total after adding", (let_t[truck_loc_node][sel_sp] / w_coeff), ", is", eng_tot)
           ENG_LEVL = eng_at_sp
-          truck_loc, truck_loc_node, drone_loc, drone_loc_node = -1, -1, next_dem, demand[next_dem][0]
+          truck_loc, truck_loc_node, drone_loc = -1, -1, next_dem
           drone_w = demand[next_dem][1]
           # print("Truck decided to launch drone", truck_w)
           truck_w -= DRONE_WEIGHT + drone_w
