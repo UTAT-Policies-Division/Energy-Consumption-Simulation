@@ -25,7 +25,7 @@ DRAW_PREC = 100 # power of 10, larger => more precise
 AREA = pi * (11 / meter_coeff)**2
 NEWT_PREC = 10**(-5)
 BATTERY_RESERVE_MARGIN = 0.2
-BATTERY_CAPACITY = 17.0 * 42 * 3600 / 30 # J,        TODO: remove divider
+BATTERY_CAPACITY = 17.0 * 42 * 3600 # J
 MAX_BATTERY_USE = BATTERY_CAPACITY * (1 - BATTERY_RESERVE_MARGIN)
 MAX_BATTERY_USE_HALF = MAX_BATTERY_USE / 2
 MIN_MEETUP_BATTERY_REM = MAX_BATTERY_USE * 0.15
@@ -573,25 +573,23 @@ class EnergyHelper:
      dct[self.demand[i][0]] = i
    return dct
 
-  def plot_cycle(self, cycle, swp=None, save=False, pic_number=0):
+  def plot_cycle(self, K, cycle, swp=None, save=False, pic_number=0):
     if swp == None:
-      swp = [-2 for _ in range(2 * len(self.demand))]
+      swp = [-1 for _ in range(2 * len(self.demand))]
+      for j in range(1, len(swp), 2):
+        swp[j] = -2
     src = self.demand.pop()[0]
     # node_to_dem_ind = self.get_node_to_dem_ind_map()
-    drone_color, drone_alpha = "blue", 0.4
-    truck_color, truck_alpha = "black", 0.2
-    curr_drone_plot_x, curr_drone_plot_y = [], []
-    truck_plot_x, truck_plot_y = [], []
-    tmp_x, tmp_y = [], []
-    prev_node, limit = src, 2 * len(self.demand) - 1
-    truck_plot_x.append(self.nodes[src][0])
-    truck_plot_y.append(self.nodes[src][1])
-    last_drone_del, next_location = None, None
-    j, cyc_ind = 1, 0
+    drone_color, drone_alpha, drone_width = "blue", 0.45, 2
+    truck_color, truck_alpha, truck_width = "black", 0.4, 3
+    limit, j, cyc_ind, px, py, dx, dy = 2 * len(self.demand) - 1, 1, 0, 0, 0, 0, 0
+    truck_x, truck_y, drone_x, drone_y, drone_xls, drone_yls = [], [], [], [], [], []
+    drone_loc, truck_loc_node, next_loc_node = None, None, None
     if swp[0] >= 0:
-      last_drone_del = cycle[0]
-      lep_to = self.llep_d[last_drone_del][1]
+      lep_to = self.llep_d[cycle[0]][1]
       prv = swp[0]
+      drone_x.append(self.nodes[prv][0])
+      drone_y.append(self.nodes[prv][1])
       cur, cur_ty = lep_to[prv]
       while cur != -1:
         if cur_ty:
@@ -599,42 +597,66 @@ class EnergyHelper:
         else:
           e = self.dedges[prv][cur]
         prv = e[0]
-        curr_drone_plot_x.append(self.nodes[prv][0])
-        curr_drone_plot_y.append(self.nodes[prv][1])
+        drone_x.append(self.nodes[prv][0])
+        drone_y.append(self.nodes[prv][1])
         cur, cur_ty = lep_to[prv]
-      prev_node = swp[0]
-      next_location = prev_node
+      next_loc_node = swp[0]
     else:
-      prev_node = self.demand[cycle[0]][0]
-      next_location = prev_node
-    cur, _ = self.lep_t[src][next_location]
+      next_loc_node = self.demand[cycle[0]][0]
+    tmp_x, tmp_y = [], []
+    tmp_x.append(self.nodes[next_loc_node][0])
+    tmp_y.append(self.nodes[next_loc_node][1])
+    cur, _ = self.lep_t[src][next_loc_node]
     while cur != -1:
       tmp_x.append(self.nodes[cur][0])
       tmp_y.append(self.nodes[cur][1])
       cur, _ = self.lep_t[src][cur]
     tmp_x.reverse()
     tmp_y.reverse()
-    truck_plot_x.extend(tmp_x)
-    truck_plot_y.extend(tmp_y)
+    truck_x.extend(tmp_x)
+    truck_y.extend(tmp_y)
+    truck_loc_node = next_loc_node
+    drone_loc = cycle[0]
     while j < limit:
       if swp[j] == -2:
-        if swp[j+1] < 0:
+        if swp[j+1] == -1:
           tmp_x, tmp_y = [], []
-          cur, _ = self.lep_t[prev_node][self.demand[cycle[cyc_ind + 1]][0]]
+          next_loc_node = self.demand[cycle[cyc_ind + 1]][0]
+          tmp_x.append(self.nodes[next_loc_node][0])
+          tmp_y.append(self.nodes[next_loc_node][1])
+          cur, _ = self.lep_t[truck_loc_node][next_loc_node]
           while cur != -1:
             tmp_x.append(self.nodes[cur][0])
             tmp_y.append(self.nodes[cur][1])
-            cur, _ = self.lep_t[prev_node][cur]
+            cur, _ = self.lep_t[truck_loc_node][cur]
           tmp_x.reverse()
           tmp_y.reverse()
-          truck_plot_x.extend(tmp_x)
-          truck_plot_y.extend(tmp_y)
-          prev_node = self.demand[cycle[cyc_ind + 1]][0]
-        else:
-          lep_frm = self.llep_d[last_drone_del][0]
-          last_drone_del = cycle[cyc_ind + 1]
-          lep_to = self.llep_d[last_drone_del][1]
+          truck_x.extend(tmp_x)
+          truck_y.extend(tmp_y)
+          truck_loc_node = next_loc_node
+          drone_loc = cycle[cyc_ind + 1]
+        elif swp[j+1] == -2:
           tmp_x, tmp_y = [], []
+          next_loc_node = self.demand[cycle[cyc_ind + 1]][0]
+          tmp_x.append(self.nodes[next_loc_node][0])
+          tmp_y.append(self.nodes[next_loc_node][1])
+          cur, _ = self.lep_t[truck_loc_node][next_loc_node]
+          while cur != -1:
+            tmp_x.append(self.nodes[cur][0])
+            tmp_y.append(self.nodes[cur][1])
+            cur, _ = self.lep_t[truck_loc_node][cur]
+          tmp_x.reverse()
+          tmp_y.reverse()
+          truck_x.extend(tmp_x)
+          truck_y.extend(tmp_y)
+          truck_loc_node = next_loc_node
+        else:
+          lep_frm = self.llep_d[drone_loc][0]
+          next_loc_node = self.demand[cycle[cyc_ind + 1]]
+          lep_to = self.llep_d[cycle[cyc_ind + 1]][1]
+          tmp_x, tmp_y = [], []
+          tmp_x.append(self.nodes[swp[j+1]][0])
+          tmp_y.append(self.nodes[swp[j+1]][1])
           cur, _, _ = lep_frm[swp[j+1]]
           while cur != -1:
             tmp_x.append(self.nodes[cur][0])
@@ -642,8 +664,8 @@ class EnergyHelper:
             cur, _, _ = lep_frm[cur]
           tmp_x.reverse()
           tmp_y.reverse()
-          curr_drone_plot_x.extend(tmp_x)
-          curr_drone_plot_y.extend(tmp_y)
+          drone_x.extend(tmp_x)
+          drone_y.extend(tmp_y)
           prv = swp[j+1]
           cur, cur_ty = lep_to[prv]
           while cur != -1:
@@ -652,13 +674,15 @@ class EnergyHelper:
             else:
               e = self.dedges[prv][cur]
             prv = e[0]
-            curr_drone_plot_x.append(self.nodes[prv][0])
-            curr_drone_plot_y.append(self.nodes[prv][1])
+            drone_x.append(self.nodes[prv][0])
+            drone_y.append(self.nodes[prv][1])
             cur, cur_ty = lep_to[prv]
+          drone_loc = cycle[cyc_ind + 1]
       elif swp[j] >= 0:
-        lep_frm = self.llep_d[last_drone_del][0]
-        stx, sty = self.nodes[self.demand[last_drone_del][0]]
-        tmp_x, tmp_y = [stx], [sty]
+        lep_frm = self.llep_d[drone_loc][0]
+        tmp_x, tmp_y = [], []
+        tmp_x.append(self.nodes[swp[j]][0])
+        tmp_y.append(self.nodes[swp[j]][1])
         cur, _, _ = lep_frm[swp[j]]
         while cur != -1:
           tmp_x.append(self.nodes[cur][0])
@@ -666,24 +690,28 @@ class EnergyHelper:
           cur, _, _ = lep_frm[cur]
         tmp_x.reverse()
         tmp_y.reverse()
-        curr_drone_plot_x.extend(tmp_x)
-        curr_drone_plot_y.extend(tmp_y)
+        drone_x.extend(tmp_x)
+        drone_y.extend(tmp_y)
+        drone_xls.append(drone_x)
+        drone_yls.append(drone_y)
+        drone_x, drone_y = [], []
         tmp_x, tmp_y = [], []
-        cur, _ = self.lep_t[prev_node][swp[j]]
+        tmp_x.append(self.nodes[swp[j]][0])
+        tmp_y.append(self.nodes[swp[j]][1])
+        cur, _ = self.lep_t[truck_loc_node][swp[j]]
         while cur != -1:
           tmp_x.append(self.nodes[cur][0])
           tmp_y.append(self.nodes[cur][1])
-          cur, _ = self.lep_t[prev_node][cur]
+          cur, _ = self.lep_t[truck_loc_node][cur]
         tmp_x.reverse()
         tmp_y.reverse()
-        truck_plot_x.extend(tmp_x)
-        truck_plot_y.extend(tmp_y)
-        plt.plot(curr_drone_plot_x, curr_drone_plot_y, marker="", c=drone_color, alpha=drone_alpha)
-        curr_drone_plot_x, curr_drone_plot_y = [], []
+        truck_x.extend(tmp_x)
+        truck_y.extend(tmp_y)
         if swp[j+1] >= 0:
-          last_drone_del = cycle[cyc_ind + 1]
-          lep_to = self.llep_d[last_drone_del][1]
+          lep_to = self.llep_d[cycle[cyc_ind + 1]][1]
           prv = swp[j+1]
+          drone_x.append(self.nodes[prv][0])
+          drone_y.append(self.nodes[prv][1])
           cur, cur_ty = lep_to[prv]
           while cur != -1:
             if cur_ty:
@@ -691,34 +719,40 @@ class EnergyHelper:
             else:
               e = self.dedges[prv][cur]
             prv = e[0]
-            curr_drone_plot_x.append(self.nodes[prv][0])
-            curr_drone_plot_y.append(self.nodes[prv][1])
+            drone_x.append(self.nodes[prv][0])
+            drone_y.append(self.nodes[prv][1])
             cur, cur_ty = lep_to[prv]
-          stx, sty = self.nodes[self.demand[last_drone_del][0]]
-          # curr_drone_plot_x.append(stx)
-          # curr_drone_plot_y.append(sty)
-          next_location = swp[j+1]
+          next_loc_node = swp[j+1]
         else:
-          last_drone_del = None
-          next_location = self.demand[cycle[cyc_ind + 1]][0]
+          next_loc_node = self.demand[cycle[cyc_ind + 1]][0]
         tmp_x, tmp_y = [], []
-        cur, _ = self.lep_t[swp[j]][next_location]
+        cur, _ = self.lep_t[swp[j]][next_loc_node]
+        tmp_x.append(self.nodes[next_loc_node][0])
+        tmp_y.append(self.nodes[next_loc_node][1])
         while cur != -1:
           tmp_x.append(self.nodes[cur][0])
           tmp_y.append(self.nodes[cur][1])
           cur, _ = self.lep_t[swp[j]][cur]
         tmp_x.reverse()
         tmp_y.reverse()
-        truck_plot_x.extend(tmp_x)
-        truck_plot_y.extend(tmp_y)
+        truck_x.extend(tmp_x)
+        truck_y.extend(tmp_y)
+        truck_loc_node = next_loc_node
+        drone_loc = cycle[cyc_ind + 1]
       else:
-        cur, _ = self.lep_t[prev_node][swp[j+1]]
+        tmp_x, tmp_y = [], []
+        tmp_x.append(self.nodes[swp[j+1]][0])
+        tmp_y.append(self.nodes[swp[j+1]][1])
+        cur, _ = self.lep_t[truck_loc_node][swp[j+1]]
         while cur != -1:
-          truck_plot_x.append(self.nodes[cur][0])
-          truck_plot_y.append(self.nodes[cur][1])
-          cur, _ = self.lep_t[prev_node][cur]
-        last_drone_del = cycle[cyc_ind + 1]
-        lep_to = self.llep_d[last_drone_del][1]
+          tmp_x.append(self.nodes[cur][0])
+          tmp_y.append(self.nodes[cur][1])
+          cur, _ = self.lep_t[truck_loc_node][cur]
+        tmp_x.reverse()
+        tmp_y.reverse()
+        truck_x.extend(tmp_x)
+        truck_y.extend(tmp_y)
+        lep_to = self.llep_d[cycle[cyc_ind + 1]][1]
         prv = swp[j+1]
         cur, cur_ty = lep_to[prv]
         while cur != -1:
@@ -727,15 +761,18 @@ class EnergyHelper:
           else:
             e = self.dedges[prv][cur]
           prv = e[0]
-          curr_drone_plot_x.append(self.nodes[prv][0])
-          curr_drone_plot_y.append(self.nodes[prv][1])
+          drone_x.append(self.nodes[prv][0])
+          drone_y.append(self.nodes[prv][1])
           cur, cur_ty = lep_to[prv]
+        drone_loc = cycle[cyc_ind + 1]
+        truck_loc_node = swp[j+1]
       j += 2
       cyc_ind += 1
-    tmp_x, tmp_y = [], []
     if swp[j] >= 0:
-      lep_frm = self.llep_d[last_drone_del][0]
+      lep_frm = self.llep_d[drone_loc][0]
       tmp_x, tmp_y = [], []
+      tmp_x.append(self.nodes[swp[j]][0])
+      tmp_y.append(self.nodes[swp[j]][1])
       cur, _, _ = lep_frm[swp[j]]
       while cur != -1:
         tmp_x.append(self.nodes[cur][0])
@@ -743,40 +780,73 @@ class EnergyHelper:
         cur, _, _ = lep_frm[cur]
       tmp_x.reverse()
       tmp_y.reverse()
-      curr_drone_plot_x.extend(tmp_x)
-      curr_drone_plot_y.extend(tmp_y)
-      plt.plot(curr_drone_plot_x, curr_drone_plot_y, marker="", c="green", alpha=0.6)
+      drone_x.extend(tmp_x)
+      drone_y.extend(tmp_y)
       tmp_x, tmp_y = [], []
-      cur, _ = self.lep_t[prev_node][swp[j]]
+      tmp_x.append(self.nodes[swp[j]][0])
+      tmp_y.append(self.nodes[swp[j]][1])
+      cur, _ = self.lep_t[truck_loc_node][swp[j]]
       while cur != -1:
         tmp_x.append(self.nodes[cur][0])
         tmp_y.append(self.nodes[cur][1])
-        cur, _ = self.lep_t[prev_node][cur]
+        cur, _ = self.lep_t[truck_loc_node][cur]
       tmp_x.reverse()
       tmp_y.reverse()
-      truck_plot_x.extend(tmp_x)
-      truck_plot_y.extend(tmp_y)
-      prev_node = swp[j]
-    cur, _ = self.lep_t[prev_node][src]
+      truck_x.extend(tmp_x)
+      truck_y.extend(tmp_y)
+      truck_loc_node = swp[j]
+    tmp_x, tmp_y = [], []
+    tmp_x.append(self.nodes[src][0])
+    tmp_y.append(self.nodes[src][1])
+    cur, _ = self.lep_t[truck_loc_node][src]
     while cur != -1:
       tmp_x.append(self.nodes[cur][0])
       tmp_y.append(self.nodes[cur][1])
-      cur, _ = self.lep_t[prev_node][cur]
+      cur, _ = self.lep_t[truck_loc_node][cur]
     tmp_x.reverse()
     tmp_y.reverse()
-    truck_plot_x.extend(tmp_x)
-    truck_plot_y.extend(tmp_y)
+    truck_x.extend(tmp_x)
+    truck_y.extend(tmp_y)
+    if len(drone_x) > 0:
+      drone_xls.append(drone_x)
+      drone_yls.append(drone_y)
+    for i in range(len(drone_xls)):
+      px = drone_xls[i][0]
+      py = drone_yls[i][0]
+      for j in range(1, len(drone_xls[i])):
+        dx = drone_xls[i][j] - px
+        dy = drone_yls[i][j] - py
+        plt.arrow(px, py, dx, dy,
+                  width=drone_width,
+                  fc=drone_color,
+                  ec=drone_color,
+                  alpha=drone_alpha,
+                  head_width=13,
+                  length_includes_head=True)
+        px = drone_xls[i][j]
+        py = drone_yls[i][j]
+    px = truck_x[0]
+    py = truck_y[0]
+    for j in range(1, len(truck_x)):
+      dx = truck_x[j] - px
+      dy = truck_y[j] - py
+      plt.arrow(px, py, dx, dy,
+                width=truck_width,
+                fc=truck_color,
+                ec=truck_color,
+                alpha=truck_alpha,
+                head_width=15,
+                length_includes_head=True)
+      px = truck_x[j]
+      py = truck_y[j]
     got = [0 for _ in range(len(self.nodes))]
     nx, ny, nc = [], [], []
     dx, dy = [], []
-    max_pherm = 0
     for p in self.demand:
       got[p[0]] = 1
       dx.append(self.nodes[p[0]][0])
       dy.append(self.nodes[p[0]][1])
     if self.n_pherm is not None and len(self.demand) > 0:
-      max_pherm = max(max(p for p in self.n_pherm[i]) for i in range(len(self.demand)))
-      base_c = 0.01 * max_pherm
       comp = 0
       for i in range(len(self.nodes)):
         if got[i] == 1:
@@ -784,7 +854,7 @@ class EnergyHelper:
         nx.append(self.nodes[i][0])
         ny.append(self.nodes[i][1])
         if len(self.edges[i]) > 0:
-          comp = 0.9 - min(1.75 * ((1000 * self.n_pherm[0][i] + base_c) / max_pherm), 0.9)
+          comp = 0.7 - min(0.3 * K * sum(self.n_pherm[j][i] for j in range(len(self.demand) + 1)), 0.7)
           nc.append((1, comp, comp))
         else:
           nc.append((0.7, 0.7, 0.7))
@@ -802,15 +872,14 @@ class EnergyHelper:
       self.line_cover = self.gen_network_line_cover(self.edges)
     if self.line_cover_d is None:
       self.line_cover_d = self.gen_network_line_cover(self.dedges)
-    plt.scatter(dx, dy, c="magenta", s=15)
-    plt.scatter(x=nx, y=ny, color=nc, s=8)
+    plt.scatter(dx, dy, c="magenta", s=12, alpha=0.8)
+    plt.scatter(x=nx, y=ny, color=nc, s=5, alpha=0.8)
     llx, lly, lln = self.line_cover
     for i in range(len(llx)):
-      plt.plot(llx[i], lly[i], marker="", c="red", alpha=0.05)
+      plt.plot(llx[i], lly[i], marker="", c="red", alpha=0.15)
     llx, lly, lln = self.line_cover_d
     for i in range(len(llx)):
-      plt.plot(llx[i], lly[i], marker="", c="limegreen", alpha=0.05)
-    plt.plot(truck_plot_x, truck_plot_y, marker="", c=truck_color, alpha=truck_alpha)
+      plt.plot(llx[i], lly[i], marker="", c="limegreen", alpha=0.2)
     self.demand.append((src, 0))
     if save:
       plt.savefig("Pictures/{}.png".format(pic_number), dpi=500)
@@ -1143,7 +1212,7 @@ class EnergyHelper:
     demand.append((src, 0))
     NODE_BASE_PHERM = 10**(-4)
     SP_PHERM_COEFF = 10**(-3)
-    DEMAND_PHERM_ADV_COEFF = 1
+    DEMAND_PHERM_ADV_COEFF = 25
     DEMAND_BASE_PHERM = DEMAND_PHERM_ADV_COEFF * SP_PHERM_COEFF * len(demand)
     DEMAND_WEIGHT_COEFF = DEMAND_PHERM_ADV_COEFF * NODE_BASE_PHERM / (WEIGHTS[-1] * passed_num_alloc)
     n_pherm = [[NODE_BASE_PHERM for _ in range(len(nodes))] for _ in range(len(demand))]
@@ -1269,7 +1338,7 @@ class EnergyHelper:
     # maximum advantage possible in
     # the entire system.
     # -------------------------------
-    lower_lim = 10**(-7)
+    lower_lim = 10**(-5)
     if max_phm > 1:
       scl = 10**(-int(log10(max_phm)) - 1)
       for i in range(len(demand)):
