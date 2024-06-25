@@ -375,6 +375,7 @@ class EnergyHelper:
     self.llep_d = None
     self.lep_t = None
     self.let_t = None
+    self.sji_pherm = None
     self.line_cover = None
     self.line_cover_d = None
     if gen_plot_data:
@@ -1109,6 +1110,19 @@ class EnergyHelper:
       print("WARNING: Total demand weight exceeds 4500kg critical point.")
     print("Demand generated!")
 
+  def save_light(self, filename='network_data_light.pkl'):
+    print("Saving Energy Helper (light) object...")
+    output = open(filename, 'wb')
+    self.line_cover = None
+    self.line_cover_d = None
+    self.sp_poss = None
+    self.llep_d = None
+    self.lep_t = None
+    self.let_t = None
+    pickle.dump(self, output, 2)
+    output.close()
+    print("Energy Helper (light) object saved!")
+
   def save(self, filename='network_data.pkl'):
     print("Saving Energy Helper object...")
     output = open(filename, 'wb')
@@ -1137,6 +1151,7 @@ class EnergyHelper:
     ehobj.llep_d = obj.llep_d
     ehobj.lep_t = obj.lep_t
     ehobj.let_t = obj.let_t
+    ehobj.sji_pherm = obj.sji_pherm
     if (obj.total_weight - ehobj.total_weight) > 0.0001:
       print("WARNING: total weight not consistent between actual demand and storage.")
     return ehobj
@@ -1539,7 +1554,7 @@ class EnergyHelper:
     if cpu_count() < ants_per_iter:
       ants_per_iter = cpu_count()
       print("WARNING: cpu count too low, set ants/iteration to cpu count:", cpu_count())
-    STAGNANT_LIMIT, STATUS_BREAK = int(0.2 * K), max(int(K / 6), 1)
+    STAGNANT_LIMIT, STATUS_BREAK = int(0.2 * K), 1
     BEST_HALF_SIZE = ants_per_iter // 2
     degradation_factor = degradation_factor**BEST_HALF_SIZE
     barrier = mp.Value('i',lock=True)
@@ -1565,6 +1580,12 @@ class EnergyHelper:
         n_pherm[c + j] = self.n_pherm[i][j]
     for i in range(SJI_PHERM_SIZE):
       sji_pherm[i] = SJI_PHERM_INIT
+    c = -1
+    for i in range(DEMAND_SIZE + 1):
+      self.sji_pherm.append([])
+      c = i * (DEMAND_SIZE + 1)
+      for j in range(DEMAND_SIZE + 1):
+        self.sji_pherm[i].append(SJI_PHERM_INIT)
     cycles = [(mp.Value('f', lock=False),
                mp.Array('i', DEMAND_SIZE, lock=False),
                mp.Array('i', SWP_SIZE, lock=False)) for _ in range(ants_per_iter)]
@@ -1753,6 +1774,14 @@ class EnergyHelper:
     for p in processes:
       p.join()
       p.close()
+    for i in range(DEMAND_SIZE + 1):
+      c = i * NUM_NODES
+      for j in range(NUM_NODES):
+        self.n_pherm[i][j] = n_pherm[c + j]
+    for i in range(DEMAND_SIZE + 1):
+      c = i * (DEMAND_SIZE + 1)
+      for j in range(DEMAND_SIZE + 1):
+        self.sji_pherm[i][j] = sji_pherm[c + j]
     return best_energy, best_cycle, best_swp
 
   def show_swp_string(self, swp, line_break_freq=50):
