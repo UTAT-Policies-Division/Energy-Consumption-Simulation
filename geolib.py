@@ -10,7 +10,7 @@ from math import sin, cos, sqrt, exp
 D_PRES = 7
 PLACE_NAME = "University of Toronto"  # default place
 PADDING = 50                          # default padding
-EFFECT_RADIUS = 75
+NODE_RADIUS, RADIUS_STRENGTH = 100, 1.1
 OSM_CRS_EPSG = "EPSG:4326"    # OSM EPSG
                               # https://spatialreference.org/ref/epsg/?search={place_name}&srtext=Search
 
@@ -221,13 +221,14 @@ def remove_no_fly_zones(tgt_x_y_r, org_graph):
     pbar = tqdm(total=len(tgt_x_y_r))
     for x, y, r in tgt_x_y_r:
         if r < 15:
-            r = EFFECT_RADIUS
+            r = NODE_RADIUS
+        r *= RADIUS_STRENGTH
         node, dst = osmnx.distance.nearest_nodes(org_graph, x, y, return_dist=True)
         while dst < r:
             org_graph.remove_node(node)
             node, dst = osmnx.distance.nearest_nodes(org_graph, x, y, return_dist=True)
         edge, dst = osmnx.distance.nearest_edges(org_graph, x, y, return_dist=True)
-        while dst < EFFECT_RADIUS:
+        while dst < r:
             org_graph.remove_edge(*edge)
             edge, dst = osmnx.distance.nearest_edges(org_graph, x, y, return_dist=True)
         pbar.update()
@@ -277,37 +278,6 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, no_fly_zone
     remove_no_fly_zones(no_fly_zones, graphD)
     nodesB, edgesB = osmnx.graph_to_gdfs(graphB)
     nodesD, edgesD = osmnx.graph_to_gdfs(graphD)
-    # c = 0
-    # for i in range(len(nodesB['osmid_original'])):
-    #     if i in no_fly_zones:
-
-    #         nodesB.drop(nodesB.axes[0][c], axis=0, inplace=True)
-    #     c += 1
-    # c = 0
-    # for i in nodesD['osmid_original']:
-    #     if i in no_fly_zones:
-    #         nodesD.drop(nodesD.axes[0][c], axis=0, inplace=True)
-    #     c += 1
-    # c = 0
-    # for i in edgesB['u_original']:
-    #     if i in no_fly_zones:
-    #         edgesB.drop(edgesB.axes[0][c], axis=0, inplace=True)
-    #     c += 1
-    # c = 0
-    # for i in edgesD['u_original']:
-    #     if i in no_fly_zones:
-    #         edgesD.drop(edgesD.axes[0][c], axis=0, inplace=True)
-    #     c += 1
-    # c = 0
-    # for i in edgesB['v_original']:
-    #     if i in no_fly_zones:
-    #         edgesB.drop(edgesB.axes[0][c], axis=0, inplace=True)
-    #     c += 1
-    # c = 0
-    # for i in edgesD['v_original']:
-    #     if i in no_fly_zones:
-    #         edgesD.drop(edgesD.axes[0][c], axis=0, inplace=True)
-    #     c += 1
     xl = list(nodesB["x"].values)
     yl = list(nodesB["y"].values)
     uidl = list(nodesB["osmid_original"].values)

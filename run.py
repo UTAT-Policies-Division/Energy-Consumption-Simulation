@@ -93,9 +93,10 @@ if __name__ == '__main__':
                                                                  simplification_tolerance=1)
   eh = el.EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID,
                      10**(-2), gen_plot_data=True)
+  eh.save("manhattan-pre.pkl")
   eh.plot_network(True, True, False, False, True, [], [])
 
-  plt.show()
+  plt.savefig("pic.png", dpi=350)
 
   exit(0)
   for i in range(1, 5):
