@@ -79,21 +79,24 @@ if __name__ == '__main__':
   TARGET_CRS_EPSG = LONG_ISLAND_CRS_EPSG
   isMorning = False
   Month = "May"
-  policy_object = PolicyData()
-  no_fly_zones(["Manhattan, United States"], policy_object, TARGET_CRS_EPSG)
+#   policy_object = PolicyData()
+#   no_fly_zones(["Manhattan, United States"], policy_object, TARGET_CRS_EPSG)
 
-  el.init_globals(max_truck_speed=12, base_truck_speed=1.5, truck_city_mpg=24,
-                   base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=policy_object.OPTIMAL_SPEED,
-                   relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
-  set_str = "set {}".format(2)
-  nodes, edges, dedges, UID_to_ind, ind_to_UID = gl.get_decomposed_network(PLACE_NAME, 
-                                                                 TARGET_CRS_EPSG, 
-                                                                 BOUNDARY_BUFFER_LENGTH,
-                                                                 policy_object.REGION_POLICY['NO_FLY_ZONES'][set_str],
-                                                                 simplification_tolerance=1)
-  eh = el.EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID,
-                     10**(-2), gen_plot_data=True)
-  eh.save("manhattan-pre.pkl")
+#   el.init_globals(max_truck_speed=12, base_truck_speed=1.5, truck_city_mpg=24,
+#                    base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=policy_object.OPTIMAL_SPEED,
+#                    relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
+#   set_str = "set {}".format(2)
+#   nodes, edges, dedges, UID_to_ind, ind_to_UID = gl.get_decomposed_network(PLACE_NAME, 
+#                                                                  TARGET_CRS_EPSG, 
+#                                                                  BOUNDARY_BUFFER_LENGTH,
+#                                                                  policy_object.REGION_POLICY['NO_FLY_ZONES'][set_str],
+#                                                                  simplification_tolerance=1)
+#   eh = el.EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID,
+#                      10**(-2), gen_plot_data=True)
+  eh = el.EnergyHelper.load("uoft.pkl")
+#   eh.save("manhattan-pre.pkl")
+  eh.append_random_demand(25)
+  eh.init_phermone_system(eh.get_top_left_node(), 10, 5000)
   eh.plot_network(True, True, False, False, True, [], [])
 
   plt.savefig("pic.png", dpi=350)
