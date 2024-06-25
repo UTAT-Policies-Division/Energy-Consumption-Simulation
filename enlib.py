@@ -873,14 +873,14 @@ class EnergyHelper:
       self.line_cover = self.gen_network_line_cover(self.edges)
     if self.line_cover_d is None:
       self.line_cover_d = self.gen_network_line_cover(self.dedges)
-    plt.scatter(dx, dy, c="magenta", s=12, alpha=0.8)
-    plt.scatter(x=nx, y=ny, color=nc, s=5, alpha=0.8)
+    plt.scatter(dx, dy, c="magenta", s=12, alpha=0.6)
+    plt.scatter(x=nx, y=ny, color=nc, s=5, alpha=0.3)
     llx, lly, lln = self.line_cover
     for i in range(len(llx)):
-      plt.plot(llx[i], lly[i], marker="", c="red", alpha=0.15)
+      plt.plot(llx[i], lly[i], marker="", c="red", alpha=0.17)
     llx, lly, lln = self.line_cover_d
     for i in range(len(llx)):
-      plt.plot(llx[i], lly[i], marker="", c="limegreen", alpha=0.2)
+      plt.plot(llx[i], lly[i], marker="", c="green", alpha=0.2)
     self.demand.append((src, 0))
     if save:
       plt.savefig("Pictures/{}.png".format(pic_number), dpi=500)
@@ -1622,7 +1622,7 @@ class EnergyHelper:
       with saw_zero.get_lock():
         saw_zero.value += ants_per_iter
       cycles.sort(key = lambda x: x[0].value)
-      if abs(cycles[0][0].value - best_energy) / best_energy < NEWT_PREC:
+      if abs(cycles[0][0].value - best_energy) / best_energy < 0.001:
         STAGNANT_LIMIT -= 1
         if STAGNANT_LIMIT <= 0:
           n_pherm[0] = -1
@@ -1756,7 +1756,7 @@ class EnergyHelper:
         print("\nUpdate: best energy cycle found so far:", round(best_energy / 10**6, 2), "MJ")
       if iter < 0.1 * K:
         # Dynamic initial delta loading.
-        q = 0.01 * best_energy
+        q = 0.005 * best_energy
       for p in processes:
         if not p.is_alive():
           print("NOTE: Ant", p.pid, "got killed.")
