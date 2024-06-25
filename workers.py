@@ -1,9 +1,8 @@
-from random import randint, sample, choices
-import heapq
+from random import choices
 
 NEWT_PREC = 10**(-5)
 BATTERY_RESERVE_MARGIN = 0.2
-BATTERY_CAPACITY = 17.0 * 42 * 3600 / 30 # J,        TODO: remove divider
+BATTERY_CAPACITY = 17.0 * 42 * 3600
 MAX_BATTERY_USE = BATTERY_CAPACITY * (1 - BATTERY_RESERVE_MARGIN)
 MAX_BATTERY_USE_HALF = MAX_BATTERY_USE / 2
 MIN_MEETUP_BATTERY_REM = MAX_BATTERY_USE * 0.15
@@ -234,7 +233,6 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
       _glb_cons_eng_meetup[i][j] = eng
   # -----------------------------
   while K > 0:
-    print("Entered Iteration")
     # -----------------------------
     # Early Exit Signal
     # -----------------------------
@@ -810,7 +808,6 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
     assert abs(truck_w - DRONE_WEIGHT) < 0.1, "WEIGHT ERROR"
     result.value = eng_tot
     K -= 1
-    print("Ended Iteration")
     # -----------------------------
     # Synchronizer
     # -----------------------------
