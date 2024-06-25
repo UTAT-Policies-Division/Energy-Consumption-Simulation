@@ -30,7 +30,7 @@ TAGS = [{},
          'office': 'government',
          'power': ['generator', 'planet', 'substation']},
         {'highway': ['motorway', 'trunk'],
-         'building': ['firestation', 'hospital']},
+         'building': ['firestation', 'hospital', 'prison']},
         {'amenity': ['school', 'college', 'university'],
          'public_transport': 'station'}]
 
@@ -68,13 +68,17 @@ class PolicyData:
         self.REGION_POLICY = {
             'MAX_SPEED': self.OPTIMAL_SPEED,
             'MAX_ALTITUDE': self.OPTIMAL_ALTITUDE,
-            'NO_FLY_ZONES': {'set 1': [278112877],
-                             'set 2': [278112877, 3695755, 109337830, 11077079,
-                                       7554971, 357620387, 271885447, 702540318,
-                                       46177116, 34633854, 8398106, 702472511,
-                                       129835611, 6615147359],
+            'NO_FLY_ZONES': {'set 1': [],
+                             'set 2': [],
                              'set 3': [],
                              'set 4': []}  # Dictionary of no-fly zone osmids
+            # 'NO_FLY_ZONES': {'set 1': [278112877],
+            #                  'set 2': [278112877, 3695755, 109337830, 11077079,
+            #                            7554971, 357620387, 271885447, 702540318,
+            #                            46177116, 34633854, 8398106, 702472511,
+            #                            129835611, 6615147359],
+            #                  'set 3': [],
+            #                  'set 4': []}  # Dictionary of no-fly zone osmids
         }
 
         self.truck_routes = dictGraph()  # Truck routes
@@ -92,49 +96,50 @@ def sample_building_selection_distribution():
 def sample_demand_per_building():
     return random.randint(1, MAX_DEMAND_PER_BUILDING)
 
-# Example use
-policy_data = PolicyData()
+# # Example use
+# policy_data = PolicyData()
 
-# vertice define
-source_vertex = Vertex('source')
-building_vertex = Vertex('destination')
+# # vertice define
+# source_vertex = Vertex('source')
+# building_vertex = Vertex('destination')
 
-# Vertices+Graph
-policy_data.truck_routes.add_vertex(source_vertex)
-policy_data.drone_routes.add_vertex(building_vertex)
+# # Vertices+Graph
+# policy_data.truck_routes.add_vertex(source_vertex)
+# policy_data.drone_routes.add_vertex(building_vertex)
 
-# If required add edges
-policy_data.truck_routes.add_edge(source_vertex.label, building_vertex.label)
+# # If required add edges
+# policy_data.truck_routes.add_edge(source_vertex.label, building_vertex.label)
 
-# Update
-policy_data.Sv_truck_routes.add(source_vertex.label)
-policy_data.vertices_building.append(building_vertex)
+# # Update
+# policy_data.Sv_truck_routes.add(source_vertex.label)
+# policy_data.vertices_building.append(building_vertex)
 
 # Define no-fly zones in REGION_POLICY if needed
-def no_fly_zones(zone, policy_object, tags):
+def no_fly_zones(zone, policy_object, epsg):
     keys = ['set 1', 'set 2', 'set 3', 'set 4']
+    for j in range(len(TAGS)):
+        if TAGS[j]:
+            geoms =  osmnx.project_gdf(osmnx.features_from_place(zone, TAGS[j]), epsg)['geometry']
+            for i in range(len(geoms)):
+                center = geoms[i].centroid
+                cx, cy = center.x, center.y
+                lx, ly, ux, uy = geoms[i].bounds
+                rad = (max(cx - lx, ux - cx) + max(cy - ly, uy - cy)) / 2
+                policy_object.REGION_POLICY['NO_FLY_ZONES'][keys[j]].append((cx, cy, rad))
+            # tuples = list(features.axes[0])
+            # osmids = [tuple[1] for tuple in tuples]
+            # policy_object.REGION_POLICY['NO_FLY_ZONES'][keys[j]].extend(osmids)
 
-    i = 0
-    while i in range(len(tags)):
-        if tags[i]:
-            features = osmnx.features_from_place(zone, tags[i])
-            tuples = list(features.axes[0])
-            osmids = [tuple[1] for tuple in tuples]
-            policy_object.REGION_POLICY['NO_FLY_ZONES'][keys[i]].extend(osmids)
-            i += 1
-        else:
-            i += 1
+# no_fly_zones(["Manhattan, United States"], policy_data, TAGS)
 
-no_fly_zones(["Manhattan, United States"], policy_data, TAGS)
-
-# Policy Data 
-print(f"# of Buildings: {policy_data.NUM_BUILDINGS}")
-print(f"Maximum payload: {policy_data.MAX_PAYLOAD} kg")
-print(f"Each Building Maximum demand: {policy_data.MAX_DEMAND_PER_BUILDING}")
-print(f"# of packages: {policy_data.NUM_PACKAGES}")
-print(f"Building reach maximum: {policy_data.MAX_BUILDING_REACH} meters")
-print(f"Speed-Optimum: {policy_data.OPTIMAL_SPEED} m/s")
-print(f"Altitude-Optimum: {policy_data.OPTIMAL_ALTITUDE} meters")
-print(f"Policy Region: {policy_data.REGION_POLICY}")
-print(f"Graph vertices Truck: {list(policy_data.truck_routes.V.keys())}")
-print(f"Graph vertices Drone: {list(policy_data.drone_routes.V.keys())}")
+# # Policy Data 
+# print(f"# of Buildings: {policy_data.NUM_BUILDINGS}")
+# print(f"Maximum payload: {policy_data.MAX_PAYLOAD} kg")
+# print(f"Each Building Maximum demand: {policy_data.MAX_DEMAND_PER_BUILDING}")
+# print(f"# of packages: {policy_data.NUM_PACKAGES}")
+# print(f"Building reach maximum: {policy_data.MAX_BUILDING_REACH} meters")
+# print(f"Speed-Optimum: {policy_data.OPTIMAL_SPEED} m/s")
+# print(f"Altitude-Optimum: {policy_data.OPTIMAL_ALTITUDE} meters")
+# print(f"Policy Region: {policy_data.REGION_POLICY}")
+# print(f"Graph vertices Truck: {list(policy_data.truck_routes.V.keys())}")
+# print(f"Graph vertices Drone: {list(policy_data.drone_routes.V.keys())}")

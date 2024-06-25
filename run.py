@@ -1,19 +1,13 @@
 import geolib as gl
 import enlib as el
 import matplotlib.pyplot as plt
-import random
-import geopandas
-import shapely.geometry as shp
-import shapely
-import networkx as nx
-from PolicyStorage import no_fly_zones, PolicyData, TAGS
+from PolicyStorage import no_fly_zones, PolicyData
 
 UOFT = "University of Toronto"
 MANHATTAN = "Manhattan"
 TORONTO_CRS_EPSG = "EPSG:3348"
 LONG_ISLAND_CRS_EPSG = "EPSG:32118"
 BOUNDARY_BUFFER_LENGTH = 500  # default boundary buffer
-TEMPERATURE = 14 # https://weatherspark.com/y/150351/Average-Weather-in-Long-Island-New-York-United-States-Year-Round
 GET_MONTH_INDEX = {"January":0,
                    "February":1,
                    "March":2,
@@ -80,14 +74,15 @@ def RH(isMorning, month):
             return 0.59
 
 if __name__ == '__main__':
+  TEMPERATURE = 14 # https://weatherspark.com/y/150351/Average-Weather-in-Long-Island-New-York-United-States-Year-Round
   PLACE_NAME = MANHATTAN
   TARGET_CRS_EPSG = LONG_ISLAND_CRS_EPSG
   isMorning = False
   Month = "May"
   policy_object = PolicyData()
-  no_fly_zones(["Manhattan, United States"], policy_object, TAGS)
+  no_fly_zones(["Manhattan, United States"], policy_object, TARGET_CRS_EPSG)
 
-  el.init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
+  el.init_globals(max_truck_speed=12, base_truck_speed=1.5, truck_city_mpg=24,
                    base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=policy_object.OPTIMAL_SPEED,
                    relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
   set_str = "set {}".format(2)
@@ -99,6 +94,8 @@ if __name__ == '__main__':
   eh = el.EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID,
                      10**(-2), gen_plot_data=True)
   eh.plot_network(True, True, False, False, True, [], [])
+
+  plt.show()
 
   exit(0)
   for i in range(1, 5):

@@ -2067,6 +2067,7 @@ def fill_edge_data(edgesl, dedges, edge_work, dedge_work):
   pbar.close()
 
 def _energy_worker(rho, V_w_hd, V_w_lt):
+  return WEIGHTS
   drone_power = []
   for w in WEIGHTS:
     drone_power.append(power(rho, w, V_w_hd, V_w_lt))
