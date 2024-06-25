@@ -1581,6 +1581,8 @@ class EnergyHelper:
     for i in range(SJI_PHERM_SIZE):
       sji_pherm[i] = SJI_PHERM_INIT
     c = -1
+    if self.sji_pherm == None:
+      self.sji_pherm = []
     for i in range(DEMAND_SIZE + 1):
       self.sji_pherm.append([])
       c = i * (DEMAND_SIZE + 1)

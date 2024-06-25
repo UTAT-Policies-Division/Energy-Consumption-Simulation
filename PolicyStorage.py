@@ -111,7 +111,7 @@ policy_data.Sv_truck_routes.add(source_vertex.label)
 policy_data.vertices_building.append(building_vertex)
 
 # Define no-fly zones in REGION_POLICY if needed
-def no_fly_zones(zone, tags):
+def no_fly_zones(zone, policy_object, tags):
     keys = ['set 1', 'set 2', 'set 3', 'set 4']
 
     i = 0
@@ -120,13 +120,12 @@ def no_fly_zones(zone, tags):
             features = osmnx.features_from_place(zone, tags[i])
             tuples = list(features.axes[0])
             osmids = [tuple[1] for tuple in tuples]
-            policy_data.REGION_POLICY['NO_FLY_ZONES'][keys[i]].extend(osmids)
+            policy_object.REGION_POLICY['NO_FLY_ZONES'][keys[i]].extend(osmids)
             i += 1
         else:
             i += 1
 
-
-no_fly_zones(["Manhattan, United States"], TAGS)
+no_fly_zones(["Manhattan, United States"], policy_data, TAGS)
 
 # Policy Data 
 print(f"# of Buildings: {policy_data.NUM_BUILDINGS}")
