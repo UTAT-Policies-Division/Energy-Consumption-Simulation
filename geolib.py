@@ -230,21 +230,28 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, simplificat
     simplification_tolerance accepts integral number to simplify graph under.
     """
     print("Getting data from server...")
-    graphB = osmnx.graph_from_polygon(
-                    get_place_area(place_name, epsg, boundary_buffer_length).at[0, "geometry"], 
-                    network_type="bike")
-    graphD = osmnx.graph_from_polygon(
-                    get_place_area(place_name, epsg, boundary_buffer_length).at[0, "geometry"], 
-                    network_type="drive")
+    # graphB = osmnx.graph_from_polygon(
+    #                 get_place_area(place_name, epsg, boundary_buffer_length).at[0, "geometry"], 
+    #                 network_type="bike")
+    # graphD = osmnx.graph_from_polygon(
+    #                 get_place_area(place_name, epsg, boundary_buffer_length).at[0, "geometry"], 
+    #                 network_type="drive")
+    # if simplification_tolerance > 0:
+    #     graphB = osmnx.project_graph(
+    #                 osmnx.simplification.consolidate_intersections(
+    #                     osmnx.project_graph(graphB, epsg), tolerance=simplification_tolerance), 
+    #                 OSM_CRS_EPSG)
+    #     graphD = osmnx.project_graph(
+    #                 osmnx.simplification.consolidate_intersections(
+    #                     osmnx.project_graph(graphD, epsg), tolerance=simplification_tolerance), 
+    #                 OSM_CRS_EPSG)
+    place_polygon = osmnx.geocode_to_gdf(place_name).to_crs(epsg)
+    place_polygon["geometry"] = place_polygon.buffer(boundary_buffer_length).to_crs(OSM_CRS_EPSG)
+    graphB = osmnx.project_graph(osmnx.graph_from_polygon(place_polygon.at[0, "geometry"], network_type="bike"), epsg)
+    graphD = osmnx.project_graph(osmnx.graph_from_polygon(place_polygon.at[0, "geometry"], network_type="drive"), epsg)
     if simplification_tolerance > 0:
-        graphB = osmnx.project_graph(
-                    osmnx.simplification.consolidate_intersections(
-                        osmnx.project_graph(graphB, epsg), tolerance=simplification_tolerance), 
-                    OSM_CRS_EPSG)
-        graphD = osmnx.project_graph(
-                    osmnx.simplification.consolidate_intersections(
-                        osmnx.project_graph(graphD, epsg), tolerance=simplification_tolerance), 
-                    OSM_CRS_EPSG)
+        graphB = osmnx.simplification.consolidate_intersections(graphB, tolerance=simplification_tolerance)
+        graphD = osmnx.simplification.consolidate_intersections(graphD, tolerance=simplification_tolerance)
     nodesB, edgesB = osmnx.graph_to_gdfs(graphB)
     nodesD, edgesD = osmnx.graph_to_gdfs(graphD)
     print("Got data from server!\nDecomposing graph network...")
@@ -280,21 +287,16 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, simplificat
             uidl.append(euidl[j])
         j += 1
     print("Found", num_extra, "extra verticies from drive network")
-    avg_x, avg_y = 0, 0
-    for x in xl:
-        avg_x += x
-    for y in yl:
-        avg_y += y
-    avg_x = round(avg_x / len(xl), D_PRES)
-    avg_y = round(avg_y / len(yl), D_PRES)
+    avg_x = round(sum(x for x in xl) / len(xl), D_PRES)
+    avg_y = round(sum(y for y in yl) / len(yl), D_PRES)
     min_x, min_y = 0, 0
     max_x, max_y = 0, 0
     for i in range(len(xl)):
-        xl[i] = round((xl[i] - avg_x) * 10**3, max(D_PRES - 3, 0))
+        xl[i] = round((xl[i] - avg_x), max(D_PRES - 3, 0))
         max_x = max(max_x, xl[i])
         min_x = min(min_x, xl[i])
     for i in range(len(yl)):
-        yl[i] = round((yl[i] - avg_y) * 10**3, max(D_PRES - 3, 0))
+        yl[i] = round((yl[i] - avg_y), max(D_PRES - 3, 0))
         max_y = max(max_y, yl[i])
         min_y = min(min_y, yl[i])
     ulb = edgesB["u_original"].values   # directional edges
@@ -321,11 +323,7 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, simplificat
         nodesl.append((xl[i], yl[i]))
         gc += 1
     print("Internal nodes structure built!\nBuilding internal edges structure & calibrating winds...")
-    edgesl, dedges = [], []
-    while gc > 0:
-        edgesl.append([])
-        dedges.append([])
-        gc -= 1
+    edgesl, dedges = [[] for _ in range(gc)], [[] for _ in range(gc)]
     hash = {}
     u_ind, v_ind, length = -1, -1, -1
     sx, sy, dx, dy = 0, 0, 0, 0
@@ -389,7 +387,7 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, simplificat
         Pv = REL_HUMIDITY * 1610.78 * exp((17.27 * T) / (T + 237.3))
         rho = ((101325 - Pv) * 0.0034837139 + Pv * 0.0021668274) / (T + 273.15)
         EDGE_WORK.append((u_ind, len(edgesl[u_ind]), rho, V_w_hd, V_w_lt))
-        edgesl[u_ind].append((v_ind, length, truck_epm * length))
+        edgesl[u_ind].append((v_ind, length, truck_epm * length, truck_speed))
     num_extra = 0
     found = False
     for j in range(len(ulb)):
