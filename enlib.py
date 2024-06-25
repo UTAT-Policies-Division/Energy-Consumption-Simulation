@@ -900,14 +900,11 @@ class EnergyHelper:
     got = [0 for _ in range(len(self.nodes))]
     nx, ny, nc = [], [], []
     dx, dy = [], []
-    max_pherm = 0
     for p in self.demand:
       got[p[0]] = 1
       dx.append(self.nodes[p[0]][0])
       dy.append(self.nodes[p[0]][1])
     if self.n_pherm is not None and len(self.demand) > 0:
-      max_pherm = max(max(p for p in self.n_pherm[i]) for i in range(len(self.demand)))
-      base_c = 0.01 * max_pherm
       comp = 0
       if show_drone_only_nodes:
         for i in range(len(self.nodes)):
@@ -916,17 +913,17 @@ class EnergyHelper:
           nx.append(self.nodes[i][0])
           ny.append(self.nodes[i][1])
           if len(self.edges[i]) > 0:
-            comp = 0.9 - min(1.75 * ((1000 * self.n_pherm[0][i] + base_c) / max_pherm), 0.9)
+            comp = 0.7 - min(0.3 * 50 * sum(self.n_pherm[j][i] for j in range(len(self.demand))), 0.7)
             nc.append((1, comp, comp))
           else:
             nc.append((0.7, 0.7, 0.7))
       else:
         for i in range(len(self.nodes)):
-          if got[i] == 1 or len(self.edges[i]) == 0:
+          if got[i] == 1:
             continue
           nx.append(self.nodes[i][0])
           ny.append(self.nodes[i][1])
-          comp = 0.9 - min(1.75 * ((1000 * self.n_pherm[0][i] + base_c) / max_pherm), 0.9)
+          comp = 0.7 - min(0.3 * 50 * sum(self.n_pherm[j][i] for j in range(len(self.demand))), 0.7)
           nc.append((1, comp, comp))
     else:
       if show_drone_only_nodes:
@@ -951,19 +948,36 @@ class EnergyHelper:
     if self.line_cover_d is None and show_drone_only_edges:
       self.line_cover_d = self.gen_network_line_cover(self.dedges)
     if show_demand_nodes:
-      plt.scatter(dx, dy, c="magenta", s=15)
-    plt.scatter(x=nx, y=ny, color=nc, s=8)
+      plt.scatter(dx, dy, c="magenta", s=15, alpha=0.8)
+    plt.scatter(x=nx, y=ny, color=nc, s=8, alpha=0.4)
     if show_demand_local_paths:
       for i in range(len(self.demand)):
-        dem_ind = self.demand[i][0]
-        for k in self.llep_d[i]:
-          lx, ly = [], []
-          for ind in self.llep_d[i][k]:
-            lx.append(self.nodes[ind][0])
-            ly.append(self.nodes[ind][1])
-          lx.append(self.nodes[dem_ind][0])
-          ly.append(self.nodes[dem_ind][1])
-          plt.plot(lx, ly, marker="", c="black", alpha=0.3)
+        lep_frm, lep_to = self.llep_d[i]
+        for k in self.sp_poss[i][0]:
+          tmp_x, tmp_y = [], []
+          tmp_x.append(self.nodes[k][0])
+          tmp_y.append(self.nodes[k][1])
+          cur, _, _ = lep_frm[k]
+          while cur != -1:
+            tmp_x.append(self.nodes[cur][0])
+            tmp_y.append(self.nodes[cur][1])
+            cur, _, _ = lep_frm[cur]
+          plt.plot(tmp_x, tmp_y, marker="", c="black", alpha=0.4)
+        for k in self.sp_poss[i][1]:
+          prv = k
+          tmp_x.append(self.nodes[prv][0])
+          tmp_y.append(self.nodes[prv][1])
+          cur, cur_ty = lep_to[prv]
+          while cur != -1:
+            if cur_ty:
+              e = self.edges[prv][cur]
+            else:
+              e = self.dedges[prv][cur]
+            prv = e[0]
+            tmp_x.append(self.nodes[prv][0])
+            tmp_y.append(self.nodes[prv][1])
+            cur, cur_ty = lep_to[prv]
+          plt.plot(tmp_x, tmp_y, marker="", c="gray", alpha=0.4)
     if show_for_all_edges:
       llx, lly, lln = self.line_cover
       for i in range(len(llx)):
@@ -1265,6 +1279,40 @@ class EnergyHelper:
             let[n_ind] = n_eng
             lep[n_ind] = (ind, False)
             heapq.heappush(q, (n_eng, n_dst, n_ind))
+      # VLOS enforcement below
+      # isParent = [0 for _ in range(len(nodes))]
+      # for j in range(len(nodes)):
+      #   if lep[j][0] >= 0:
+      #     isParent[lep[j][0]] = 1
+      # for j in range(len(nodes)):
+      #   if lep[j][0] == -1 or lep[lep[j][0]][0] == -1 or isParent[j]:
+      #     continue
+      #   last_last_node_og, gdth, dth = j, 0, 0
+      #   last_last_node, last_node, curr_node = j, lep[j][0], lep[lep[j][0]][0]
+      #   while curr_node != -1:
+      #     ux, uy = self.nodes[last_last_node]
+      #     vx, vy = self.nodes[last_node]
+      #     wx, wy = self.nodes[curr_node]
+      #     dvux, dvuy = ux - vx, uy - vy
+      #     dvwx, dvwy = wx - vx, wy - vy
+      #     dth = abs(pi - acos(((dvux * dvwx) + (dvuy * dvwy)) * 0.99 / 
+      #                           (sqrt(dvux * dvux + dvuy * dvuy) *
+      #                            sqrt(dvwx * dvwx + dvwy * dvwy))))
+      #     if gdth + dth >= 20:
+      #       prv = last_last_node_og
+      #       while prv != last_node:
+      #         got[prv] = 0
+      #         cur = lep[prv][0]
+      #         lep[prv] = (-1, None)
+      #         prv = cur
+      #       last_last_node_og = last_node
+      #       gdth = dth
+      #     else:
+      #       gdth += dth
+      #     last_last_node = last_node
+      #     last_node = curr_node
+      #     curr_node = lep[curr_node][0]
+      # got[i] = 1  # just in case
       for j in range(len(demand)):
         if got[demand[j][0]] == 1:
           sp_poss[j][1].append(i)
@@ -1370,10 +1418,10 @@ class EnergyHelper:
     self.let_t = let_t
     for i in range(len(demand)):
       if len(sp_poss[i][1]) - len(llep_d[i][1]) > 0:
-        print("BAD LOCAL TO DEMAND PATH CONSTRUCTION: ", set(sp_poss[i][1]), set(len(llep_d[i][1])))
+        print("BAD LOCAL TO DEMAND PATH CONSTRUCTION: ", set(sp_poss[i][1]), set(llep_d[i][1]))
         exit(1)
       if len(sp_poss[i][0]) - len(llep_d[i][0]) > 0:
-        print("BAD LOCAL FROM DEMAND PATH CONSTRUCTION: ", set(sp_poss[i][1]), set(len(llep_d[i][1])))
+        print("BAD LOCAL FROM DEMAND PATH CONSTRUCTION: ", set(sp_poss[i][1]), set(llep_d[i][1]))
         exit(1)
     # for i in range(len(nodes)):
     #   for j in range(len(nodes)):
@@ -2067,7 +2115,7 @@ def fill_edge_data(edgesl, dedges, edge_work, dedge_work):
   pbar.close()
 
 def _energy_worker(rho, V_w_hd, V_w_lt):
-  return WEIGHTS
+  # return WEIGHTS
   drone_power = []
   for w in WEIGHTS:
     drone_power.append(power(rho, w, V_w_hd, V_w_lt))

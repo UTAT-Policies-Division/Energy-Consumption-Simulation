@@ -187,7 +187,6 @@ def get_avaliable_building_data(place_name, epsg, boundary_buffer_length):
     print("WARNING: building data may contain inconsistent units.")
     return result
 
-
 def find_island_nodes(nodes, edges, start=0):
     """Removes nodes that do not have edges connected."""
 

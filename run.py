@@ -79,29 +79,9 @@ if __name__ == '__main__':
   TARGET_CRS_EPSG = LONG_ISLAND_CRS_EPSG
   isMorning = False
   Month = "May"
-#   policy_object = PolicyData()
-#   no_fly_zones(["Manhattan, United States"], policy_object, TARGET_CRS_EPSG)
-
-#   el.init_globals(max_truck_speed=12, base_truck_speed=1.5, truck_city_mpg=24,
-#                    base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=policy_object.OPTIMAL_SPEED,
-#                    relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
-#   set_str = "set {}".format(2)
-#   nodes, edges, dedges, UID_to_ind, ind_to_UID = gl.get_decomposed_network(PLACE_NAME, 
-#                                                                  TARGET_CRS_EPSG, 
-#                                                                  BOUNDARY_BUFFER_LENGTH,
-#                                                                  policy_object.REGION_POLICY['NO_FLY_ZONES'][set_str],
-#                                                                  simplification_tolerance=1)
-#   eh = el.EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID,
-#                      10**(-2), gen_plot_data=True)
-  eh = el.EnergyHelper.load("uoft.pkl")
+  policy_object = PolicyData()
+#   eh = el.EnergyHelper.load("uoft.pkl")
 #   eh.save("manhattan-pre.pkl")
-  eh.append_random_demand(25)
-  eh.init_phermone_system(eh.get_top_left_node(), 10, 5000)
-  eh.plot_network(True, True, False, False, True, [], [])
-
-  plt.savefig("pic.png", dpi=350)
-
-  exit(0)
   for i in range(1, 5):
     el.init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
                    base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=policy_object.OPTIMAL_SPEED,
@@ -115,6 +95,32 @@ if __name__ == '__main__':
     eh = el.EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID,
                        10**(-2), gen_plot_data=True)
     eh.save("manhattan-policy-set-{}".format(i))
+  for i in range(1, 5):
+    print("Set", i, "begins!")
+    eh = el.EnergyHelper.load("manhattan-policy-set-{}".format(i))
+    NUM_STOPS = 200
+    NUM_ALLOCS = 15
+    RANGE = float(3000)   # dummy for now
+    eh.append_random_demand(NUM_STOPS, cluster_num=0, cluster_jump=0,
+                          drone_only_possible_component=0.2, num_allocs=NUM_ALLOCS)
+    src = eh.get_top_right_node()
+    eh.init_phermone_system(src, NUM_ALLOCS, R=RANGE)
+    print(eh.demand)
+    print("Truck + Drone:")
+    NUM_ITERATIONS = 50
+    ANTS_PER_ITERATION = 30
+    energy, cycle, swp = eh.aco(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
+    print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
+    print(cycle)
+    print(swp)
+    print("Truck Only:")
+    NUM_ITERATIONS = 100
+    ANTS_PER_ITERATION = 50
+    energy, cycle, swp = eh.aco_truck_only(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
+    print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
+    print(cycle)
+    print(swp)
+    print("Set", i, "has ended.")
   exit(0)
 #   eh = el.EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID,
 #                        10**(-2), gen_plot_data=True, demand=[])
