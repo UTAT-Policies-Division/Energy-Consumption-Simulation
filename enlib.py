@@ -220,7 +220,7 @@ def init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
 
 def copy_globals_energy(drone_speed):
   global C_D_ALPHA0, S_REF, DRONE_GROUND_SPEED, \
-         CHORD, BETA, SINPSI, COSPSI
+         CHORD, BETA, SINPSI, COSPSI, DRONE_WEIGHT
   CHORD = []  # holds in millimeters
   BETA = []
   _r = 1.0
@@ -240,6 +240,7 @@ def copy_globals_energy(drone_speed):
   C_D_ALPHA0 = 0.5
   S_REF = 0.05
   DRONE_GROUND_SPEED = drone_speed
+  DRONE_WEIGHT = kgs_to_W(12)
 
 def TH_BET(rho, v0, Vx, Vc, omega, CHORD, BETA, SINPSI, COSPSI):   # correct, but prefer not used
   resT, resH = 0, 0

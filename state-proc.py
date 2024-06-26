@@ -102,7 +102,7 @@ MAX_TRUCK_SPEED, BASE_TRUCK_SPEED, TRUCK_CITY_MPG = -1, -1, -1
 BASE_TEMP, TEMP_FLUC_COEFF, REL_HUMIDITY = -1, -1, -1
 QUAD_A, QUAD_B, QUAD_C = -1, -1, -1
 WEIGHTS = [0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
-DRONE_WEIGHT = 12
+DRONE_WEIGHT = -1
 ENG_ZERO = 10**(-50)
 
 def kgs_to_W(kgs):
@@ -173,7 +173,7 @@ def init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
 
 def copy_globals_energy(drone_speed):
   global C_D_ALPHA0, S_REF, DRONE_GROUND_SPEED, \
-         CHORD, BETA, SINPSI, COSPSI
+         CHORD, BETA, SINPSI, COSPSI, DRONE_WEIGHT
   CHORD = []  # holds in millimeters
   BETA = []
   _r = 1.0
@@ -193,6 +193,7 @@ def copy_globals_energy(drone_speed):
   C_D_ALPHA0 = 0.5
   S_REF = 0.05
   DRONE_GROUND_SPEED = drone_speed
+  DRONE_WEIGHT = kgs_to_W(12)
 
 class Storage:
   def __init__(self):

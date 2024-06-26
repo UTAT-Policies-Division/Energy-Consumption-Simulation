@@ -99,15 +99,22 @@ if __name__ == '__main__':
 #                        10**(-2), gen_plot_data=True)
 #     eh.save("manhattan-policy-set-{}.pkl".format(i))
   for i in range(1, 5):
+    # --------------------------------
+    # Loading Manhattan Set + Generating Demand, Source
+    # --------------------------------
     print("Set", i, "begins!")
     eh = EnergyHelper.load("manhattan-policy-set-{}.pkl".format(i))
-    # print(eh.nodes)
     NUM_STOPS = 200
     NUM_ALLOCS = 15
     RANGE = float(3000)   # dummy for now
     eh.append_random_demand(NUM_STOPS, cluster_num=0, cluster_jump=0,
                           drone_only_possible_component=0.2, num_allocs=NUM_ALLOCS)
     src = eh.get_top_right_node()
+    # --------------------------------
+
+    # --------------------------------
+    # Truck + Drone ACO Setup & Run
+    # --------------------------------
     eh.init_phermone_system(src, NUM_ALLOCS, R=RANGE)
     print(eh.demand)
     print("Truck + Drone:")
@@ -117,12 +124,20 @@ if __name__ == '__main__':
     print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
     print(cycle)
     print(swp)
+    # --------------------------------
+
+    # --------------------------------
+    # Truck Only ACO Setup & Run
+    # --------------------------------
+    eh.init_phermone_system(src, NUM_ALLOCS, R=RANGE)
     print("Truck Only:")
     NUM_ITERATIONS = 100
     ANTS_PER_ITERATION = 45
     energy, cycle = eh.aco_truck_only(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
     print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
     print(cycle)
+    # --------------------------------
+
     print("Set", i, "has ended.")
   exit(0)
 #   eh = el.EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID,
