@@ -80,8 +80,10 @@ if __name__ == '__main__':
   isMorning = False
   Month = "May"
 #   policy_object = PolicyData()
+  DS_POLICY = 10
+  DS_OPTIMAL = 16
   init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
-                  base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=10,
+                  base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=DS_OPTIMAL,
                   relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
 #   eh = el.EnergyHelper.load("uoft.pkl")
 #   eh.save("manhattan-pre.pkl")
@@ -98,12 +100,12 @@ if __name__ == '__main__':
 #     eh = el.EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID,
 #                        10**(-2), gen_plot_data=True)
 #     eh.save("manhattan-policy-set-{}.pkl".format(i))
-  for i in range(1, 3):
+  for i in range(3, 5):
     # --------------------------------
     # Loading Manhattan Set + Generating Demand, Source
     # --------------------------------
     print("Set", i, "begins!")
-    eh = EnergyHelper.load("manhattan-policy-set-{}.pkl".format(i))
+    eh = EnergyHelper.load("manhattan-policy-set-{}-relaxed.pkl".format(i))
     print(eh.edges[:20])  # confirming calibration
     NUM_STOPS = 200
     NUM_ALLOCS = 15

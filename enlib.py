@@ -1468,7 +1468,7 @@ class EnergyHelper:
     # print(ptr)
     print("Phermone system initialized!\nNOTE: Demand structures now hold source vertex with 0 weight.")
 
-  def aco_truck_only(self, K=150, ants_per_iter=50, q=10**6, degradation_factor=0.99):
+  def aco_truck_only(self, K=150, ants_per_iter=50, q=10**6, degradation_factor=0.995):
     print("Initializing ACO child workers...")
     if cpu_count() < ants_per_iter:
       ants_per_iter = cpu_count()
@@ -1574,7 +1574,7 @@ class EnergyHelper:
       p.close()
     return best_energy, best_cycle
 
-  def aco(self, K=100, ants_per_iter=50, q=10**6, degradation_factor=0.99):
+  def aco(self, K=100, ants_per_iter=50, q=10**6, degradation_factor=0.995):
     """
     Switch Point Communication System:
 
