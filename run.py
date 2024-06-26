@@ -1,7 +1,7 @@
-import geolib as gl
-import enlib as el
+# import geolib as gl
+from enlib import EnergyHelper, init_globals
 import matplotlib.pyplot as plt
-from PolicyStorage import no_fly_zones, PolicyData
+# from PolicyStorage import no_fly_zones, PolicyData
 
 UOFT = "University of Toronto"
 MANHATTAN = "Manhattan"
@@ -79,25 +79,29 @@ if __name__ == '__main__':
   TARGET_CRS_EPSG = LONG_ISLAND_CRS_EPSG
   isMorning = False
   Month = "May"
-  policy_object = PolicyData()
+#   policy_object = PolicyData()
+  init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
+                  base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=10,
+                  relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
 #   eh = el.EnergyHelper.load("uoft.pkl")
 #   eh.save("manhattan-pre.pkl")
-  for i in range(1, 5):
-    el.init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
-                   base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=policy_object.OPTIMAL_SPEED,
-                   relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
-    set_str = "set {}".format(i)
-    nodes, edges, dedges, UID_to_ind, ind_to_UID = gl.get_decomposed_network(PLACE_NAME, 
-                                                                   TARGET_CRS_EPSG, 
-                                                                   BOUNDARY_BUFFER_LENGTH,
-                                                                   policy_object.REGION_POLICY['NO_FLY_ZONES'][set_str],
-                                                                   simplification_tolerance=1)
-    eh = el.EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID,
-                       10**(-2), gen_plot_data=True)
-    eh.save("manhattan-policy-set-{}".format(i))
+#   for i in range(2, 5):
+#     el.init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
+#                    base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=policy_object.OPTIMAL_SPEED,
+#                    relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
+#     set_str = "set {}".format(i)
+#     nodes, edges, dedges, UID_to_ind, ind_to_UID = gl.get_decomposed_network(PLACE_NAME, 
+#                                                                    TARGET_CRS_EPSG, 
+#                                                                    BOUNDARY_BUFFER_LENGTH,
+#                                                                    policy_object.REGION_POLICY['NO_FLY_ZONES'][set_str],
+#                                                                    simplification_tolerance=1)
+#     eh = el.EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID,
+#                        10**(-2), gen_plot_data=True)
+#     eh.save("manhattan-policy-set-{}.pkl".format(i))
   for i in range(1, 5):
     print("Set", i, "begins!")
-    eh = el.EnergyHelper.load("manhattan-policy-set-{}".format(i))
+    eh = EnergyHelper.load("manhattan-policy-set-{}.pkl".format(i))
+    # print(eh.nodes)
     NUM_STOPS = 200
     NUM_ALLOCS = 15
     RANGE = float(3000)   # dummy for now
@@ -107,19 +111,18 @@ if __name__ == '__main__':
     eh.init_phermone_system(src, NUM_ALLOCS, R=RANGE)
     print(eh.demand)
     print("Truck + Drone:")
-    NUM_ITERATIONS = 50
-    ANTS_PER_ITERATION = 30
+    NUM_ITERATIONS = 100
+    ANTS_PER_ITERATION = 45
     energy, cycle, swp = eh.aco(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
     print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
     print(cycle)
     print(swp)
     print("Truck Only:")
     NUM_ITERATIONS = 100
-    ANTS_PER_ITERATION = 50
-    energy, cycle, swp = eh.aco_truck_only(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
+    ANTS_PER_ITERATION = 45
+    energy, cycle = eh.aco_truck_only(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
     print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
     print(cycle)
-    print(swp)
     print("Set", i, "has ended.")
   exit(0)
 #   eh = el.EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID,

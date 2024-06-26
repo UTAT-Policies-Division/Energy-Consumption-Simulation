@@ -16,7 +16,7 @@ OPTIMAL_SPEED = 10
 # in metres
 OPTIMAL_ALTITUDE = 100  
 
-TAGS = [{},
+TAGS = [{'amenity': 'prison'},
         {'aeroway': ['aerodrome', 'aircraft_crossing', 'apron', 'gate',
                      'hangar', 'helipad', 'navigationaid', 'runway',
                      'spaceport', 'taxiway', 'terminal', 'windsock'],
@@ -28,9 +28,13 @@ TAGS = [{},
                       'obstacle_course', 'office', 'range', 'school',
                       'training_area', 'trench'],
          'office': 'government',
-         'power': ['generator', 'planet', 'substation']},
+         'power': ['generator', 'planet', 'substation'],
+         'historic': ['fort', 'building', 'memorial'],
+         'gnis:feature_id':	['2781516', '2083047', '2083660', '949654'],
+         'wikidata': ['Q11259', 'Q110007', 'Q11277', 'Q2982151'],
+         'tiger:cfcc': 'A41:A49:A63'},
         {'highway': ['motorway', 'trunk'],
-         'building': ['firestation', 'hospital', 'prison']},
+         'building': ['firestation', 'hospital']},
         {'amenity': ['school', 'college', 'university'],
          'public_transport': 'station'}]
 

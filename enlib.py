@@ -1321,6 +1321,7 @@ class EnergyHelper:
           cur, cur_ty = lep[demand[j][0]]
           eng = let[demand[j][0]]
           while cur != -1:
+            # print(cur)
             n_pherm[j][cur] += (1 - abs(1 - ((eng - let[cur]) / MAX_BATTERY_USE_HALF))) * SP_PHERM_COEFF
             ed_ind = 0
             edge_data = edges
