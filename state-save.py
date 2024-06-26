@@ -4,7 +4,7 @@ from tqdm import tqdm
 import multiprocessing as mp
 import pickle
 
-RADIUS_SHIFT = 100
+RADIUS_SHIFT = 50
 TAGS = [{'amenity': 'prison'},
         {'aeroway': ['aerodrome', 'aircraft_crossing', 'apron', 'gate',
                      'hangar', 'helipad', 'navigationaid', 'runway',
@@ -138,20 +138,23 @@ def _osmnx_worker(no_fly_zones, index, q):
   obj.uld = edgesD["u_original"].values
   obj.vld = edgesD["v_original"].values
   obj.lenld = edgesD["length"].values
-  obj.save('set ' + str(index) + ".pkl")
+  obj.save('set-' + str(index) + "-relaxed.pkl")
   q.put(0)
 
 def listener(q):
-    pbar = tqdm(total = len(TAGS) * 2)
-    got_last = 0
-    while got_last != None:
-       if not q.empty():
-          got_last = q.get()
-          if got_last > 0:
-             pbar.total = pbar.total + got_last
-             pbar.refresh()
-          else:
-             pbar.update()
+    pbar = tqdm(total = (len(TAGS) - 2) * 2)
+    while q.empty():
+        continue
+    upd = q.get()
+    while upd != None:
+        if upd > 0:
+            pbar.total = pbar.total + upd
+            pbar.refresh()
+        else:
+            pbar.update()
+        while q.empty():
+            continue
+        upd = q.get()
     pbar.close()
 
 def download_data_parallel(policy_object):
@@ -160,7 +163,7 @@ def download_data_parallel(policy_object):
   proc.start()
   workers = [mp.Process(target=_osmnx_worker, 
                         args=(policy_object.REGION_POLICY['NO_FLY_ZONES']["set {}".format(i+1)], 
-                              i+1, q)) for i in range(len(TAGS))]
+                              i+1, q)) for i in range(2, len(TAGS))]
   for worker in workers:
     worker.start()
   for worker in workers:

@@ -433,8 +433,7 @@ def get_decomposed_network(obj):
 
 
 def fill_edge_data(edgesl, dedges, edge_work, dedge_work):
-  print("Logical number of CPUs:", cpu_count())
-  p = mp.Pool(processes=(cpu_count() - 1),
+  p = mp.Pool(processes=(40),
               initializer=copy_globals_energy,
               initargs=(DRONE_GROUND_SPEED,))
   pbar = tqdm(total=(len(edge_work) + len(dedge_work)))
@@ -1709,15 +1708,15 @@ class EnergyHelper:
 if __name__ == '__main__':
 #   eh = el.EnergyHelper.load("uoft.pkl")
 #   eh.save("manhattan-pre.pkl")
-  for i in range(1, 5):
+  for i in range(3, 5):
     init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
                  base_temperature=14, temp_flucts_coeff=3, drone_speed=10,
                  relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
     
-    SET_STRING = "set {}.pkl".format(i)
+    SET_STRING = "set-{}-relaxed.pkl".format(i)
 
     nodes, edges, dedges, UID_to_ind, ind_to_UID = get_decomposed_network(Storage.load(SET_STRING))
     eh = EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID,
                        10**(-2), gen_plot_data=True)
-    eh.save("manhattan-policy-set-{}.pkl".format(i))
+    eh.save("manhattan-policy-set-{}-relaxed.pkl".format(i))
   exit(0)

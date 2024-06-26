@@ -39,6 +39,7 @@ QUAD_A, QUAD_B, QUAD_C = -1, -1, -1
 WEIGHTS = [0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
 DRONE_WEIGHT = -1
 ENG_ZERO = 10**(-50)
+NODE_BASE_PHERM = 10**(-4)
 
 def inner_product(d1, d2):
   """
@@ -1240,7 +1241,6 @@ class EnergyHelper:
     print("Initializng phermone system...")
     nodes, edges, dedges, demand = self.nodes, self.edges, self.dedges, self.demand
     demand.append((src, 0))
-    NODE_BASE_PHERM = 10**(-4)
     SP_PHERM_COEFF = 10**(-3)
     DEMAND_PHERM_ADV_COEFF = 25
     DEMAND_BASE_PHERM = DEMAND_PHERM_ADV_COEFF * SP_PHERM_COEFF * len(demand)
@@ -1473,7 +1473,7 @@ class EnergyHelper:
     if cpu_count() < ants_per_iter:
       ants_per_iter = cpu_count()
       print("WARNING: cpu count too low, set ants/iteration to cpu count:", cpu_count())
-    STAGNANT_LIMIT = int(0.3 * K)
+    STAGNANT_LIMIT, STATUS_BREAK = int(0.3 * K), 1
     BEST_HALF_SIZE = ants_per_iter // 2
     degradation_factor = degradation_factor**BEST_HALF_SIZE
     barrier = mp.Value('i',lock=True)
@@ -1550,9 +1550,16 @@ class EnergyHelper:
       for i in range(DEMAND_SIZE):
         best_cycle[i] = cycle[i]
       j = 0
+      max_phm = 0
       while j < N_PHERM_SIZE:
-        n_pherm[j] *= degradation_factor
+        n_pherm[j] = max(n_pherm[j] * degradation_factor, NODE_BASE_PHERM)
+        max_phm = max(n_pherm[j], max_phm)
         j += 1
+      if iter % STATUS_BREAK == 0:
+        print("\nUpdate: best energy cycle found so far:", round(best_energy / 10**6, 2), "MJ")
+      if iter <= 0.5 * K:
+        # Dynamic initial delta loading.
+        q = 0.1 * max_phm * best_energy
       pbar.update()
       c = 1
       while c > 0:
@@ -1604,7 +1611,7 @@ class EnergyHelper:
     if cpu_count() < ants_per_iter:
       ants_per_iter = cpu_count()
       print("WARNING: cpu count too low, set ants/iteration to cpu count:", cpu_count())
-    STAGNANT_LIMIT, STATUS_BREAK = int(0.2 * K), 1
+    STAGNANT_LIMIT, STATUS_BREAK = int(0.25 * K), 1
     BEST_HALF_SIZE = ants_per_iter // 2
     degradation_factor = degradation_factor**BEST_HALF_SIZE
     barrier = mp.Value('i',lock=True)
@@ -1620,7 +1627,7 @@ class EnergyHelper:
     N_PHERM_SIZE = N_PHERM_LAST + NUM_NODES
     SWP_SIZE = 2 * DEMAND_SIZE
     SJI_PHERM_SIZE = (DEMAND_SIZE + 1) * (DEMAND_SIZE + 1)
-    SJI_PHERM_INIT, DELTA_SP_COEFF, DELTA_SP_NBH_COEFF = 0.55, 1.15, 0.75
+    SJI_PHERM_INIT, DELTA_SP_COEFF, DELTA_SP_NBH_COEFF = 0.55, 1.75, 0.75
     n_pherm = mp.Array('f', N_PHERM_SIZE, lock=False)
     sji_pherm = mp.Array('f', SJI_PHERM_SIZE, lock=False)
     c = -1
@@ -1647,11 +1654,6 @@ class EnergyHelper:
     lep_t = self.lep_t      # not changing
     edges = self.edges      # not changing
     dedges = self.dedges    # not changing
-    # print("Setting up delta hyperparamter...")
-    # sample_eng = _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm,
-    #                          cycles[i][1], llep_d, lep_t, cycles[i][2], let_t, 1, 
-    #                          DRONE_GROUND_SPEED, edges, dedges, cycles[i][0])
-    # print("Set up delta hyperparamter!")
     processes = [mp.Process(target=_aco_worker,
                             args=(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm,
                                   cycles[i][1], llep_d, lep_t, cycles[i][2], let_t, K, 
@@ -1674,7 +1676,7 @@ class EnergyHelper:
       with saw_zero.get_lock():
         saw_zero.value += ants_per_iter
       cycles.sort(key = lambda x: x[0].value)
-      if abs(cycles[0][0].value - best_energy) / best_energy < 0.001:
+      if abs(cycles[0][0].value - best_energy) / best_energy < 0.01:
         STAGNANT_LIMIT -= 1
         if STAGNANT_LIMIT <= 0:
           n_pherm[0] = -1
@@ -1800,15 +1802,17 @@ class EnergyHelper:
       for i in range(SWP_SIZE):
         best_swp[i] = swp[i]
       j = 0
+      max_phm = 0
       while j < N_PHERM_SIZE:
-        n_pherm[j] *= degradation_factor
+        n_pherm[j] = max(n_pherm[j] * degradation_factor, NODE_BASE_PHERM)
+        max_phm = max(n_pherm[j], max_phm)
         j += 1
       pbar.update()
       if iter % STATUS_BREAK == 0:
         print("\nUpdate: best energy cycle found so far:", round(best_energy / 10**6, 2), "MJ")
-      if iter < 0.1 * K:
+      if iter <= 0.5 * K:
         # Dynamic initial delta loading.
-        q = 0.005 * best_energy
+        q = 0.1 * max_phm * best_energy
       for p in processes:
         if not p.is_alive():
           print("NOTE: Ant", p.pid, "got killed.")
