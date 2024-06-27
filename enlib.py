@@ -1993,8 +1993,8 @@ def power(rho, W, V_w_hd, V_w_lt):
   phi = 0
   VTsq_c = 0
   l, d = 0, 0
-  lCOEFF = rho * 6.283185 * 0.0005
-  dCOEFF = rho * 0.011325 * 0.0005
+  lCOEFF = rho * 6.28318 * 0.0005
+  dCOEFF = rho * 0.00999 * 0.0005
   cosphi, sinphi = 0, 0
   HCOEFF = 0
   C, k_v, fv, dv, Vxsq, VAR1 = 0, 0, 0, 0, 0, 0
@@ -2080,8 +2080,8 @@ def power(rho, W, V_w_hd, V_w_lt):
   # omega_to_RPM(omegaN), rad_to_deg(alpha_D)
   # return QBET * omegaN
   # print(TBET*101.97, "g,", QBET, "Nm", omega_to_RPM(omegaN),"RPM")
-  return (omegaN * QBET * 6 * 1.009323494 / 0.77)
-  # assumes each of the 6 motors has 85% efficiency.
+  return (omegaN * QBET * 6 * 1.0145 / 0.77)
+  # assumes each of the 6 motors has 77% efficiency.
 
 def fill_edge_data(edgesl, dedges, edge_work, dedge_work):
   print("Logical number of CPUs:", cpu_count())
@@ -2119,3 +2119,23 @@ def _energy_worker(rho, V_w_hd, V_w_lt):
   for w in WEIGHTS:
     drone_power.append(power(rho, w, V_w_hd, V_w_lt))
   return tuple(drone_power)
+
+# def get_corner_energy_list():
+#     global DRONE_GROUND_SPEED
+#     DS_OG = DRONE_GROUND_SPEED
+#     # dW = P(V) dt
+#     # average width of road lane
+#     a = -1 *  DS_OG * DS_OG / (2 * 3.7)
+#     time_end, time_curr, dt = 2 * 3.7 / DS_OG, -1, 0.01
+#     work = -1
+#     eng_lst_ninety = []
+#     for w in WEIGHTS:
+#       work = 0
+#       time_curr = 0
+#       while time_curr <= time_end:
+#         DRONE_GROUND_SPEED = DS_OG + a * time_curr
+#         work += power(rho_air_std, w, 0, 0)
+#         time_curr += dt
+#       eng_lst_ninety.append(work * dt * 2)
+#     DRONE_GROUND_SPEED = DS_OG
+#     return eng_lst_ninety

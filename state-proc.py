@@ -452,8 +452,8 @@ def power(rho, W, V_w_hd, V_w_lt):
   phi = 0
   VTsq_c = 0
   l, d = 0, 0
-  lCOEFF = rho * 6.283185 * 0.0005
-  dCOEFF = rho * 0.011325 * 0.0005
+  lCOEFF = rho * 6.28318 * 0.0005
+  dCOEFF = rho * 0.00999 * 0.0005
   cosphi, sinphi = 0, 0
   HCOEFF = 0
   C, k_v, fv, dv, Vxsq, VAR1 = 0, 0, 0, 0, 0, 0
@@ -539,8 +539,8 @@ def power(rho, W, V_w_hd, V_w_lt):
   # omega_to_RPM(omegaN), rad_to_deg(alpha_D)
   # return QBET * omegaN
   # print(TBET*101.97, "g,", QBET, "Nm", omega_to_RPM(omegaN),"RPM")
-  return (omegaN * QBET * 6 * 1.009323494 / 0.77)
-  # assumes each of the 6 motors has 85% efficiency.
+  return (omegaN * QBET * 6 * 1.0145 / 0.77)
+  # assumes each of the 6 motors has 77% efficiency.
 
 def fill_edge_data(edgesl, dedges, edge_work, dedge_work):
   print("Logical number of CPUs:", cpu_count())
@@ -584,7 +584,7 @@ class EnergyHelper:
   stores nodes and edges globally.
   """
   def __init__(self, nodes: list, edges: list, dedges: list, UID_to_ind, 
-               ind_to_UID, angle_tolerance, gen_plot_data=False, demand=[]):
+               ind_to_UID, angle_tolerance, demand=[]):
     self.nodes = nodes
     self.edges = edges
     self.dedges = dedges
@@ -603,9 +603,6 @@ class EnergyHelper:
     self.sji_pherm = None
     self.line_cover = None
     self.line_cover_d = None
-    if gen_plot_data:
-      self.line_cover = self.gen_network_line_cover(self.edges)
-      self.line_cover_d = self.gen_network_line_cover(self.dedges)
 
   def save_light(self, filename='network_data_light.pkl'):
     print("Saving Energy Helper (light) object...")
@@ -639,7 +636,6 @@ class EnergyHelper:
                          obj.UID_to_ind,
                          obj.ind_to_UID,
                          obj.ang_tol,
-                         False,
                          obj.demand)
     ehobj.line_cover = obj.line_cover
     ehobj.line_cover_d = obj.line_cover_d
@@ -657,16 +653,23 @@ if __name__ == '__main__':
 #   eh = el.EnergyHelper.load("uoft.pkl")
 #   eh.save("manhattan-pre.pkl")
   TRUCK_PROFILES = [(12, 1.4), (15, 1.6), (20, 1.8)]
-  for i in range(1, 3):
-    for V in range(5, 31, 5):
-      init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
-                   base_temperature=14, temp_flucts_coeff=3, drone_speed=V,
-                   relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
-    
-      SET_STRING = "set {}.pkl".format(i)
 
-      nodes, edges, dedges, UID_to_ind, ind_to_UID = get_decomposed_network(Storage.load(SET_STRING))
-      eh = EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID,
-                         10**(-2), gen_plot_data=True)
-      eh.save("manhattan-policy-set-{}-{}ms.pkl".format(i, V))
+  # for V in range(5, 26, 5):
+  #   init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
+  #                base_temperature=14, temp_flucts_coeff=3, drone_speed=V,
+  #                relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
+  
+  #   SET_STRING = "set {}.pkl".format(1)
+  #   nodes, edges, dedges, UID_to_ind, ind_to_UID = get_decomposed_network(Storage.load(SET_STRING))
+  #   eh = EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID, 10**(-2))
+  #   eh.save("manhattan-policy-set-{}-{}ms.pkl".format(1, V))
+  for V in range(5, 26, 5):
+    init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
+                 base_temperature=14, temp_flucts_coeff=3, drone_speed=V,
+                 relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
+  
+    SET_STRING = "set {}.pkl".format(2)
+    nodes, edges, dedges, UID_to_ind, ind_to_UID = get_decomposed_network(Storage.load(SET_STRING))
+    eh = EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID, 10**(-2))
+    eh.save("manhattan-policy-set-{}-{}ms.pkl".format(2, V))
   exit(0)

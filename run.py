@@ -1,5 +1,5 @@
 # import geolib as gl
-from enlib import EnergyHelper, init_globals, power, rho_air_std, draw_function, kph_to_mps
+from enlib import EnergyHelper, init_globals, power, RPM_coeff, get_corner_energy_list
 import matplotlib.pyplot as plt
 from math import exp, pi
 # from PolicyStorage import no_fly_zones, PolicyData
@@ -83,29 +83,10 @@ if __name__ == '__main__':
 #   policy_object = PolicyData()
   DS_POLICY = 10
   DS_OPTIMAL = 16
-  init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
-                    base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=DS_OPTIMAL,
-                    relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
-#   eh = EnergyHelper.load("uoft.pkl")
-#   NUM_STOPS = 5
-#   NUM_ALLOCS = 15
-#   RANGE = float(1000)   # dummy for now
-#   eh.append_random_demand(NUM_STOPS, cluster_num=0, cluster_jump=0,
-#                         drone_only_possible_component=0.2, num_allocs=NUM_ALLOCS)
-#   src = eh.get_top_right_node()
-#   eh.init_phermone_system(src, NUM_ALLOCS, R=RANGE, local_VLOS_tolerance=0.1)
-#   eh.plot_network(False, False, True, True, False, [], [])
-#   plt.savefig("test.png", dpi=300)
-#   exit(0)
-  def func(V):
-    print(V)
-    init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
-                    base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=kph_to_mps(V),
-                    relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
-    return power(rho_air_std, 0, 0, 0)
-  draw_function(0, 156, 2, func)
-  plt.savefig("test.png", dpi=300)
-  exit(0)
+  #TODO: ADD TURNING OVERHEAD
+#   init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
+#                   base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=DS_OPTIMAL,
+#                   relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
 #   eh = el.EnergyHelper.load("uoft.pkl")
 #   eh.save("manhattan-pre.pkl")
 #   for i in range(2, 5):
@@ -165,13 +146,43 @@ if __name__ == '__main__':
 
 #     print("Set", i, "has ended.")
   # ground speed, payload, range
-    
-#   WES = [2276.5, 2622.4, 2930.6, 3295.9, 3704.1, 4092.9, 4509.2, 4999, 5501, 5980.6, 6617.3]
-#   TRQ = [0.56, 0.63, 0.74, 0.81, 0.93, 1.05, 1.11, 1.26, 1.44, 1.55, 1.75]
-#   RPM = [3002, 3213, 3402, 3602, 3842, 4013, 4213, 4400, 4600, 4800, 5000]
-#   RES = [0.85 * power(rho, (WES[i] - 2166) * 6 * 0.001, 0, 0) / 6 for i in range(len(WES))]
-#   POSS_LC = [6.283185]
-#   POSS_CD = [0.011325]
+  T = 36
+  Pv = 0.4 * 1610.78 * exp((17.27 * T) / (T + 237.3))
+  rho = ((101325 - Pv) * 0.0034837139 + Pv * 0.0021668274) / (T + 273.15)
+  print("RHO:", rho)
+  DS = 10      
+  init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
+                  base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=DS,
+                  relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))    
+  print(get_corner_energy_list())
+  exit(0)
+#   exit(0)
+#   LCS = 6.2
+#   CD = 0.02
+  WES = [2276.5, 2622.4, 2930.6, 3295.9, 3704.1, 4092.9, 4509.2, 4999]
+  PLD = [0.001 * 6 * WES[i] - 13 for i in range(len(WES))]
+  print(PLD)
+#   PLD = [0.663, 2.7384, 4.5876, 6.7794, 9.2286, 11.5614, 14.0592, 16.998]
+  TRQ = [0.56, 0.63, 0.74, 0.81, 0.93, 1.05, 1.11, 1.26]
+  RPM = [3002, 3213, 3402, 3602, 3842, 4013, 4213, 4400]
+  for i in range(len(WES)):
+      TRQ[i] *= RPM[i] * RPM_coeff
+  POSS_LC = [6.28318]
+  POSS_CD = [0.01]
+  best_err = 10000
+  for LC in POSS_LC:
+    for CD in POSS_CD:
+        tgt = [(0.77 * power(rho, PLD[i], 0, 0) / 6) for i in range(len(WES))]
+        dfs = sum(i for i in tgt) / (len(WES))
+        err = 0
+        for i in range(len(tgt)):
+            err = max(err, tgt[i] - dfs)
+        print(tgt)
+        print(dfs, (tgt[0] + tgt[1]) / 2)
+
+#   for i in range(len(WES)):
+#       tmp = power(rho, 6 * WES[i] / 1000, 0, 0, LCS, CD)
+  exit(0)
 #   eh = el.EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID,
 #                        10**(-2), gen_plot_data=True, demand=[])
 #   gl.show_place_adv(PLACE_NAME, TARGET_CRS_EPSG, BOUNDARY_BUFFER_LENGTH)
