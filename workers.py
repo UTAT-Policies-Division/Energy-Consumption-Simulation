@@ -829,11 +829,11 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
 
 def _aco_worker_truck_only(barrier, saw_zero, demand, n_pherm, cycle, let_t, K, result):
   src = demand.pop()[0]
-  ALPHA, BETA, DRONE_WEIGHT, TW_DENM = 0.9, 1.5, 13, 4535.9237
+  ALPHA, BETA, TW_DENM = 0.9, 1.5, 4535.9237
   N_PHERM_SIZE, DEMAND_SIZE = int(len(n_pherm)), len(demand)
   NUM_NODES = int(N_PHERM_SIZE / (DEMAND_SIZE + 1))
   N_PHERM_LAST = N_PHERM_SIZE - NUM_NODES
-  TOTAL_WEIGHT = sum(pr[1] for pr in demand) + DRONE_WEIGHT
+  TOTAL_WEIGHT = sum(pr[1] for pr in demand)
   got = [0 for _ in range(DEMAND_SIZE)]
   f_dem_ps, f_dem_ws = [i for i in range(DEMAND_SIZE)], [0 for _ in range(DEMAND_SIZE)]
   nbs, ws, not_got_chance = [], [], False
@@ -888,7 +888,7 @@ def _aco_worker_truck_only(barrier, saw_zero, demand, n_pherm, cycle, let_t, K, 
     # -----------------------------
     # Final Deployment
     # -----------------------------
-    assert abs(truck_w - DRONE_WEIGHT) < 0.1, "WEIGHT ERROR"
+    assert abs(truck_w) < 0.1, "WEIGHT ERROR"
     result.value = eng_tot + let_t[truck_loc_node][src] / w_coeff
     K -= 1
     # -----------------------------
