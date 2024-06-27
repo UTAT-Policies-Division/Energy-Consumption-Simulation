@@ -183,7 +183,7 @@ def construct_energy_meetup(llep_d, from_dem, sp, edges, dedges, demand, DS):
 def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle, 
                 llep_d, lep_t, swp, let_t, K, DS, edges, dedges, result):
   src = demand.pop()[0]     # DRONE WEIGHT NEEDS MANUAL SYNC
-  ALPHA, BETA, MAX_WEIGHT, DRONE_WEIGHT, TW_DENM = 0.9, 1.5, WEIGHTS[-1], 12, 4535.9237
+  ALPHA, BETA, MAX_WEIGHT, DRONE_WEIGHT, TW_DENM = 0.9, 1.5, WEIGHTS[-1], 13, 4535.9237
   N_PHERM_SIZE, DEMAND_SIZE, PCKG_BONUS_COEFF = int(len(n_pherm)), len(demand), 10**(-4)
   NUM_NODES = int(N_PHERM_SIZE / (DEMAND_SIZE + 1))
   N_PHERM_LAST = N_PHERM_SIZE - NUM_NODES
@@ -829,7 +829,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
 
 def _aco_worker_truck_only(barrier, saw_zero, demand, n_pherm, cycle, let_t, K, result):
   src = demand.pop()[0]
-  ALPHA, BETA, DRONE_WEIGHT, TW_DENM = 0.9, 1.5, 12, 4535.9237
+  ALPHA, BETA, DRONE_WEIGHT, TW_DENM = 0.9, 1.5, 13, 4535.9237
   N_PHERM_SIZE, DEMAND_SIZE = int(len(n_pherm)), len(demand)
   NUM_NODES = int(N_PHERM_SIZE / (DEMAND_SIZE + 1))
   N_PHERM_LAST = N_PHERM_SIZE - NUM_NODES

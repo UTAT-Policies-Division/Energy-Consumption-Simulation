@@ -24,8 +24,8 @@ PROP_START, PROP_END = 1, 11  # inches
 DRAW_PREC = 100 # power of 10, larger => more precise
 AREA = pi * (11 / meter_coeff)**2
 NEWT_PREC = 10**(-5)
-BATTERY_RESERVE_MARGIN = 0.2
-BATTERY_CAPACITY = 17.0 * 42 * 3600 # J
+BATTERY_RESERVE_MARGIN = 0.15
+BATTERY_CAPACITY = 49.0 * 24 * 3600  # J = Ah * Voltage * 3600
 MAX_BATTERY_USE = BATTERY_CAPACITY * (1 - BATTERY_RESERVE_MARGIN)
 MAX_BATTERY_USE_HALF = MAX_BATTERY_USE / 2
 MIN_MEETUP_BATTERY_REM = MAX_BATTERY_USE * 0.15
@@ -38,6 +38,7 @@ BASE_TEMP, TEMP_FLUC_COEFF, REL_HUMIDITY = -1, -1, -1
 QUAD_A, QUAD_B, QUAD_C = -1, -1, -1
 WEIGHTS = [0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
 DRONE_WEIGHT = -1
+DRONE_SPAN = 1.58
 ENG_ZERO = 10**(-50)
 NODE_BASE_PHERM = 10**(-4)
 
@@ -217,7 +218,7 @@ def init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
   QUAD_C = 74736280 / truck_city_mpg
   QUAD_B = -sqrt(74736280 - QUAD_C)
   QUAD_A = QUAD_B / -24.5872
-  DRONE_WEIGHT = kgs_to_W(12)
+  DRONE_WEIGHT = kgs_to_W(13)
 
 def copy_globals_energy(drone_speed):
   global C_D_ALPHA0, S_REF, DRONE_GROUND_SPEED, \
@@ -241,7 +242,7 @@ def copy_globals_energy(drone_speed):
   C_D_ALPHA0 = 0.5
   S_REF = 0.05
   DRONE_GROUND_SPEED = drone_speed
-  DRONE_WEIGHT = kgs_to_W(12)
+  DRONE_WEIGHT = kgs_to_W(13)
 
 def TH_BET(rho, v0, Vx, Vc, omega, CHORD, BETA, SINPSI, COSPSI):   # correct, but prefer not used
   resT, resH = 0, 0
@@ -259,8 +260,8 @@ def TH_BET(rho, v0, Vx, Vc, omega, CHORD, BETA, SINPSI, COSPSI):   # correct, bu
   phi = 0
   VTsq_c = 0
   l, d = 0, 0
-  lCOEFF = rho * 2.85 * 0.001
-  dCOEFF = rho * 0.0000225
+  lCOEFF = rho * 6.283185 * 0.0005
+  dCOEFF = rho * 0.011325 * 0.0005
   cosphi, sinphi = 0, 0
   HCOEFF = 0
   while i < 100:
@@ -1236,10 +1237,12 @@ class EnergyHelper:
         ind = i
     return ind
 
-  def init_phermone_system(self, src, passed_num_alloc, R=float("inf")):
+  def init_phermone_system(self, src, passed_num_alloc, R=float("inf"), local_VLOS_tolerance=float('inf')):
     # range is a dummy decision variable for now
     print("Initializng phermone system...")
     nodes, edges, dedges, demand = self.nodes, self.edges, self.dedges, self.demand
+    if local_VLOS_tolerance != float('inf'):
+      R = DRONE_SPAN * 327 + 20
     demand.append((src, 0))
     SP_PHERM_COEFF = 10**(-3)
     DEMAND_PHERM_ADV_COEFF = 25
@@ -1269,51 +1272,39 @@ class EnergyHelper:
           n_eng = eng + (drone_powers[1] * n_dst / DRONE_GROUND_SPEED)
           n_dst += dst
           if n_eng < MAX_BATTERY_USE and n_eng < let[n_ind] and n_dst < R:
-            let[n_ind] = n_eng
-            lep[n_ind] = (ind, True)
-            heapq.heappush(q, (n_eng, n_dst, n_ind))
+            dth = 0
+            if lep[ind][0] >= 0:
+              ux, uy = self.nodes[lep[ind][0]]
+              vx, vy = self.nodes[ind]
+              wx, wy = self.nodes[n_ind]
+              dvux, dvuy = ux - vx, uy - vy
+              dvwx, dvwy = wx - vx, wy - vy
+              dth = abs(pi - acos(((dvux * dvwx) + (dvuy * dvwy)) * 0.99 / 
+                                    (sqrt(dvux * dvux + dvuy * dvuy) *
+                                     sqrt(dvwx * dvwx + dvwy * dvwy))))
+            if dth <= local_VLOS_tolerance:
+              let[n_ind] = n_eng
+              lep[n_ind] = (ind, True)
+              heapq.heappush(q, (n_eng, n_dst, n_ind))
         for n_ind, n_dst, drone_powers in dedges[ind]:
           # loading based on maximum range i.e. 0.25kg payload
           n_eng = eng + (drone_powers[1] * n_dst / DRONE_GROUND_SPEED)
           n_dst += dst
           if n_eng < MAX_BATTERY_USE and n_eng < let[n_ind] and n_dst < R:
-            let[n_ind] = n_eng
-            lep[n_ind] = (ind, False)
-            heapq.heappush(q, (n_eng, n_dst, n_ind))
-      # VLOS enforcement below
-      # isParent = [0 for _ in range(len(nodes))]
-      # for j in range(len(nodes)):
-      #   if lep[j][0] >= 0:
-      #     isParent[lep[j][0]] = 1
-      # for j in range(len(nodes)):
-      #   if lep[j][0] == -1 or lep[lep[j][0]][0] == -1 or isParent[j]:
-      #     continue
-      #   last_last_node_og, gdth, dth = j, 0, 0
-      #   last_last_node, last_node, curr_node = j, lep[j][0], lep[lep[j][0]][0]
-      #   while curr_node != -1:
-      #     ux, uy = self.nodes[last_last_node]
-      #     vx, vy = self.nodes[last_node]
-      #     wx, wy = self.nodes[curr_node]
-      #     dvux, dvuy = ux - vx, uy - vy
-      #     dvwx, dvwy = wx - vx, wy - vy
-      #     dth = abs(pi - acos(((dvux * dvwx) + (dvuy * dvwy)) * 0.99 / 
-      #                           (sqrt(dvux * dvux + dvuy * dvuy) *
-      #                            sqrt(dvwx * dvwx + dvwy * dvwy))))
-      #     if gdth + dth >= 20:
-      #       prv = last_last_node_og
-      #       while prv != last_node:
-      #         got[prv] = 0
-      #         cur = lep[prv][0]
-      #         lep[prv] = (-1, None)
-      #         prv = cur
-      #       last_last_node_og = last_node
-      #       gdth = dth
-      #     else:
-      #       gdth += dth
-      #     last_last_node = last_node
-      #     last_node = curr_node
-      #     curr_node = lep[curr_node][0]
-      # got[i] = 1  # just in case
+            dth = 0
+            if lep[ind][0] >= 0:
+              ux, uy = self.nodes[lep[ind][0]]
+              vx, vy = self.nodes[ind]
+              wx, wy = self.nodes[n_ind]
+              dvux, dvuy = ux - vx, uy - vy
+              dvwx, dvwy = wx - vx, wy - vy
+              dth = abs(pi - acos(((dvux * dvwx) + (dvuy * dvwy)) * 0.99 / 
+                                    (sqrt(dvux * dvux + dvuy * dvuy) *
+                                     sqrt(dvwx * dvwx + dvwy * dvwy))))
+            if dth <= local_VLOS_tolerance:
+              let[n_ind] = n_eng
+              lep[n_ind] = (ind, False)
+              heapq.heappush(q, (n_eng, n_dst, n_ind))
       for j in range(len(demand)):
         if got[demand[j][0]] == 1:
           sp_poss[j][1].append(i)
@@ -1396,6 +1387,17 @@ class EnergyHelper:
         tmp = DEMAND_BASE_PHERM + DEMAND_WEIGHT_COEFF * demand[j][1]
         n_pherm[i][demand[j][0]] += tmp
         max_phm = max(max_phm, n_pherm[i][demand[j][0]])
+      if len(sp_poss[i][1]) - len(llep_d[i][1]) > 0:
+        print("BAD LOCAL TO DEMAND PATH CONSTRUCTION: ", set(sp_poss[i][1]), set(llep_d[i][1]))
+        exit(1)
+      if len(sp_poss[i][0]) - len(llep_d[i][0]) > 0:
+        print("BAD LOCAL FROM DEMAND PATH CONSTRUCTION: ", set(sp_poss[i][1]), set(llep_d[i][1]))
+        exit(1)
+    for i in range(len(nodes)):
+      for j in range(len(nodes)):
+        if let_t[i][j] == float('inf'):
+          if lep_t[i][j][0] != -1:
+            print("Error: these nodes have malformed path data:", i, j, lep_t[i][j])
     # -------------------------------
     # Scaling demand phermone to be
     # less than 1, ensures phermone
@@ -1418,13 +1420,6 @@ class EnergyHelper:
     self.llep_d = llep_d
     self.lep_t = lep_t
     self.let_t = let_t
-    for i in range(len(demand)):
-      if len(sp_poss[i][1]) - len(llep_d[i][1]) > 0:
-        print("BAD LOCAL TO DEMAND PATH CONSTRUCTION: ", set(sp_poss[i][1]), set(llep_d[i][1]))
-        exit(1)
-      if len(sp_poss[i][0]) - len(llep_d[i][0]) > 0:
-        print("BAD LOCAL FROM DEMAND PATH CONSTRUCTION: ", set(sp_poss[i][1]), set(llep_d[i][1]))
-        exit(1)
     # for i in range(len(nodes)):
     #   for j in range(len(nodes)):
     #     if lep_t[0][j][0] != -1:
@@ -1435,11 +1430,6 @@ class EnergyHelper:
     #         cur, cur_id = lep_t[0][cur]
     #       print(tpr)
     #   break
-    for i in range(len(nodes)):
-      for j in range(len(nodes)):
-        if let_t[i][j] == float('inf'):
-          if lep_t[i][j][0] != -1:
-            print("Error: these nodes have malformed path data:", i, j, lep_t[i][j])
     # print(llep_d[0])
     # print(sp_poss[0])
     # lep_frm, lep_to = llep_d[0]
@@ -1981,6 +1971,7 @@ V_w_lt: wind speed lateral downwards component
 """
 def power(rho, W, V_w_hd, V_w_lt):
   V = DRONE_GROUND_SPEED
+  W *= kgs_coeff
   W += DRONE_WEIGHT
   Df = 0.5 * C_D_ALPHA0 * S_REF * rho * V * V
   T0, H0 = W / 6, 0.015 * W
@@ -2002,8 +1993,8 @@ def power(rho, W, V_w_hd, V_w_lt):
   phi = 0
   VTsq_c = 0
   l, d = 0, 0
-  lCOEFF = rho * 0.00285
-  dCOEFF = rho * 0.0000225
+  lCOEFF = rho * 6.283185 * 0.0005
+  dCOEFF = rho * 0.011325 * 0.0005
   cosphi, sinphi = 0, 0
   HCOEFF = 0
   C, k_v, fv, dv, Vxsq, VAR1 = 0, 0, 0, 0, 0, 0
@@ -2079,7 +2070,7 @@ def power(rho, W, V_w_hd, V_w_lt):
         resH += H
         resQ += Q
         i += 1
-      TBET, HBET, QBET = resT * 0.01, resH * 0.01, resQ * 0.01
+      TBET, HBET, QBET = abs(resT) * 0.01, resH * 0.01, resQ * 0.01
       omegaN = sqrt(T0/TBET) * omega0
       # print("QBET:",QBET,"TBET:",TBET,"HBET:",HBET,"O0:",omega0,"ON:",omegaN)
       omega0 = omegaN
@@ -2087,7 +2078,9 @@ def power(rho, W, V_w_hd, V_w_lt):
     H0 = HBET
   # print((W/6)-T0) # excess
   # omega_to_RPM(omegaN), rad_to_deg(alpha_D)
-  return (omegaN * QBET * 7.05882353)
+  # return QBET * omegaN
+  # print(TBET*101.97, "g,", QBET, "Nm", omega_to_RPM(omegaN),"RPM")
+  return (omegaN * QBET * 6 * 1.009323494 / 0.77)
   # assumes each of the 6 motors has 85% efficiency.
 
 def fill_edge_data(edgesl, dedges, edge_work, dedge_work):
