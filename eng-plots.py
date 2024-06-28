@@ -63,4 +63,4 @@ def compile_seq(filename):
             end = line.index(" ", start)
             current_values.append(round(float(line[start:end]) / 3.6, 2))
 
-compile_seq("results.txt")
+compile_seq("data/speed-results.txt")

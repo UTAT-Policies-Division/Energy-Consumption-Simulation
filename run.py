@@ -129,13 +129,13 @@ if __name__ == '__main__':
 #   exit(0)
   
   print("200 Demand Points, 20% drone loading, max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24, base_temperature=14, temp_flucts_coeff=3, relative_humidity=52%")
-  for min_w in range(0, 21, 5):
+  for min_w in range(5, 21, 5):
     for i in range(1, 2):
       for V in range(5, 16, 5):
         # --------------------------------
         # Loading Manhattan Set + Generating Demand, Source
         # --------------------------------
-        print("Set", i, "for drone speed", V, "m/s begins!")
+        print("Set", i, "for min weight", (min_w / 10), " and drone speed", V, "m/s begins!")
         init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
                     base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=V,
                     relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
@@ -186,9 +186,9 @@ if __name__ == '__main__':
         print(swp)
         # --------------------------------
     
-        print("Set", i, "for speed", V, "m/s has ended.")
-    exit(0)
-  # ground speed, payload, range
+        print("Set", i, "for min weight", (min_w / 10), " and drone speed", V, "m/s has ended.")
+
+# ground speed, payload, range
 #   T = 36
 #   Pv = 0.4 * 1610.78 * exp((17.27 * T) / (T + 237.3))
 #   rho = ((101325 - Pv) * 0.0034837139 + Pv * 0.0021668274) / (T + 273.15)
