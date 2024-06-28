@@ -1,5 +1,5 @@
 # import geolib as gl
-from enlib import EnergyHelper, init_globals, power, RPM_coeff, get_corner_energy_list
+from enlib import EnergyHelper, init_globals, power, RPM_coeff, WEIGHTS
 import matplotlib.pyplot as plt
 from math import exp, pi
 # from PolicyStorage import no_fly_zones, PolicyData
@@ -83,7 +83,6 @@ if __name__ == '__main__':
 #   policy_object = PolicyData()
   DS_POLICY = 10
   DS_OPTIMAL = 16
-  #TODO: ADD TURNING OVERHEAD
 #   init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
 #                   base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=DS_OPTIMAL,
 #                   relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
@@ -102,59 +101,118 @@ if __name__ == '__main__':
 #     eh = el.EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID,
 #                        10**(-2), gen_plot_data=True)
 #     eh.save("manhattan-policy-set-{}.pkl".format(i))
-#   for i in range(3, 4):
-#     # --------------------------------
-#     # Loading Manhattan Set + Generating Demand, Source
-#     # --------------------------------
-#     print("Set", i, "begins!")
-#     eh = EnergyHelper.load("manhattan-policy-set-{}.pkl".format(i))
-#     print(eh.edges[:20])  # confirming calibration
-#     NUM_STOPS = 200
-#     NUM_ALLOCS = 15
-#     RANGE = float(5000)   # dummy for now
-#     eh.append_random_demand(NUM_STOPS, cluster_num=0, cluster_jump=0,
-#                           drone_only_possible_component=0.2, num_allocs=NUM_ALLOCS)
-#     src = eh.get_close_node(-3302, -3509, 20)
-#     print(eh.nodes[src])
-#     print(eh.demand)
-#     # --------------------------------
-
-#     # --------------------------------
-#     # Truck Only ACO Setup & Run
-#     # --------------------------------
-#     eh.init_phermone_system(src, NUM_ALLOCS, R=RANGE)
-#     print("Truck Only:")
-#     NUM_ITERATIONS = 200
-#     ANTS_PER_ITERATION = 45
-#     energy, cycle = eh.aco_truck_only(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
-#     print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
-#     print(cycle)
-#     # --------------------------------
-
-#     # --------------------------------
-#     # Truck + Drone ACO Setup & Run
-#     # --------------------------------
-#     eh.init_phermone_system(src, NUM_ALLOCS, R=RANGE)
-#     print("Truck + Drone:")
-#     NUM_ITERATIONS = 200
-#     ANTS_PER_ITERATION = 45
-#     energy, cycle, swp = eh.aco(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
-#     print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
-#     print(cycle)
-#     print(swp)
-#     # --------------------------------
-
-#     print("Set", i, "has ended.")
+  
+  
+#   init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
+#                     base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=25,
+#                     relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
+#   eh = EnergyHelper.load("manhattan-policy-set-{}-{}ms.pkl".format(1, 25))
+#   eh.demand = [(2095, 19.25), (1172, 13.25), (99, 11.25), (347, 1), (2064, 13.5), (6575, 16.0), (2124, 18.5), (2860, 17.5), (3581, 19.5), (1964, 20.75), (799, 1), (1251, 16.5), (5151, 10.75), (6499, 13.0), (1212, 18.75), (3948, 16.75), (6687, 22.0), (2343, 16.75), (1956, 20.25), (1397, 16.0), (4917, 12.25), (1469, 20.0), (1470, 16.25), (1821, 19.0), (6703, 0.5), (607, 13.75), (1207, 18.0), (6429, 18.25), (168, 19.25), (1125, 17.25), (3086, 18.5), (638, 20.0), (5394, 16.25), (2694, 1), (506, 18.25), (2393, 18.25), (2843, 15.0), (6820, 18.5), (1326, 17.0), (4472, 1.25), (2280, 15.5), (2683, 15.0), (3915, 15.0), (6486, 15.0), (3984, 0.25), (2552, 1.5), (3171, 18.5), (5344, 15.75), (6376, 13.0), (2760, 17.5), (6381, 18.25), (2617, 16.25), (2420, 16.75), (6434, 17.5), (2917, 1), (3818, 18.0), (6849, 14.5), (2433, 19.5), (6503, 16.75), (1331, 19.25), (2370, 18.75), (4194, 14.0), (2206, 15.75), (6740, 1.5), (2083, 1.25), (3609, 16.75), (1269, 16.25), (4498, 16.25), (6654, 18.75), (2747, 17.25), (301, 18.0), (1231, 1), (743, 18.0), (1903, 16.75), (1982, 1.75), (944, 16.5), (2377, 20.0), (3646, 1.25), (2886, 16.25), (4746, 16.0), (2978, 0.75), (2307, 19.5), (3954, 1.5), (6543, 1.25), (5482, 17.0), (1031, 15.75), (2268, 16.5), (5052, 17.75), (6803, 1.75), (2205, 16.75), (3508, 1.75), (1488, 18.0), (4998, 15.25), (3082, 16.0), (3121, 17.5), (4095, 21.75), (1021, 13.75), (3422, 16.75), (2306, 18.25), (6715, 14.0), (4122, 20.5), (3810, 20.25), (51, 15.0), (3073, 15.5), (3071, 16.0), (3024, 16.0), (1815, 17.25), (1798, 18.0), (1942, 19.0), (6562, 14.5), (1877, 16.25), (4728, 1), (2740, 20.25), (1090, 1.25), (794, 13.0), (3559, 14.75), (6840, 16.0), (3539, 11.0), (2823, 20.0), (962, 18.5), (4112, 15.75), (3567, 19.0), (2637, 14.5), (24, 18.5), (4137, 0.5), (903, 20.75), (218, 14.75), (4262, 1.25), (6421, 17.25), (3312, 17.75), (3480, 0.5), (1162, 14.75), (6388, 1.25), (52, 17.0), (2153, 12.5), (4014, 16.5), (1537, 20.5), (3515, 1), (1496, 18.0), (3697, 18.75), (1681, 13.25), (1765, 17.75), (4361, 18.75), (895, 17.0), (6198, 11.75), (1794, 17.75), (6725, 13.75), (709, 16.75), (1022, 0.75), (531, 14.75), (848, 1), (2743, 15.5), (248, 18.0), (2345, 14.5), (2261, 14.75), (2702, 15.5), (1931, 18.25), (1887, 0.75), (6698, 20.5), (2157, 18.75), (4184, 13.25), (4174, 1), (1224, 15.5), (1950, 18.5), (3283, 17.5), (6622, 1.5), (2716, 12.0), (4048, 1.25), (4011, 15.0), (1957, 1.75), (2738, 14.5), (2294, 17.25), (1554, 0.5), (1746, 17.5), (5973, 1.75), (5319, 19.0), (762, 11.0), (3740, 19.25), (3301, 1.25), (591, 17.0), (288, 19.75), (1465, 18.0), (2932, 15.0), (2742, 17.25), (2312, 1), (2001, 17.0), (2055, 2), (2930, 17.0), (1083, 17.25), (654, 13.75), (4197, 18.0), (1280, 16.75), (833, 0.5), (3625, 15.5), (2282, 15.25), (976, 0.25), (238, 18.0), (1046, 21.0), (1155, 0.75), (2876, 20.25)]
+#   src = eh.get_top_right_node()
+#   if src in [x[0] for x in eh.demand]:
+#     exit(0)
+#   eh.init_phermone_system(src, R=3000)
+#   print("Truck Only:")
+#   NUM_ITERATIONS = 100
+#   ANTS_PER_ITERATION = 40
+#   energy, cycle = eh.aco_truck_only(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
+#   print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
+#   print(cycle)
+#   eh.init_phermone_system(src, R=3000)
+#   print("Truck + Drone:")
+#   NUM_ITERATIONS = 100
+#   ANTS_PER_ITERATION = 40
+#   energy, cycle, swp = eh.aco(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
+#   print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
+#   print(cycle)
+#   print(swp)
+#   exit(0)
+  
+  print("200 Demand Points, 20% drone loading, max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24, base_temperature=14, temp_flucts_coeff=3, relative_humidity=52%")
+  for min_w in range(0, 21, 5):
+    for i in range(1, 2):
+      for V in range(5, 16, 5):
+        # --------------------------------
+        # Loading Manhattan Set + Generating Demand, Source
+        # --------------------------------
+        print("Set", i, "for drone speed", V, "m/s begins!")
+        init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
+                    base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=V,
+                    relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
+        eh = EnergyHelper.load("pickles/manhattan-policy-set-{}-{}ms.pkl".format(i, V))
+        print(eh.edges[:5])  # confirming calibration
+        NUM_STOPS = 200
+        NUM_ALLOCS = 15
+        RANGE = float(3000)   # dummy for now
+      #   src = eh.get_close_node(-3302, -3509, 20)
+        if i == 1:
+            src = eh.get_top_right_node()
+        else:
+            src = eh.get_close_node(3455, 9256, 50)
+        eh.append_random_demand(NUM_STOPS, cluster_num=0, cluster_jump=0, dron_min_w=(min_w / 10),
+                                drone_only_possible_component=0.2, num_allocs=NUM_ALLOCS)
+        conflict = src in [x[0] for x in eh.demand]
+        while conflict:
+          eh.demand = []
+          eh.append_random_demand(NUM_STOPS, cluster_num=0, cluster_jump=0, dron_min_w=(min_w / 10),
+                                  drone_only_possible_component=0.2, num_allocs=NUM_ALLOCS)
+          conflict = src in [x[0] for x in eh.demand]
+        print("Source", src, "at", eh.nodes[src])
+        print(eh.demand)
+        # --------------------------------
+    
+        # --------------------------------
+        # Truck Only ACO Setup & Run
+        # --------------------------------
+        eh.init_phermone_system(src, R=RANGE)
+        print("Truck Only:")
+        NUM_ITERATIONS = 100
+        ANTS_PER_ITERATION = 40
+        energy, cycle = eh.aco_truck_only(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
+        print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
+        print(cycle)
+        # --------------------------------
+    
+        # --------------------------------
+        # Truck + Drone ACO Setup & Run
+        # --------------------------------
+        eh.init_phermone_system(src, R=RANGE)
+        print("Truck + Drone:")
+        NUM_ITERATIONS = 100
+        ANTS_PER_ITERATION = 40
+        energy, cycle, swp = eh.aco(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
+        print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
+        print(cycle)
+        print(swp)
+        # --------------------------------
+    
+        print("Set", i, "for speed", V, "m/s has ended.")
+    exit(0)
   # ground speed, payload, range
-  T = 36
-  Pv = 0.4 * 1610.78 * exp((17.27 * T) / (T + 237.3))
-  rho = ((101325 - Pv) * 0.0034837139 + Pv * 0.0021668274) / (T + 273.15)
-  print("RHO:", rho)
-  DS = 10      
-  init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
-                  base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=DS,
-                  relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))    
-  print(get_corner_energy_list())
+#   T = 36
+#   Pv = 0.4 * 1610.78 * exp((17.27 * T) / (T + 237.3))
+#   rho = ((101325 - Pv) * 0.0034837139 + Pv * 0.0021668274) / (T + 273.15)
+#   print("RHO:", rho)
+#   DS = 10      
+#   init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
+#                   base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=DS,
+#                   relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month])) 
+  eh = EnergyHelper.load("manhattan.pkl")  
+#   eh.nodes = [(0,0), (1,0), (1,1), (5,0), (2,3)]
+#   ENG = tuple([1 for _ in range(len(WEIGHTS))])
+#   eh.edges = [[(1, 10.0, 1222222222222222, 1, ENG)], 
+#            [(0, 10.0, 222222222222222, 1, ENG), (2, 10.0, 1222222222222222, 1, ENG), (3, 40.0, 1222222222222222, 1, ENG)], 
+#            [(1, 10.0, 1222222222222222, 1, ENG), (4, 30.5, 1222222222222222, 1, ENG)], 
+#            [(1, 40.0, 1222222222222222, 1, ENG)], 
+#            [(2, 30.5, 1222222222222222, 1, ENG)]]
+#   eh.dedges = [[], [], [], [], []]
+#   eh.demand = [(1, 0.0)]
+#   src = 0
+  eh.append_random_demand(99)
+  src = eh.get_top_left_node()
+  eh.init_phermone_system(src, 10, 3000)
+  energy, cycle, swp = eh.aco(50, 3)
+  print(round(energy / 10**6, 2), cycle, swp)
   exit(0)
 #   exit(0)
 #   LCS = 6.2

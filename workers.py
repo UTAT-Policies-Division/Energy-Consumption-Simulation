@@ -1,4 +1,5 @@
 from random import choices
+from math import pi, acos, sqrt
 
 NEWT_PREC = 10**(-5)
 BATTERY_RESERVE_MARGIN = 0.2
@@ -10,6 +11,7 @@ TIME_TO_FULL_CHARGE = 3600
 RECARGE_RATE = BATTERY_CAPACITY / TIME_TO_FULL_CHARGE
 WEIGHTS = [0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
 ENG_ZERO = 10**(-50)
+CORNER_POWERS = None
 
 def construct_time(llep_d, start_ind, to_visit, edges, dedges, DS):
   """
@@ -66,11 +68,12 @@ def construct_time_truck(lep_t, from_node, to_node, edges):
     cur, cur_id = lep_t[from_node][cur]
   return time
 
-def construct_energy(llep_d, to_visit, edges, dedges, dron_w, DS):
+def construct_energy(llep_d, to_visit, edges, dedges, nodes, demand, dron_w, DS):
   lim, w_ind = len(to_visit) - 2, int(dron_w * 4)
   eng, tvs_ind, prv, cur, cur_id, cur_ty = ENG_ZERO, 0, -1, -1, -1, None
-  lep_frm, lep_to, e = None, None, None
+  lep_frm, lep_to, e, prv_prv = None, None, None, None
   while tvs_ind < lim:
+    prv_prv = None
     lep_frm, lep_to = llep_d[to_visit[tvs_ind + 1][0]]
     prv = to_visit[tvs_ind]
     cur, cur_ty = lep_to[prv]
@@ -81,9 +84,23 @@ def construct_energy(llep_d, to_visit, edges, dedges, dron_w, DS):
       else:
         e = dedges[prv][cur]
         eng += e[2][w_ind] * e[1] / DS
+      if prv_prv != None:
+        ux, uy = nodes[prv_prv]
+        vx, vy = nodes[prv]
+        wx, wy = nodes[e[0]]
+        dvux, dvuy = ux - vx, uy - vy
+        dvwx, dvwy = wx - vx, wy - vy
+        theta = pi - acos(((dvux * dvwx) + (dvuy * dvwy)) * 0.99 / 
+                          (sqrt(dvux * dvux + dvuy * dvuy) *
+                           sqrt(dvwx * dvwx + dvwy * dvwy)))
+        eng += CORNER_POWERS[w_ind] * 3.7 * theta / DS
+      prv_prv = prv
       prv = e[0]
       cur, cur_ty = lep_to[prv]
-    cur, cur_id, cur_ty = lep_frm[to_visit[tvs_ind + 2]]
+    dron_w -= demand[to_visit[tvs_ind + 1][0]][1]
+    w_ind = int(dron_w * 4)
+    prv_prv, prv = None, to_visit[tvs_ind + 2]
+    cur, cur_id, cur_ty = lep_frm[prv]
     while cur != -1:
       if cur_ty:
         e = edges[cur][cur_id]
@@ -91,8 +108,21 @@ def construct_energy(llep_d, to_visit, edges, dedges, dron_w, DS):
       else:
         e = dedges[cur][cur_id]
         eng += e[2][w_ind] * e[1] / DS
+      if prv_prv != None:
+        ux, uy = nodes[prv_prv]
+        vx, vy = nodes[prv]
+        wx, wy = nodes[cur]
+        dvux, dvuy = ux - vx, uy - vy
+        dvwx, dvwy = wx - vx, wy - vy
+        theta = pi - acos(((dvux * dvwx) + (dvuy * dvwy)) * 0.99 / 
+                          (sqrt(dvux * dvux + dvuy * dvuy) *
+                           sqrt(dvwx * dvwx + dvwy * dvwy)))
+        eng += CORNER_POWERS[w_ind] * 3.7 * theta / DS
+      prv_prv = prv
+      prv = cur
       cur, cur_id, cur_ty = lep_frm[cur]
     tvs_ind += 2
+  prv_prv = None
   _, lep_to = llep_d[to_visit[tvs_ind + 1][0]]
   prv = to_visit[tvs_ind]
   cur, cur_ty = lep_to[prv]
@@ -103,12 +133,24 @@ def construct_energy(llep_d, to_visit, edges, dedges, dron_w, DS):
     else:
       e = dedges[prv][cur]
       eng += e[2][w_ind] * e[1] / DS
+    if prv_prv != None:
+        ux, uy = nodes[prv_prv]
+        vx, vy = nodes[prv]
+        wx, wy = nodes[e[0]]
+        dvux, dvuy = ux - vx, uy - vy
+        dvwx, dvwy = wx - vx, wy - vy
+        theta = pi - acos(((dvux * dvwx) + (dvuy * dvwy)) * 0.99 / 
+                          (sqrt(dvux * dvux + dvuy * dvuy) *
+                           sqrt(dvwx * dvwx + dvwy * dvwy)))
+        eng += CORNER_POWERS[w_ind] * 3.7 * theta / DS
+    prv_prv = prv
     prv = e[0]
     cur, cur_ty = lep_to[prv]
   return eng
 
-def construct_energy_launch(llep_d, to_dem, sp, edges, dedges, demand, dron_w, DS):
+def construct_energy_launch(llep_d, to_dem, sp, edges, dedges, nodes, demand, dron_w, DS):
   eng, prv, cur, cur_ty, w_ind = ENG_ZERO, sp, -1, -1, int(dron_w * 4)
+  prv_prv = None
   _, lep_to = llep_d[to_dem]
   cur, cur_ty = lep_to[prv]
   if cur == -1:
@@ -123,6 +165,17 @@ def construct_energy_launch(llep_d, to_dem, sp, edges, dedges, demand, dron_w, D
     else:
       e = dedges[prv][cur]
       eng += e[2][w_ind] * e[1] / DS
+    if prv_prv != None:
+        ux, uy = nodes[prv_prv]
+        vx, vy = nodes[prv]
+        wx, wy = nodes[e[0]]
+        dvux, dvuy = ux - vx, uy - vy
+        dvwx, dvwy = wx - vx, wy - vy
+        theta = pi - acos(((dvux * dvwx) + (dvuy * dvwy)) * 0.99 / 
+                          (sqrt(dvux * dvux + dvuy * dvuy) *
+                           sqrt(dvwx * dvwx + dvwy * dvwy)))
+        eng += CORNER_POWERS[w_ind] * 3.7 * theta / DS
+    prv_prv = prv
     prv = e[0]
     cur, cur_ty = lep_to[prv]
   return eng
@@ -161,9 +214,10 @@ def construct_energy_spef(llep_d, from_dem, sp, to_dem, edges, dedges, demand, d
     cur, cur_id, cur_ty = lep_frm[cur]
   return eng
 
-def construct_energy_meetup(llep_d, from_dem, sp, edges, dedges, demand, DS):
+def construct_energy_meetup(llep_d, from_dem, sp, edges, dedges, nodes, demand, DS):
   eng, cur, cur_ty, cur_id = ENG_ZERO, -1, -1, -1
   lep_frm, _ = llep_d[from_dem]
+  prv_prv, prv = None, sp
   cur, cur_id, cur_ty = lep_frm[sp]
   if cur == -1:
     if sp == demand[from_dem][0]:
@@ -177,11 +231,25 @@ def construct_energy_meetup(llep_d, from_dem, sp, edges, dedges, demand, DS):
     else:
       e = dedges[cur][cur_id]
       eng += e[2][0] * e[1] / DS
+    if prv_prv != None:
+      ux, uy = nodes[prv_prv]
+      vx, vy = nodes[prv]
+      wx, wy = nodes[cur]
+      dvux, dvuy = ux - vx, uy - vy
+      dvwx, dvwy = wx - vx, wy - vy
+      theta = pi - acos(((dvux * dvwx) + (dvuy * dvwy)) * 0.99 / 
+                        (sqrt(dvux * dvux + dvuy * dvuy) *
+                         sqrt(dvwx * dvwx + dvwy * dvwy)))
+      eng += CORNER_POWERS[0] * 3.7 * theta / DS
+    prv_prv = prv
+    prv = cur
     cur, cur_id, cur_ty = lep_frm[cur]
   return eng
 
 def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle, 
-                llep_d, lep_t, swp, let_t, K, DS, edges, dedges, result):
+                llep_d, lep_t, swp, let_t, K, DS, edges, dedges, nodes, result, CPS):
+  global CORNER_POWERS
+  CORNER_POWERS = CPS
   src = demand.pop()[0]     # DRONE WEIGHT NEEDS MANUAL SYNC
   ALPHA, BETA, MAX_WEIGHT, DRONE_WEIGHT, TW_DENM = 0.9, 1.5, WEIGHTS[-1], 13, 4535.9237
   N_PHERM_SIZE, DEMAND_SIZE, PCKG_BONUS_COEFF = int(len(n_pherm)), len(demand), 10**(-4)
@@ -194,10 +262,10 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
   # src_let_t = let_t.pop()         # list of path total energies
   got = [0 for _ in range(DEMAND_SIZE)]
   f_dem_ps, f_dem_ws = [i for i in range(DEMAND_SIZE)], [0 for _ in range(DEMAND_SIZE)]
-  sp_poss_set, nbs, ws, seen, lmem, not_got_chance = [], [], [], [], [], False
+  sp_poss_set, nbs, ws, lmem, not_got_chance = [], [], [], [], False
   for i in range(len(sp_poss)):
     sp_poss_set.append((set(sp_poss[i][0]),set(sp_poss[i][1])))
-  eng_rem, eng_to_add, eng_at_sp, next_dem_node, curr_shft, flag = 0, 0, 0, -1, -1, -1
+  eng_rem, eng_to_add, eng_at_sp, next_dem_node, curr_shft, flag, dem_adv = 0, 0, 0, -1, -1, -1, -1
   # -----------------------------
   # State Holders
   # drone_loc, truck_loc are indexes of demand array.
@@ -209,6 +277,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
   w_coeff_oth, truck_w_og, best_eng, best_sp, best_eng_to_add, sel_sp = None, None, None, None, None, None
   time_taken, prev_t_eng, truck_w_og, truck_side_eng, truck_side_w_lost = None, None, None, None, None
   pot_dem_node, lep_frm, lep_to, eng, prv, cur, cur_ty, cur_id, w_ind = None, None, None, -1, -1, -1, -1, -1, -1
+  can_cont = None
   lmem = [-1 for _ in range(len(WEIGHTS))]
   _glb_cons_eng_meetup = [[float('inf') for _ in range(NUM_NODES)] for _ in range(DEMAND_SIZE)]
   for i in range(DEMAND_SIZE):
@@ -217,6 +286,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
         continue
       eng = ENG_ZERO
       lep_frm = llep_d[i][0]
+      prv_prv, prv = None, j
       cur, cur_id, cur_ty = lep_frm[j]
       if cur == -1:
         if j == demand[i][0]:
@@ -229,6 +299,18 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
         else:
           e = dedges[cur][cur_id]
           eng += e[2][0] * e[1] / DS
+        if prv_prv != None:
+          ux, uy = nodes[prv_prv]
+          vx, vy = nodes[prv]
+          wx, wy = nodes[cur]
+          dvux, dvuy = ux - vx, uy - vy
+          dvwx, dvwy = wx - vx, wy - vy
+          theta = pi - acos(((dvux * dvwx) + (dvuy * dvwy)) * 0.99 / 
+                            (sqrt(dvux * dvux + dvuy * dvuy) *
+                             sqrt(dvwx * dvwx + dvwy * dvwy)))
+          eng += CORNER_POWERS[0] * 3.7 * theta / DS
+        prv_prv = prv
+        prv = cur
         cur, cur_id, cur_ty = lep_frm[cur]
       _glb_cons_eng_meetup[i][j] = eng
   # -----------------------------
@@ -257,14 +339,26 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
       nbs, ws = [], []
       eng_rem = ENG_LEVL - MIN_MEETUP_BATTERY_REM
       for sp in sp_poss[next_dem][1]:
-        eng_to_add = construct_energy_launch(llep_d, next_dem, sp, edges, dedges, demand, demand[next_dem][1], DS)
-        if eng_rem - eng_to_add > 0:
-          nbs.append((sp, eng_to_add))
-          ws.append((n_pherm[N_PHERM_LAST + sp])**ALPHA / 
-                    ((let_t[src][sp] / w_coeff) + eng_to_add)**BETA)
+        eng_to_add = construct_energy_launch(llep_d, next_dem, sp, edges, dedges, nodes, demand, demand[next_dem][1], DS)
+        # print(sp, eng_to_add, n_pherm[N_PHERM_LAST + sp])
+        if eng_rem - eng_to_add > 0: # and let_t[sp][demand[next_dem][0]] != float('inf'):
+          # OR let drone have the ability to come back ?
+          can_cont = False
+          for i in range(DEMAND_SIZE):
+            if let_t[sp][demand[i][0]] != float('inf'):
+              can_cont = True
+              break
+          if can_cont:
+            dem_adv = 1
+            if sp == demand[next_dem][0]:
+              dem_adv = len(sp_poss[next_dem][1])
+            nbs.append((sp, eng_to_add))
+            ws.append((n_pherm[N_PHERM_LAST + sp] * dem_adv)**ALPHA / 
+                      ((let_t[src][sp] / w_coeff) + eng_to_add)**BETA)
       if len(nbs) > 0:
         sel_sp, eng_to_add = choices(nbs, weights=ws)[0]
-        if sel_sp == next_dem:
+        if sel_sp == demand[next_dem][0]:
+          # if eng_to_add + (let_t[src][sel_sp] / w_coeff) > (let_t[src][sel_sp] / w_coeff)
           sel_sp = -1
     if sel_sp == -1:
       # not going to be allocating a switch point.
@@ -313,7 +407,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
         for i in range(DEMAND_SIZE):
           if got[i] == 0:
             time_taken = construct_time_truck(lep_t, parent_loc_node, demand[i][0], edges)
-            if time_passed - time_taken > 0 and let_t[demand[i][0]][drone_loc] != float('inf'):
+            if time_passed - time_taken > 0: # and let_t[demand[i][0]][drone_loc] != float('inf'):
               nbs.append((i, time_taken))
               ws.append((sji_pherm[i + DEMAND_SIZE * parent_loc])**ALPHA /
                         (let_t[parent_loc_node][demand[i][0]] / w_coeff)**BETA)
@@ -335,14 +429,14 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
           for i in range(DEMAND_SIZE):
             if got[i] == 0:
               time_taken = construct_time_truck(lep_t, parent_loc_node, demand[i][0], edges)
-              if time_passed - time_taken > 0 and let_t[demand[i][0]][drone_loc] != float('inf'):
+              if time_passed - time_taken > 0: # and let_t[demand[i][0]][drone_loc] != float('inf'):
                 nbs.append((i, time_taken))
                 ws.append((n_pherm[demand[i][0] + DEMAND_SIZE * parent_loc])**ALPHA /
                           (let_t[parent_loc_node][demand[i][0]] / w_coeff)**BETA)
         cur = drone_w + 0.25
         cur_id = int(4 * cur)
         while cur <= MAX_WEIGHT:
-          lmem[cur_id] = construct_energy(llep_d, to_visit, edges, dedges, cur, DS)
+          lmem[cur_id] = construct_energy(llep_d, to_visit, edges, dedges, nodes, demand, cur, DS)
           cur += 0.25
           cur_id += 1
         while ENG_LEVL - eng_acc > 0:
@@ -350,8 +444,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
           curr_shft = NUM_NODES * drone_loc
           for i in range(DEMAND_SIZE):
             if got[i] == 0 and \
-               drone_w + demand[i][1] <= MAX_WEIGHT and \
-               let_t[parent_loc_node][demand[i][0]] != float('inf'):
+               drone_w + demand[i][1] <= MAX_WEIGHT: # and let_t[parent_loc_node][demand[i][0]] != float('inf'):
               common_sps = sp_poss_set[drone_loc][0] & sp_poss_set[i][1]
               if len(common_sps) > 0:
                 eng_so_far = lmem[int((drone_w + demand[i][1]) * 4)]
@@ -364,6 +457,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
                   eng_to_add, w_ind = ENG_ZERO, int(demand[i][1] * 4)
                   lep_frm = llep_d[drone_loc][0]
                   lep_to = llep_d[i][1]
+                  prv_prv = None
                   prv = ind
                   cur, cur_ty = lep_to[prv]
                   if cur == -1:
@@ -376,8 +470,20 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
                     else:
                       e = dedges[prv][cur]
                       eng_to_add += e[2][w_ind] * e[1] / DS
+                    if prv_prv != None:
+                      ux, uy = nodes[prv_prv]
+                      vx, vy = nodes[prv]
+                      wx, wy = nodes[e[0]]
+                      dvux, dvuy = ux - vx, uy - vy
+                      dvwx, dvwy = wx - vx, wy - vy
+                      theta = pi - acos(((dvux * dvwx) + (dvuy * dvwy)) * 0.99 / 
+                                        (sqrt(dvux * dvux + dvuy * dvuy) *
+                                         sqrt(dvwx * dvwx + dvwy * dvwy)))
+                      eng_to_add += CORNER_POWERS[w_ind] * 3.7 * theta / DS
+                    prv_prv = prv
                     prv = e[0]
                     cur, cur_ty = lep_to[prv]
+                  prv_prv, prv = None, ind
                   cur, cur_id, cur_ty = lep_frm[ind]
                   if cur == -1:
                     if ind != demand[drone_loc][0]:
@@ -389,6 +495,18 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
                     else:
                       e = dedges[cur][cur_id]
                       eng_to_add += e[2][w_ind] * e[1] / DS
+                    if prv_prv != None:
+                      ux, uy = nodes[prv_prv]
+                      vx, vy = nodes[prv]
+                      wx, wy = nodes[cur]
+                      dvux, dvuy = ux - vx, uy - vy
+                      dvwx, dvwy = wx - vx, wy - vy
+                      theta = pi - acos(((dvux * dvwx) + (dvuy * dvwy)) * 0.99 / 
+                                        (sqrt(dvux * dvux + dvuy * dvuy) *
+                                         sqrt(dvwx * dvwx + dvwy * dvwy)))
+                      eng_to_add += CORNER_POWERS[w_ind] * 3.7 * theta / DS
+                    prv_prv = prv
+                    prv = cur
                     cur, cur_id, cur_ty = lep_frm[cur]
                   if eng_to_add < eng_rem:
                     eng_rem = eng_to_add
@@ -416,7 +534,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
             for i in range(DEMAND_SIZE):
               if got[i] == 0:
                 time_taken = construct_time_truck(lep_t, parent_loc_node, demand[i][0], edges)
-                if time_passed - time_taken > 0 and let_t[demand[i][0]][drone_loc] != float('inf'):
+                if time_passed - time_taken > 0: # and let_t[demand[i][0]][drone_loc] != float('inf'):
                   nbs.append((i, time_taken))
                   ws.append((sji_pherm[i + DEMAND_SIZE * parent_loc])**ALPHA /
                             (let_t[parent_loc_node][demand[i][0]] / w_coeff)**BETA)
@@ -426,7 +544,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
             for i in range(DEMAND_SIZE):
               if got[i] == 0:
                 time_taken = construct_time_truck(lep_t, parent_loc_node, demand[i][0], edges)
-                if time_passed - time_taken > 0 and let_t[demand[i][0]][drone_loc] != float('inf'):
+                if time_passed - time_taken > 0: # and let_t[demand[i][0]][drone_loc] != float('inf'):
                   nbs.append((i, time_taken))
                   ws.append((n_pherm[demand[i][0] + DEMAND_SIZE * parent_loc])**ALPHA /
                             (let_t[parent_loc_node][demand[i][0]] / w_coeff)**BETA)
@@ -446,7 +564,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
             for i in range(DEMAND_SIZE):
               if got[i] == 0:
                 time_taken = construct_time_truck(lep_t, parent_loc_node, demand[i][0], edges)
-                if time_passed - time_taken > 0 and let_t[demand[i][0]][drone_loc] != float('inf'):
+                if time_passed - time_taken > 0: # and let_t[demand[i][0]][drone_loc] != float('inf'):
                   nbs.append((i, time_taken))
                   ws.append((n_pherm[demand[i][0] + DEMAND_SIZE * parent_loc])**ALPHA /
                             (let_t[parent_loc_node][demand[i][0]] / w_coeff)**BETA)
@@ -462,7 +580,7 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
         # print("OG", truck_w)
         truck_w = truck_w_og
         tvs_ind_st, truck_side_eng, truck_side_w_lost = 0, 0, -1
-        parent_loc, parent_loc_node = to_visit[1][0], demand[to_visit[1][0]][0]
+        parent_loc, parent_loc_node = to_visit[1][0], to_visit[0]
         for i in range(1, len(to_visit) - 1, 2):
           drone_loc = to_visit[i][0]
           # catching up the truck!
@@ -495,23 +613,23 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
                   best_eng = tmp
                   best_sp = ind
                   best_eng_to_add = eng_to_add
-          if best_eng == float('inf'):
+          if best_eng != float('inf'):
             # best_sp = drone_loc
             # best_eng_to_add = ENG_ZERO
-            assert False, "Should always have a solution"
-          nbs.append((i + 2, -2, best_sp, best_eng_to_add))
-          if tvs_ind_st > 0:
-            ws.append(((n_pherm[pot_dem_node + NUM_NODES * parent_loc] + 
-                        (truck_w_og - truck_w) * PCKG_BONUS_COEFF)**ALPHA / 
-                       ((let_t[parent_loc_node][best_sp] / w_coeff) + 
-                        (let_t[best_sp][pot_dem_node] / w_coeff_oth) +
-                        best_eng_to_add + truck_side_eng)**BETA))
-          else:
-            ws.append(((sji_pherm[pot_dem + DEMAND_SIZE * parent_loc] + 
-                        (truck_w_og - truck_w) * PCKG_BONUS_COEFF)**ALPHA / 
-                       ((let_t[parent_loc_node][best_sp] / w_coeff) + 
-                        (let_t[best_sp][pot_dem_node] / w_coeff_oth) +
-                        best_eng_to_add + truck_side_eng)**BETA))
+            # assert False, "Should always have a solution"
+            nbs.append((i + 2, -2, best_sp, best_eng_to_add))
+            if tvs_ind_st > 0:
+              ws.append(((n_pherm[pot_dem_node + NUM_NODES * parent_loc] + 
+                          (truck_w_og - truck_w) * PCKG_BONUS_COEFF)**ALPHA / 
+                         ((let_t[parent_loc_node][best_sp] / w_coeff) + 
+                          (let_t[best_sp][pot_dem_node] / w_coeff_oth) +
+                          best_eng_to_add + truck_side_eng)**BETA))
+            else:
+              ws.append(((sji_pherm[pot_dem + DEMAND_SIZE * parent_loc] + 
+                          (truck_w_og - truck_w) * PCKG_BONUS_COEFF)**ALPHA / 
+                         ((let_t[parent_loc_node][best_sp] / w_coeff) + 
+                          (let_t[best_sp][pot_dem_node] / w_coeff_oth) +
+                          best_eng_to_add + truck_side_eng)**BETA))
         # all side jobs for last drone delivery
         truck_side_w_lost = 0
         while tvs_ind_st < len(to_visit_truck):
@@ -529,7 +647,6 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
         w_coeff_oth = 1 - ((truck_w + DRONE_WEIGHT) / TW_DENM)
         # print(to_visit, to_visit_truck)
         if (len(to_visit) / 2) + len(to_visit_truck) + num_delvd > DEMAND_SIZE: # if none remaining, allow src to be last
-          pot_dem_node = src
           best_eng, best_sp = float('inf'), -1
           for ind in sp_poss[drone_loc][0]:
             tmp = let_t[parent_loc_node][ind] + let_t[ind][src]
@@ -544,6 +661,16 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
           if best_eng == float('inf'):   # drone can't move at all.
             # best_sp = drone_loc
             # best_eng_to_add = ENG_ZERO
+            # for ind in sp_poss[drone_loc][0]:
+            #   for i in range(DEMAND_SIZE):
+            #     if got[i] == 0:
+            #       print(i, let_t[parent_loc_node][ind], let_t[ind][src])
+            #   tmp = let_t[parent_loc_node][ind]
+            #   print(parent_loc_node, tmp, _glb_cons_eng_meetup[drone_loc][ind], eng_rem, ind, num_delvd, "--")
+            for k in range(DEMAND_SIZE):
+              if let_t[parent_loc_node][k] + let_t[k][demand[drone_loc][0]] != float('inf'):
+                print("Path exists, direct says:", let_t[parent_loc_node][demand[drone_loc][0]])
+                break
             assert False, "Should always have a solution"
           nbs.append((len(to_visit) + 1, -1, best_sp, best_eng_to_add))
           if tvs_ind_st > 0:
@@ -574,9 +701,21 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
                       best_eng = tmp
                       best_sp = ind
                       best_eng_to_add = eng_to_add
-              if best_eng == float('inf'):   # drone can't move at all.
+              if best_eng == float('inf'):   # can't move at all.
+                # for ind in sp_poss[drone_loc][0]:
+                #   for i in range(DEMAND_SIZE):
+                #     if got[i] == 0:
+                #       print(i, let_t[parent_loc_node][ind], let_t[ind][demand[i][0]])
+                #   tmp = let_t[parent_loc_node][ind]
+                #   print(parent_loc_node, tmp, _glb_cons_eng_meetup[drone_loc][ind], eng_rem, ind, num_delvd, "--")
                 # best_sp = drone_loc
                 # best_eng_to_add = ENG_ZERO
+                # parent_loc_node must be a switch point then, a bad one.
+                # if construct_energy_launch() ??
+                for k in range(DEMAND_SIZE):
+                  if let_t[parent_loc_node][k] + let_t[k][demand[drone_loc][0]] != float('inf'):
+                    print("Path exists, direct says:", let_t[parent_loc_node][demand[drone_loc][0]])
+                    break
                 assert False, "Should always have a solution"
               nbs.append((len(to_visit) + 1, i, best_sp, best_eng_to_add))
               if tvs_ind_st > 0:
@@ -594,13 +733,13 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
                           (let_t[best_sp][demand[i][0]] / w_coeff_oth) +
                           best_eng_to_add + truck_side_eng)**BETA))
         # print("DRONE LOOP: ",len(nbs), num_delvd)
-        # print(nbs, ws)
+        # print(nbs, ws, "-----------")
         ind, flag, sp, best_eng_to_add = choices(nbs, weights=ws)[0]
         # print("flag", flag)
         # print("Getting back original weight", truck_w_og, "+ drone weight")
         truck_w = truck_w_og + DRONE_WEIGHT
         # print("New weight", truck_w, "selected index", ind)
-        parent_loc, parent_loc_node = to_visit[1][0], demand[to_visit[1][0]][0]
+        parent_loc, parent_loc_node = to_visit[1][0], to_visit[0]
         # adding selected demand after end point confirmed
         # first drone itenary
         # drone_loc = to_visit[1][0]
@@ -688,15 +827,24 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
           for sp in sp_poss[next_dem][1]:
             if let_t[truck_loc_node][sp] != float('inf'):
               eng_at_sp = min(MAX_BATTERY_USE, ENG_LEVL + construct_time_truck(lep_t, truck_loc_node, sp, edges) * RECARGE_RATE)
-              eng_to_add = construct_energy_launch(llep_d, next_dem, sp, edges, dedges, demand, demand[next_dem][1], DS)
-              if eng_at_sp - eng_to_add > MIN_MEETUP_BATTERY_REM:
-                nbs.append((sp, eng_to_add, eng_at_sp))
-                ws.append((n_pherm[sp + NUM_NODES * drone_loc])**ALPHA / 
-                          ((let_t[truck_loc_node][sp] / w_coeff) + eng_to_add)**BETA)
+              eng_to_add = construct_energy_launch(llep_d, next_dem, sp, edges, dedges, nodes, demand, demand[next_dem][1], DS)
+              if eng_at_sp - eng_to_add > MIN_MEETUP_BATTERY_REM: # and let_t[sp][demand[next_dem][0]] != float('inf'):
+                can_cont = False
+                for i in range(DEMAND_SIZE):
+                  if let_t[sp][demand[i][0]] != float('inf'):
+                    can_cont = True
+                    break
+                if can_cont:
+                  dem_adv = 1
+                  if sp == demand[next_dem][0]:
+                    dem_adv = len(sp_poss[next_dem][1])
+                  nbs.append((sp, eng_to_add, eng_at_sp))
+                  ws.append((n_pherm[sp + NUM_NODES * drone_loc] * dem_adv)**ALPHA / 
+                            ((let_t[truck_loc_node][sp] / w_coeff) + eng_to_add)**BETA)
           if len(nbs) > 0:
             # print("Data: ", nbs, ws, demand[next_dem][0])
             sel_sp, eng_to_add, eng_at_sp = choices(nbs, weights=ws)[0]
-            if sel_sp == next_dem:
+            if sel_sp == demand[next_dem][0]:
               sel_sp = -1
         if sel_sp == -1:
           # cycle[num_delvd] = next_dem
@@ -752,15 +900,24 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
           for sp in sp_poss[next_dem][1]:
             if let_t[truck_loc_node][sp] != float('inf'):
               eng_at_sp = min(MAX_BATTERY_USE, ENG_LEVL + construct_time_truck(lep_t, truck_loc_node, sp, edges) * RECARGE_RATE)
-              eng_to_add = construct_energy_launch(llep_d, next_dem, sp, edges, dedges, demand, demand[next_dem][1], DS)
-              if eng_at_sp - eng_to_add > MIN_MEETUP_BATTERY_REM:
-                nbs.append((sp, eng_to_add, eng_at_sp))
-                ws.append((n_pherm[truck_loc * NUM_NODES + sp])**ALPHA / 
-                          (let_t[truck_loc_node][sp] / w_coeff)**BETA)
+              eng_to_add = construct_energy_launch(llep_d, next_dem, sp, edges, dedges, nodes, demand, demand[next_dem][1], DS)
+              if eng_at_sp - eng_to_add > MIN_MEETUP_BATTERY_REM: # and let_t[sp][demand[next_dem][0]] != float('inf'):
+                can_cont = False
+                for i in range(DEMAND_SIZE):
+                  if let_t[sp][demand[i][0]] != float('inf'):
+                    can_cont = True
+                    break
+                if can_cont:
+                  dem_adv = 1
+                  if sp == demand[next_dem][0]:
+                    dem_adv = len(sp_poss[next_dem][1])
+                  nbs.append((sp, eng_to_add, eng_at_sp))
+                  ws.append((n_pherm[truck_loc * NUM_NODES + sp] * dem_adv)**ALPHA / 
+                            (let_t[truck_loc_node][sp] / w_coeff)**BETA)
           if len(nbs) > 0:
             # print("Data: ", nbs, ws, demand[next_dem][0])
             sel_sp, eng_to_add, eng_at_sp = choices(nbs, weights=ws)[0]
-            if sel_sp == next_dem:
+            if sel_sp == demand[next_dem][0]:
               sel_sp = -1
         if sel_sp == -1:
           # not going to be allocating a switch point.

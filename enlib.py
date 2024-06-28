@@ -1023,8 +1023,8 @@ class EnergyHelper:
             return False
     return True
 
-  def append_random_demand(self, num, cluster_num=0, cluster_jump=0, 
-                           drone_only_possible_component=0.7, num_allocs=10):
+  def append_random_demand(self, num, cluster_num=0, cluster_jump=0, dron_min_w=0,
+                           src=None, drone_only_possible_component=0.7, num_allocs=10):
     """
     Demand generated ALWAYS corresponds
     to nodes reachable by the truck.
@@ -1041,7 +1041,11 @@ class EnergyHelper:
     q, data = [], None
     got = [0 for _ in range(N)]
     cnt, lim, lim2 = 0, N, -1
-    i = randint(0, N - 1)
+    if src != None:
+      lim = 1
+      i = src
+    else:
+      i = randint(0, N - 1)
     while lim > 0:
       collec = []
       for j in range(len(got)):
@@ -1055,6 +1059,8 @@ class EnergyHelper:
           if got[e[0]] == 0:
             got[e[0]] = 1
             q.append(e[0])
+      if src != None:
+        collec.pop(0)
       if len(collec) > cnt:
         cnt = len(collec)
       if cnt >= num:
@@ -1062,7 +1068,7 @@ class EnergyHelper:
         break
       lim -= 1
       i = randint(0, N - 1)
-    print("Quick Directional BFS discovered", round(100 * len(data) / N, 2), "percent of stored nodes.")
+    print("Quick Directional BFS discovered", len(data), " nodes, about ", round(100 * len(data) / N, 2), "percent of stored nodes.")
     if len(data) < num:
       print("ERROR: couldn't find enough reachable nodes to generate demand.")
       exit(0)
@@ -1109,7 +1115,10 @@ class EnergyHelper:
     if num > 0:
       print("Error: Failed to generate well connected data from available nodes.")
     w_total, w = 0, 0
-    w_a, w_b = 1, len(WEIGHTS) - 1 
+    w_a, w_b = 1, len(WEIGHTS) - 1
+    while w_a < len(WEIGHTS) and WEIGHTS[w_a] < dron_min_w:
+      w_a += 1
+    print("Drone Weight Ranges:", WEIGHTS[w_a::])
     iters = [i for i in range(len(self.demand) - num_clone, len(self.demand))]
     pure_drone = sample(iters, ceil(drone_only_possible_component * num_clone))
     for i in iters:
@@ -1237,17 +1246,17 @@ class EnergyHelper:
         ind = i
     return ind
 
-  def init_phermone_system(self, src, passed_num_alloc, R=float("inf"), local_VLOS_tolerance=float('inf')):
+  def init_phermone_system(self, src, R=float("inf"), local_VLOS_tolerance=float('inf')):
     # range is a dummy decision variable for now
     print("Initializng phermone system...")
     nodes, edges, dedges, demand = self.nodes, self.edges, self.dedges, self.demand
     if local_VLOS_tolerance != float('inf'):
       R = DRONE_SPAN * 327 + 20
     demand.append((src, 0))
-    SP_PHERM_COEFF = 10**(-3)
-    DEMAND_PHERM_ADV_COEFF = 25
-    DEMAND_BASE_PHERM = DEMAND_PHERM_ADV_COEFF * SP_PHERM_COEFF * len(demand)
-    DEMAND_WEIGHT_COEFF = DEMAND_PHERM_ADV_COEFF * NODE_BASE_PHERM / (WEIGHTS[-1] * passed_num_alloc)
+    # SP_PHERM_COEFF = 10**(-3)
+    # DEMAND_PHERM_ADV_COEFF = 25
+    # DEMAND_BASE_PHERM = DEMAND_PHERM_ADV_COEFF * SP_PHERM_COEFF * len(demand)
+    # DEMAND_WEIGHT_COEFF = DEMAND_PHERM_ADV_COEFF * NODE_BASE_PHERM / (WEIGHTS[-1] * passed_num_alloc)
     n_pherm = [[NODE_BASE_PHERM for _ in range(len(nodes))] for _ in range(len(demand))]
     got = [0 for _ in range(len(nodes))]
     let_g = [float('inf') for _ in range(len(nodes))]
@@ -1314,7 +1323,7 @@ class EnergyHelper:
           eng = let[demand[j][0]]
           while cur != -1:
             # print(cur)
-            n_pherm[j][cur] += (1 - abs(1 - ((eng - let[cur]) / MAX_BATTERY_USE_HALF))) * SP_PHERM_COEFF
+            # n_pherm[j][cur] += (1 - abs(1 - ((eng - let[cur]) / MAX_BATTERY_USE_HALF))) * SP_PHERM_COEFF
             ed_ind = 0
             edge_data = edges
             if not cur_ty:
@@ -1332,7 +1341,7 @@ class EnergyHelper:
           for k1 in range(len(nodes)):
             if lep[k1][0] != -1:
               sp_poss[j][0].append(k1)
-              n_pherm[j][k1] += (1 - abs(1 - (let[k1] / MAX_BATTERY_USE_HALF))) * SP_PHERM_COEFF
+              # n_pherm[j][k1] += (1 - abs(1 - (let[k1] / MAX_BATTERY_USE_HALF))) * SP_PHERM_COEFF
               cur, cur_ty = lep[k1]
               edge_data = edges
               if not cur_ty:
@@ -1378,15 +1387,15 @@ class EnergyHelper:
     pbar.close()
     print("Complete!")
     print("Verifying connections and setting phermones...")
-    max_phm, tmp = 0, 0
+    # max_phm, tmp = 0, 0
     for i in range(len(demand)):
       for j in range(len(demand)):
         if let_t[self.demand[i][0]][self.demand[j][0]] == float("inf"):
           print("BAD CONNECTION FOUND:", self.demand[i][0], self.demand[j][0], ". Aborting...")
           exit(1)
-        tmp = DEMAND_BASE_PHERM + DEMAND_WEIGHT_COEFF * demand[j][1]
-        n_pherm[i][demand[j][0]] += tmp
-        max_phm = max(max_phm, n_pherm[i][demand[j][0]])
+        # tmp = DEMAND_BASE_PHERM + DEMAND_WEIGHT_COEFF * demand[j][1]
+        # n_pherm[i][demand[j][0]] += tmp
+        # max_phm = max(max_phm, n_pherm[i][demand[j][0]])
       if len(sp_poss[i][1]) - len(llep_d[i][1]) > 0:
         print("BAD LOCAL TO DEMAND PATH CONSTRUCTION: ", set(sp_poss[i][1]), set(llep_d[i][1]))
         exit(1)
@@ -1405,6 +1414,7 @@ class EnergyHelper:
     # maximum advantage possible in
     # the entire system.
     # -------------------------------
+    max_phm = max(max(j for j in n_pherm[i]) for i in range(len(demand)))
     lower_lim = 10**(-5)
     if max_phm > 1:
       scl = 10**(-int(log10(max_phm)) - 1)
@@ -1458,14 +1468,13 @@ class EnergyHelper:
     # print(ptr)
     print("Phermone system initialized!\nNOTE: Demand structures now hold source vertex with 0 weight.")
 
-  def aco_truck_only(self, K=150, ants_per_iter=50, q=10**6, degradation_factor=0.995):
+  def aco_truck_only(self, K=150, ants_per_iter=50, q=10, degradation_factor=0.975):
     print("Initializing ACO child workers...")
     if cpu_count() < ants_per_iter:
       ants_per_iter = cpu_count()
       print("WARNING: cpu count too low, set ants/iteration to cpu count:", cpu_count())
     STAGNANT_LIMIT, STATUS_BREAK = int(0.3 * K), 1
     BEST_HALF_SIZE = ants_per_iter // 2
-    degradation_factor = degradation_factor**BEST_HALF_SIZE
     barrier = mp.Value('i',lock=True)
     with barrier.get_lock():
       barrier.value = ants_per_iter
@@ -1542,14 +1551,14 @@ class EnergyHelper:
       j = 0
       max_phm = 0
       while j < N_PHERM_SIZE:
-        n_pherm[j] = max(n_pherm[j] * degradation_factor, NODE_BASE_PHERM)
         max_phm = max(n_pherm[j], max_phm)
+        n_pherm[j] = max(n_pherm[j] * degradation_factor, NODE_BASE_PHERM)
         j += 1
       if iter % STATUS_BREAK == 0:
         print("\nUpdate: best energy cycle found so far:", round(best_energy / 10**6, 2), "MJ")
       if iter <= 0.5 * K:
         # Dynamic initial delta loading.
-        q = 0.1 * max_phm * best_energy
+        q = 0.02 * max_phm * best_energy
       pbar.update()
       c = 1
       while c > 0:
@@ -1564,7 +1573,7 @@ class EnergyHelper:
       p.close()
     return best_energy, best_cycle
 
-  def aco(self, K=100, ants_per_iter=50, q=10**6, degradation_factor=0.995):
+  def aco(self, K=100, ants_per_iter=50, q=10, degradation_factor=0.975):
     """
     Switch Point Communication System:
 
@@ -1603,7 +1612,6 @@ class EnergyHelper:
       print("WARNING: cpu count too low, set ants/iteration to cpu count:", cpu_count())
     STAGNANT_LIMIT, STATUS_BREAK = int(0.25 * K), 1
     BEST_HALF_SIZE = ants_per_iter // 2
-    degradation_factor = degradation_factor**BEST_HALF_SIZE
     barrier = mp.Value('i',lock=True)
     with barrier.get_lock():
       barrier.value = ants_per_iter
@@ -1611,8 +1619,9 @@ class EnergyHelper:
     with saw_zero.get_lock():
       saw_zero.value = 0
     demand = self.demand    # not changing
+    nodes = self.nodes      # not changing
     DEMAND_SIZE = len(demand) - 1
-    NUM_NODES = len(self.nodes)
+    NUM_NODES = len(nodes)
     N_PHERM_LAST = int(DEMAND_SIZE * NUM_NODES)
     N_PHERM_SIZE = N_PHERM_LAST + NUM_NODES
     SWP_SIZE = 2 * DEMAND_SIZE
@@ -1625,16 +1634,9 @@ class EnergyHelper:
       c = i * NUM_NODES
       for j in range(NUM_NODES):
         n_pherm[c + j] = self.n_pherm[i][j]
-    for i in range(SJI_PHERM_SIZE):
-      sji_pherm[i] = SJI_PHERM_INIT
-    c = -1
-    if self.sji_pherm == None:
-      self.sji_pherm = []
-    for i in range(DEMAND_SIZE + 1):
-      self.sji_pherm.append([])
       c = i * (DEMAND_SIZE + 1)
       for j in range(DEMAND_SIZE + 1):
-        self.sji_pherm[i].append(SJI_PHERM_INIT)
+        sji_pherm[c + j] = self.n_pherm[i][demand[j][0]]
     cycles = [(mp.Value('f', lock=False),
                mp.Array('i', DEMAND_SIZE, lock=False),
                mp.Array('i', SWP_SIZE, lock=False)) for _ in range(ants_per_iter)]
@@ -1644,10 +1646,19 @@ class EnergyHelper:
     lep_t = self.lep_t      # not changing
     edges = self.edges      # not changing
     dedges = self.dedges    # not changing
+    CORNER_POWERS = []
+    print("Initializing corner overheads...")
+    pbar = tqdm(total=len(WEIGHTS))
+    for w in WEIGHTS:
+      CORNER_POWERS.append(power(rho_air_std, 0.2 * (DRONE_WEIGHT + w), 0, 0))
+      pbar.update()
+    pbar.close()
+    print("Initialized corner overheads!")
     processes = [mp.Process(target=_aco_worker,
                             args=(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm,
                                   cycles[i][1], llep_d, lep_t, cycles[i][2], let_t, K, 
-                                  DRONE_GROUND_SPEED, edges, dedges, cycles[i][0])) for i in range(ants_per_iter)]
+                                  DRONE_GROUND_SPEED, edges, dedges, nodes, cycles[i][0],
+                                  CORNER_POWERS)) for i in range(ants_per_iter)]
     print("Initialized ACO child workers!\nStarting ACO...")
     best_cycle = sample([i for i in range(DEMAND_SIZE)], k=DEMAND_SIZE)
     best_swp = [-3 for _ in range(SWP_SIZE)]  # -3 ensures no initial activation
@@ -1794,15 +1805,15 @@ class EnergyHelper:
       j = 0
       max_phm = 0
       while j < N_PHERM_SIZE:
-        n_pherm[j] = max(n_pherm[j] * degradation_factor, NODE_BASE_PHERM)
         max_phm = max(n_pherm[j], max_phm)
+        n_pherm[j] = max(n_pherm[j] * degradation_factor, NODE_BASE_PHERM)
         j += 1
       pbar.update()
       if iter % STATUS_BREAK == 0:
         print("\nUpdate: best energy cycle found so far:", round(best_energy / 10**6, 2), "MJ")
       if iter <= 0.5 * K:
         # Dynamic initial delta loading.
-        q = 0.1 * max_phm * best_energy
+        q = 0.02 * max_phm * best_energy
       for p in processes:
         if not p.is_alive():
           print("NOTE: Ant", p.pid, "got killed.")
@@ -1824,6 +1835,7 @@ class EnergyHelper:
       c = i * NUM_NODES
       for j in range(NUM_NODES):
         self.n_pherm[i][j] = n_pherm[c + j]
+    self.sji_pherm = [[0 for _ in range(DEMAND_SIZE + 1)] for _ in range(DEMAND_SIZE + 1)]
     for i in range(DEMAND_SIZE + 1):
       c = i * (DEMAND_SIZE + 1)
       for j in range(DEMAND_SIZE + 1):
