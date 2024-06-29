@@ -127,20 +127,27 @@ if __name__ == '__main__':
 #   print(cycle)
 #   print(swp)
 #   exit(0)
-  def func(T, RH):
-     init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
-                  base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=20,
-                  relative_humidity=0)
-     print(RH, T)
-     Pv = RH * 0.01 * 610.78 * exp((17.27 * T) / (T + 237.3))
-     rho = ((101325 - Pv) * 0.0034837139 + Pv * 0.0021668274) / (T + 273.15)
-     return power(rho,0,0,0)
-  draw_functions(0,50,1,func,0,130,25)
-  plt.title("Power Consumption Vs Temperature for different Relative Humidities")
-  plt.xlabel("Temperature (*C)")
-  plt.ylabel("Power Consumed (Watts)")
-  plt.legend(loc="best")
-  plt.savefig("cmp1.png", dpi=200)
+#   def func(T, RH):
+#      init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
+#                   base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=20,
+#                   relative_humidity=0)
+#      print(RH, T)
+#      Pv = RH * 0.01 * 610.78 * exp((17.27 * T) / (T + 237.3))
+#      rho = ((101325 - Pv) * 0.0034837139 + Pv * 0.0021668274) / (T + 273.15)
+#      return power(rho,0,0,0)
+#   draw_functions(0,50,1,func,0,130,25)
+#   plt.title("Power Consumption Vs Temperature for different Relative Humidities")
+#   plt.xlabel("Temperature (*C)")
+#   plt.ylabel("Power Consumed (Watts)")
+#   plt.legend(loc="best")
+#   plt.savefig("cmp1.png", dpi=200)
+#   exit(0)
+  init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
+                    base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=25,
+                    relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
+  eh = EnergyHelper.load("pickles/manhattan-policy-set-{}-{}ms.pkl".format(2, 20))
+  eh.plot_network(False, True, False, False, False, [], [])
+  plt.savefig("abc.png", dpi=200)
   exit(0)
 
   print("200 Demand Points, max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24, base_temperature=14, temp_flucts_coeff=3, relative_humidity=52%")

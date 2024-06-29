@@ -16,7 +16,7 @@ def plot_eng(heading, valuesA, labelA, valuesB, labelB):
     plt.xlabel("Number of Iterations")
     plt.ylabel("Energy Consumption (kWh)")
     plt.title(heading)
-    filename = "set-" + heading[4] + "-" + heading[22:heading.index(" ", 22)] + "ms.png"
+    filename = "set-" + heading[4] + "-" + heading[28:heading.index(" ", 28)] + "ms-" + heading[8] + heading[10] + ".png"
     plt.legend(loc="best")
     plt.savefig("plots/{}".format(filename), dpi=200)
     plt.cla()
@@ -49,7 +49,10 @@ def compile_seq(filename):
                 plot_eng(heading, drone_values, "truck + drone", truck_values, "truck only")
                 seekingCompletion = False
             else:
-                heading = line[0:line.index("b") - 1]
+                set_num = line[0:5]
+                set_minw = str(float(line[21:line.index(" ", 21)])) + " kg min weight"
+                set_ds = line[line.index(" ", line.index("b") - 9) + 1:line.index("b") - 1]
+                heading = set_num + " - " + set_minw + " - " + set_ds
                 print(heading)
                 seekingCompletion = True
         elif line.startswith("Truck Only:"):
@@ -63,4 +66,4 @@ def compile_seq(filename):
             end = line.index(" ", start)
             current_values.append(round(float(line[start:end]) / 3.6, 2))
 
-compile_seq("data/speed-results.txt")
+compile_seq("results.txt")

@@ -334,7 +334,7 @@ def draw_functions(s_x, e_x, dx, f, p_s, p_e, dp):
       tmp = i * dx
       lx.append(tmp)
       ly.append(f(tmp, p))
-    plt.plot(lx, ly, color=(R, G, B), label=str(p)+"% RH")
+    plt.plot(lx, ly, color=(R, G, B), label=str(p)+"")
     R += d_R
     G += d_G
     B += d_B
@@ -348,7 +348,7 @@ def draw_functions(s_x, e_x, dx, f, p_s, p_e, dp):
       tmp = i * dx
       lx.append(tmp)
       ly.append(f(tmp, p))
-    plt.plot(lx, ly, color=(R, G, B), label=str(p)+"% RH")
+    plt.plot(lx, ly, color=(R, G, B), label=str(p)+"")
     R += d_R
     G += d_G
     B += d_B
@@ -594,16 +594,19 @@ class EnergyHelper:
       prv = swp[0]
       drone_x.append(self.nodes[prv][0])
       drone_y.append(self.nodes[prv][1])
-      cur, cur_ty = lep_to[prv]
+      # cur, cur_ty = lep_to[prv]
+      cur = lep_to[prv]
       while cur != -1:
-        if cur_ty:
-          e = self.edges[prv][cur]
-        else:
-          e = self.dedges[prv][cur]
+        # if cur_ty:
+        #   e = self.edges[prv][cur]
+        # else:
+        #   e = self.dedges[prv][cur]
+        e = self.dedges[prv][cur]
         prv = e[0]
         drone_x.append(self.nodes[prv][0])
         drone_y.append(self.nodes[prv][1])
-        cur, cur_ty = lep_to[prv]
+        # cur, cur_ty = lep_to[prv]
+        cur = lep_to[prv]
       next_loc_node = swp[0]
     else:
       next_loc_node = self.demand[cycle[0]][0]
@@ -671,16 +674,19 @@ class EnergyHelper:
           drone_x.extend(tmp_x)
           drone_y.extend(tmp_y)
           prv = swp[j+1]
-          cur, cur_ty = lep_to[prv]
+          # cur, cur_ty = lep_to[prv]
+          cur = lep_to[prv]
           while cur != -1:
-            if cur_ty:
-              e = self.edges[prv][cur]
-            else:
-              e = self.dedges[prv][cur]
+            # if cur_ty:
+            #   e = self.edges[prv][cur]
+            # else:
+            #   e = self.dedges[prv][cur]
+            e = self.dedges[prv][cur]
             prv = e[0]
             drone_x.append(self.nodes[prv][0])
             drone_y.append(self.nodes[prv][1])
-            cur, cur_ty = lep_to[prv]
+            # cur, cur_ty = lep_to[prv]
+            cur = lep_to[prv]
           drone_loc = cycle[cyc_ind + 1]
       elif swp[j] >= 0:
         lep_frm = self.llep_d[drone_loc][0]
@@ -716,16 +722,19 @@ class EnergyHelper:
           prv = swp[j+1]
           drone_x.append(self.nodes[prv][0])
           drone_y.append(self.nodes[prv][1])
-          cur, cur_ty = lep_to[prv]
+          # cur, cur_ty = lep_to[prv]
+          cur = lep_to[prv]
           while cur != -1:
-            if cur_ty:
-              e = self.edges[prv][cur]
-            else:
-              e = self.dedges[prv][cur]
+            # if cur_ty:
+            #   e = self.edges[prv][cur]
+            # else:
+            #   e = self.dedges[prv][cur]
+            e = self.dedges[prv][cur]
             prv = e[0]
             drone_x.append(self.nodes[prv][0])
             drone_y.append(self.nodes[prv][1])
-            cur, cur_ty = lep_to[prv]
+            # cur, cur_ty = lep_to[prv]
+            cur = lep_to[prv]
           next_loc_node = swp[j+1]
         else:
           next_loc_node = self.demand[cycle[cyc_ind + 1]][0]
@@ -758,16 +767,19 @@ class EnergyHelper:
         truck_y.extend(tmp_y)
         lep_to = self.llep_d[cycle[cyc_ind + 1]][1]
         prv = swp[j+1]
-        cur, cur_ty = lep_to[prv]
+        # cur, cur_ty = lep_to[prv]
+        cur = lep_to[prv]
         while cur != -1:
-          if cur_ty:
-            e = self.edges[prv][cur]
-          else:
-            e = self.dedges[prv][cur]
+          # if cur_ty:
+          #   e = self.edges[prv][cur]
+          # else:
+          #   e = self.dedges[prv][cur]
+          e = self.dedges[prv][cur]
           prv = e[0]
           drone_x.append(self.nodes[prv][0])
           drone_y.append(self.nodes[prv][1])
-          cur, cur_ty = lep_to[prv]
+          # cur, cur_ty = lep_to[prv]
+          cur = lep_to[prv]
         drone_loc = cycle[cyc_ind + 1]
         truck_loc_node = swp[j+1]
       j += 2
@@ -970,16 +982,19 @@ class EnergyHelper:
           prv = k
           tmp_x.append(self.nodes[prv][0])
           tmp_y.append(self.nodes[prv][1])
-          cur, cur_ty = lep_to[prv]
+          # cur, cur_ty = lep_to[prv]
+          cur = lep_to[prv]
           while cur != -1:
-            if cur_ty:
-              e = self.edges[prv][cur]
-            else:
-              e = self.dedges[prv][cur]
+            # if cur_ty:
+            #   e = self.edges[prv][cur]
+            # else:
+            #   e = self.dedges[prv][cur]
+            e = self.dedges[prv][cur]
             prv = e[0]
             tmp_x.append(self.nodes[prv][0])
             tmp_y.append(self.nodes[prv][1])
-            cur, cur_ty = lep_to[prv]
+            # cur, cur_ty = lep_to[prv]
+            cur = lep_to[prv]
           plt.plot(tmp_x, tmp_y, marker="", c="gray", alpha=0.4)
     if show_for_all_edges:
       llx, lly, lln = self.line_cover
