@@ -4,6 +4,7 @@ import osmnx
 import matplotlib.pyplot as plt
 import osmnx.simplification
 import osmnx.distance
+import networkx as nx
 from tqdm import tqdm
 from math import sin, cos, sqrt, exp
 
@@ -250,21 +251,6 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, no_fly_zone
     simplification_tolerance accepts integral number to simplify graph under.
     """
     print("Getting data from server...")
-    # graphB = osmnx.graph_from_polygon(
-    #                 get_place_area(place_name, epsg, boundary_buffer_length).at[0, "geometry"], 
-    #                 network_type="bike")
-    # graphD = osmnx.graph_from_polygon(
-    #                 get_place_area(place_name, epsg, boundary_buffer_length).at[0, "geometry"], 
-    #                 network_type="drive")
-    # if simplification_tolerance > 0:
-    #     graphB = osmnx.project_graph(
-    #                 osmnx.simplification.consolidate_intersections(
-    #                     osmnx.project_graph(graphB, epsg), tolerance=simplification_tolerance), 
-    #                 OSM_CRS_EPSG)
-    #     graphD = osmnx.project_graph(
-    #                 osmnx.simplification.consolidate_intersections(
-    #                     osmnx.project_graph(graphD, epsg), tolerance=simplification_tolerance), 
-    #                 OSM_CRS_EPSG)
     place_polygon = osmnx.geocode_to_gdf(place_name).to_crs(epsg)
     place_polygon["geometry"] = place_polygon.buffer(boundary_buffer_length).to_crs(OSM_CRS_EPSG)
     graphB = osmnx.project_graph(osmnx.graph_from_polygon(place_polygon.at[0, "geometry"], network_type="bike"), epsg)
@@ -273,60 +259,33 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, no_fly_zone
         graphB = osmnx.simplification.consolidate_intersections(graphB, tolerance=simplification_tolerance)
         graphD = osmnx.simplification.consolidate_intersections(graphD, tolerance=simplification_tolerance)
     print("Got data from server!\nDecomposing graph network...")
+    merged_graph = nx.compose(graphD, graphB)
+    edge_data = {
+        e: min(graphB.edges[e]["length"], graphD.edges[e]["length"]) for e in graphB.edges & graphD.edges
+    }
+    nx.set_edge_attributes(merged_graph, edge_data, "length")
+    graphB = merged_graph
     remove_no_fly_zones(no_fly_zones, graphB)
-    remove_no_fly_zones(no_fly_zones, graphD)
+    # ----------------------------------
+    # graphB holds bike + drive network.
+    # graphD holds drive network.
+    # We will make nodes set from graphB,
+    # edges from graphD, dedges from
+    # graphB.
+    # ----------------------------------
     nodesB, edgesB = osmnx.graph_to_gdfs(graphB)
-    nodesD, edgesD = osmnx.graph_to_gdfs(graphD)
-    xl = list(nodesB["x"].values)
-    yl = list(nodesB["y"].values)
-    uidl = list(nodesB["osmid_original"].values)
-    hash = {}
-    for id in uidl:
-        if type(id) == list:
-            for i in id:
-                hash[i] = 1
-        else:
-            hash[id] = 1
-    exl = list(nodesD["x"].values)
-    eyl = list(nodesD["y"].values)
-    euidl = list(nodesD["osmid_original"].values)
-    num_extra = 0
-    found = False
-    j = 0
-    for id in euidl:
-        found = False
-        if type(id) == list:
-            for i in id:
-                if i in hash:
-                    found = True
-                    break
-        else:
-            found = id in hash
-        if not found:
-            num_extra += 1
-            xl.append(exl[j])
-            yl.append(eyl[j])
-            uidl.append(euidl[j])
-        j += 1
-    print("Found", num_extra, "extra verticies from drive network")
+    edgesD = osmnx.graph_to_gdfs(graphD, nodes=False, edges=True)
+    xl, yl, uidl = list(nodesB["x"].values), list(nodesB["y"].values), list(nodesB["osmid_original"].values)
     avg_x = round(sum(x for x in xl) / len(xl), D_PRES)
     avg_y = round(sum(y for y in yl) / len(yl), D_PRES)
-    min_x, min_y = 0, 0
-    max_x, max_y = 0, 0
     for i in range(len(xl)):
         xl[i] = round((xl[i] - avg_x), max(D_PRES - 3, 0))
-        max_x = max(max_x, xl[i])
-        min_x = min(min_x, xl[i])
     for i in range(len(yl)):
         yl[i] = round((yl[i] - avg_y), max(D_PRES - 3, 0))
-        max_y = max(max_y, yl[i])
-        min_y = min(min_y, yl[i])
-    ulb = edgesB["u_original"].values   # directional edges
-    vlb = edgesB["v_original"].values
-    lenlb = edgesB["length"].values
-    uld = edgesD["u_original"].values
-    vld = edgesD["v_original"].values
-    lenld = edgesD["length"].values
+    min_x, min_y = min(x for x in xl), min(y for y in yl)
+    max_x, max_y = max(x for x in xl), max(y for y in yl)
+    ulb, vlb, lenlb = edgesB["u_original"].values, edgesB["v_original"].values, edgesB["length"].values
+    uld, vld, lenld = edgesD["u_original"].values, edgesD["v_original"].values, edgesD["length"].values
     print("Graph network decomposed!\nBuilding internal nodes structure...")
     UID_to_ind = {}
     ind_to_UID = []
@@ -343,12 +302,11 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, no_fly_zone
         gc += 1
     print("Internal nodes structure built!\nBuilding internal edges structure & calibrating winds...")
     edgesl, dedges = [[] for _ in range(gc)], [[] for _ in range(gc)]
-    hash = {}
     u_ind, v_ind, length = -1, -1, -1
     sx, sy, dx, dy = 0, 0, 0, 0
     x_coeff = 30 / max(abs(max_x), abs(min_x))
     y_coeff = 30 / max(abs(max_y), abs(min_y))
-    EDGE_WORK, DEDGE_WORK = [], []
+    DEDGE_WORK = []
     fsx, fsy, fdx, fdy = 0, 0, 0, 0
     delta_x, delta_y, delta_norm = 0, 0, 0
     fx, fy, fnorm = 0, 0, 0
@@ -365,31 +323,9 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, no_fly_zone
         v_ind = UID_to_ind[vld[i]]
         if u_ind == v_ind:    # removing cyclic edges.
             continue
-        if u_ind not in hash:
-            hash[u_ind] = {}
-        hash[u_ind][v_ind] = 1
         length = round(lenld[i], max(D_PRES - 3, 0))
         sx, sy = nodesl[u_ind]
         dx, dy = nodesl[v_ind]
-        # ---------------------------
-        # Change head wind vector field below only.
-        # ---------------------------
-        fsx = (sx - 100) / 50
-        fsy = sx + sy
-        fdx = (dx - 100) / 50
-        fdy = dx + dy
-        # ---------------------------
-        delta_x = dx - sx
-        delta_y = dy - sy
-        delta_norm = sqrt(delta_x * delta_x + delta_y * delta_y)
-        fx = (fsx + fdx) / 2
-        fy = (fsy + fdy) / 2
-        fnorm = sqrt(fx * fx + fy * fy)
-        # max head wind speed: 7 m/s.
-        # print(delta_norm, fnorm)
-        V_w_hd = 7 * (fx * delta_x + fy * delta_y) / (delta_norm * fnorm)
-        # max lateral wind speed: 2 m/s.
-        V_w_lt = sin(sx + sy + dx + dy) * 2
         x = x_coeff * (sx + dx)
         y = y_coeff * (sy + dy)
         # ---------------------------
@@ -402,13 +338,7 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, no_fly_zone
         truck_epm = QUAD_A * truck_speed + QUAD_B
         truck_epm *= truck_epm
         truck_epm = (truck_epm + QUAD_C) / 1000   # J/m
-        T = BASE_TEMP + TEMP_FLUC_COEFF * (sin(x) + sin(y))
-        Pv = REL_HUMIDITY * 1610.78 * exp((17.27 * T) / (T + 237.3))
-        rho = ((101325 - Pv) * 0.0034837139 + Pv * 0.0021668274) / (T + 273.15)
-        EDGE_WORK.append((u_ind, len(edgesl[u_ind]), rho, V_w_hd, V_w_lt))
         edgesl[u_ind].append((v_ind, length, truck_epm * length, truck_speed))
-    num_extra = 0
-    found = False
     for j in range(len(ulb)):
         if not ((ulb[j] in UID_to_ind) and (vlb[j] in UID_to_ind)):
             continue
@@ -416,9 +346,6 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, no_fly_zone
         v_ind = UID_to_ind[vlb[j]]
         if u_ind == v_ind:    # removing cyclic edges.
             continue
-        if (u_ind in hash) and (v_ind in hash[u_ind]):
-            continue
-        num_extra += 1
         length = round(lenlb[j], max(D_PRES - 3, 0))
         sx, sy = nodesl[u_ind]
         dx, dy = nodesl[v_ind]
@@ -444,12 +371,11 @@ def get_decomposed_network(place_name, epsg, boundary_buffer_length, no_fly_zone
         x = x_coeff * (sx + dx)
         y = y_coeff * (sy + dy)
         T = BASE_TEMP + TEMP_FLUC_COEFF * (sin(x) + sin(y))
-        Pv = REL_HUMIDITY * 1610.78 * exp((17.27 * T) / (T + 237.3))
+        Pv = REL_HUMIDITY * 610.78 * exp((17.27 * T) / (T + 237.3))
         rho = ((101325 - Pv) * 0.0034837139 + Pv * 0.0021668274) / (T + 273.15)
         DEDGE_WORK.append((u_ind, len(dedges[u_ind]), rho, V_w_hd, V_w_lt))
         dedges[u_ind].append((v_ind, length))
-    print("Found", int(num_extra*100/len(ulb)), "percent extra edges in bike network.")
-    el.fill_edge_data(edgesl, dedges, EDGE_WORK, DEDGE_WORK)
+    el.fill_edge_data(dedges, DEDGE_WORK)
     print("Built internal edges structure & calibrated winds!")
     return (nodesl, edgesl, dedges, UID_to_ind, ind_to_UID)
 

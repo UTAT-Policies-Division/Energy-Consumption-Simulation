@@ -1,5 +1,5 @@
 # import geolib as gl
-from enlib import EnergyHelper, init_globals, power, RPM_coeff, WEIGHTS
+from enlib import EnergyHelper, init_globals, power, RPM_coeff, WEIGHTS, draw_function, draw_functions, kph_to_mps
 import matplotlib.pyplot as plt
 from math import exp, pi
 # from PolicyStorage import no_fly_zones, PolicyData
@@ -127,11 +127,126 @@ if __name__ == '__main__':
 #   print(cycle)
 #   print(swp)
 #   exit(0)
+  def func(T, RH):
+     init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
+                  base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=20,
+                  relative_humidity=0)
+     print(RH, T)
+     Pv = RH * 0.01 * 610.78 * exp((17.27 * T) / (T + 237.3))
+     rho = ((101325 - Pv) * 0.0034837139 + Pv * 0.0021668274) / (T + 273.15)
+     return power(rho,0,0,0)
+  draw_functions(0,50,1,func,0,130,25)
+  plt.title("Power Consumption Vs Temperature for different Relative Humidities")
+  plt.xlabel("Temperature (*C)")
+  plt.ylabel("Power Consumed (Watts)")
+  plt.legend(loc="best")
+  plt.savefig("cmp1.png", dpi=200)
+  exit(0)
+
+  print("200 Demand Points, max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24, base_temperature=14, temp_flucts_coeff=3, relative_humidity=52%")
+
+#   for i in range(2, 3):
+#       for V in range(15, 21, 5):
+#         # --------------------------------
+#         # Loading Manhattan Set + Generating Demand, Source
+#         # --------------------------------
+#         print("Set", i, "for min weight", 0, ", 20% drone loading, and drone speed", V, "m/s begins!")
+#         init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
+#                     base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=V,
+#                     relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
+#         eh = EnergyHelper.load("pickles/manhattan-policy-set-{}-{}ms.pkl".format(i, V))
+#         print(eh.edges[:5])  # confirming calibration
+#         NUM_STOPS = 200
+#         RANGE = float(3000)   # dummy for now
+#         src = eh.get_top_right_node()
+#         eh.append_random_demand(NUM_STOPS, cluster_num=0, cluster_jump=0, dron_min_w=0,
+#                                 drone_only_possible_component=0.2)
+#         conflict = src in [x[0] for x in eh.demand]
+#         while conflict:
+#           eh.reset_demand()
+#           eh.append_random_demand(NUM_STOPS, cluster_num=0, cluster_jump=0, dron_min_w=0,
+#                                   drone_only_possible_component=0.2)
+#           conflict = src in [x[0] for x in eh.demand]
+#         print("Source", src, "at", eh.nodes[src])
+#         print(eh.demand)
+#         # --------------------------------
+    
+#         # --------------------------------
+#         # Truck Only ACO Setup & Run
+#         # --------------------------------
+#         eh.init_phermone_system(src, R=RANGE)
+#         print("Truck Only:")
+#         NUM_ITERATIONS = 100
+#         ANTS_PER_ITERATION = 45
+#         energy, cycle = eh.aco_truck_only(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
+#         print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
+#         print(cycle)
+#         # --------------------------------
+    
+#         # --------------------------------
+#         # Truck + Drone ACO Setup & Run
+#         # --------------------------------
+#         eh.init_phermone_system(src, R=RANGE)
+#         print("Truck + Drone:")
+#         NUM_ITERATIONS = 100
+#         ANTS_PER_ITERATION = 45
+#         energy, cycle, swp = eh.aco(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
+#         print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
+#         print(cycle)
+#         print(swp)
+#         # --------------------------------
+    
+#         print("Set", i, "for min weight", 0, ", 20% drone loading, and drone speed", V, "m/s has ended.")
   
-  print("200 Demand Points, 20% drone loading, max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24, base_temperature=14, temp_flucts_coeff=3, relative_humidity=52%")
-  for min_w in range(5, 21, 5):
-    for i in range(1, 2):
-      for V in range(5, 16, 5):
+#   print("Set", 2, "for min weight", 0, " and drone speed", 20, "m/s begins!")
+#   init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
+#               base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=20,
+#               relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
+#   eh = EnergyHelper.load("pickles/manhattan-policy-set-{}-{}ms.pkl".format(2, 20))
+#   print(eh.edges[:5])  # confirming calibration
+#   NUM_STOPS = 200
+#   RANGE = float(3000)   # dummy for now
+#         #   src = eh.get_close_node(-3302, -3509, 20)
+#   src = eh.get_close_node(3455, 9256, 50)
+#   eh.append_random_demand(NUM_STOPS, cluster_num=0, cluster_jump=0, dron_min_w=0, src=src,
+#                           drone_only_possible_component=0.2)
+#   conflict = src in [x[0] for x in eh.demand]
+#   while conflict:
+#     eh.reset_demand()
+#     eh.append_random_demand(NUM_STOPS, cluster_num=0, cluster_jump=0, dron_min_w=0, src=src,
+#                             drone_only_possible_component=0.2)
+#     conflict = src in [x[0] for x in eh.demand]
+#   print("Source", src, "at", eh.nodes[src])
+#   print(eh.demand)
+#   # --------------------------------  
+#   # --------------------------------
+#   # Truck Only ACO Setup & Run
+#   # --------------------------------
+#   eh.init_phermone_system(src, R=RANGE)
+#   print("Truck Only:")
+#   NUM_ITERATIONS = 100
+#   ANTS_PER_ITERATION = 45
+#   energy, cycle = eh.aco_truck_only(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
+#   print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
+#   print(cycle)
+#   # --------------------------------  
+#   # --------------------------------
+#   # Truck + Drone ACO Setup & Run
+#   # --------------------------------
+#   eh.init_phermone_system(src, R=RANGE)
+#   print("Truck + Drone:")
+#   NUM_ITERATIONS = 100
+#   ANTS_PER_ITERATION = 45
+#   energy, cycle, swp = eh.aco(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
+#   print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
+#   print(cycle)
+#   print(swp)
+#   # --------------------------------  
+#   print("Set", 2, "for min weight", 0, " and drone speed", 20, "m/s has ended.")
+
+  for min_w in range(15, 11, 5):
+    for i in range(2, 3):
+      for V in range(10, 21, 5):
         # --------------------------------
         # Loading Manhattan Set + Generating Demand, Source
         # --------------------------------
@@ -142,20 +257,16 @@ if __name__ == '__main__':
         eh = EnergyHelper.load("pickles/manhattan-policy-set-{}-{}ms.pkl".format(i, V))
         print(eh.edges[:5])  # confirming calibration
         NUM_STOPS = 200
-        NUM_ALLOCS = 15
         RANGE = float(3000)   # dummy for now
       #   src = eh.get_close_node(-3302, -3509, 20)
-        if i == 1:
-            src = eh.get_top_right_node()
-        else:
-            src = eh.get_close_node(3455, 9256, 50)
+        src = eh.get_close_node(3455, 9256, 50)
         eh.append_random_demand(NUM_STOPS, cluster_num=0, cluster_jump=0, dron_min_w=(min_w / 10),
-                                drone_only_possible_component=0.2, num_allocs=NUM_ALLOCS)
+                                src=src, drone_only_possible_component=0.2)
         conflict = src in [x[0] for x in eh.demand]
         while conflict:
-          eh.demand = []
+          eh.reset_demand()
           eh.append_random_demand(NUM_STOPS, cluster_num=0, cluster_jump=0, dron_min_w=(min_w / 10),
-                                  drone_only_possible_component=0.2, num_allocs=NUM_ALLOCS)
+                                  src=src, drone_only_possible_component=0.2)
           conflict = src in [x[0] for x in eh.demand]
         print("Source", src, "at", eh.nodes[src])
         print(eh.demand)
@@ -167,7 +278,7 @@ if __name__ == '__main__':
         eh.init_phermone_system(src, R=RANGE)
         print("Truck Only:")
         NUM_ITERATIONS = 100
-        ANTS_PER_ITERATION = 40
+        ANTS_PER_ITERATION = 45
         energy, cycle = eh.aco_truck_only(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
         print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
         print(cycle)
@@ -179,7 +290,7 @@ if __name__ == '__main__':
         eh.init_phermone_system(src, R=RANGE)
         print("Truck + Drone:")
         NUM_ITERATIONS = 100
-        ANTS_PER_ITERATION = 40
+        ANTS_PER_ITERATION = 45
         energy, cycle, swp = eh.aco(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
         print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
         print(cycle)

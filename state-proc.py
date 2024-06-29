@@ -197,9 +197,6 @@ class Storage:
     self.xl = None
     self.yl = None
     self.uidl = None
-    self.exl = None
-    self.eyl = None
-    self.euidl = None
     self.ulb = None   # directional edges
     self.vlb = None
     self.lenlb = None
@@ -208,25 +205,22 @@ class Storage:
     self.lenld = None
 
   def save(self, filename='network_data.pkl'):
-    print("Saving Energy Helper object...")
+    print("Saving Storage object...")
     output = open(filename, 'wb')
     pickle.dump(self, output, 2)
     output.close()
-    print("Energy Helper object saved!")
+    print("Storage object saved!")
   
   def load(filename='network_data.pkl'):
-    print("Loading Energy Helper object...")
+    print("Loading Storage object...")
     input = open(filename, 'rb')
     sobj = pickle.load(input)
     input.close()
-    print("Energy Helper object loaded!")
+    print("Storage object loaded!")
     obj = Storage()
     obj.xl = sobj.xl
     obj.yl = sobj.yl
     obj.uidl = sobj.uidl
-    obj.exl = sobj.exl
-    obj.eyl = sobj.eyl
-    obj.euidl =sobj.euidl
     obj.ulb = sobj.ulb   # directional edges
     obj.vlb = sobj.vlb
     obj.lenlb = sobj.lenlb
@@ -236,71 +230,17 @@ class Storage:
     return obj
 
 def get_decomposed_network(obj):
-    """
-    returns (nodes, edges, UID_to_ind, ind_to_UID) := 
-    ([index -> (x,y) ...], 
-     [u -> [(v,length) ...]], 
-     {UID: index ...}, 
-     [index -> UID ...])
-    for given place name, epsg, boundary buffer length, and shifts
-    coordinate system to the centroid for nodes.
-
-    need to pass a wind calibration function:
-      wind_func(sx, sy, dx, dy) -> (V_w_hd, V_w_lt)
-    safety check flag ensures uniqueness is preserved in the process.
-    simplification_tolerance accepts integral number to simplify graph under.
-    """
-    xl = obj.xl
-    yl = obj.yl
-    uidl = obj.uidl
-    hash = {}
-    for id in uidl:
-        if type(id) == list:
-            for i in id:
-                hash[i] = 1
-        else:
-            hash[id] = 1
-    exl = obj.exl
-    eyl = obj.eyl
-    euidl = obj.euidl
-    num_extra = 0
-    found = False
-    j = 0
-    for id in euidl:
-        found = False
-        if type(id) == list:
-            for i in id:
-                if i in hash:
-                    found = True
-                    break
-        else:
-            found = id in hash
-        if not found:
-            num_extra += 1
-            xl.append(exl[j])
-            yl.append(eyl[j])
-            uidl.append(euidl[j])
-        j += 1
-    print("Found", num_extra, "extra verticies from drive network")
+    xl, yl, uidl = obj.xl, obj.yl, obj.uidl
+    ulb, vlb, lenlb = obj.ulb, obj.vlb, obj.lenlb
+    uld, vld, lenld = obj.uld, obj.vld, obj.lenld
     avg_x = round(sum(x for x in xl) / len(xl), D_PRES)
     avg_y = round(sum(y for y in yl) / len(yl), D_PRES)
-    min_x, min_y = 0, 0
-    max_x, max_y = 0, 0
     for i in range(len(xl)):
         xl[i] = round((xl[i] - avg_x), max(D_PRES - 3, 0))
-        max_x = max(max_x, xl[i])
-        min_x = min(min_x, xl[i])
     for i in range(len(yl)):
         yl[i] = round((yl[i] - avg_y), max(D_PRES - 3, 0))
-        max_y = max(max_y, yl[i])
-        min_y = min(min_y, yl[i])
-    ulb = obj.ulb   # directional edges
-    vlb = obj.vlb
-    lenlb = obj.lenlb
-    uld = obj.uld
-    vld = obj.vld
-    lenld = obj.lenld
-    print("Graph network decomposed!\nBuilding internal nodes structure...")
+    min_x, min_y = min(x for x in xl), min(y for y in yl)
+    max_x, max_y = max(x for x in xl), max(y for y in yl)
     UID_to_ind = {}
     ind_to_UID = []
     nodesl = []
@@ -316,23 +256,17 @@ def get_decomposed_network(obj):
         gc += 1
     print("Internal nodes structure built!\nBuilding internal edges structure & calibrating winds...")
     edgesl, dedges = [[] for _ in range(gc)], [[] for _ in range(gc)]
-    hash = {}
     u_ind, v_ind, length = -1, -1, -1
     sx, sy, dx, dy = 0, 0, 0, 0
     x_coeff = 30 / max(abs(max_x), abs(min_x))
     y_coeff = 30 / max(abs(max_y), abs(min_y))
-    EDGE_WORK, DEDGE_WORK = [], []
+    DEDGE_WORK = []
     fsx, fsy, fdx, fdy = 0, 0, 0, 0
     delta_x, delta_y, delta_norm = 0, 0, 0
     fx, fy, fnorm = 0, 0, 0
     V_w_hd, V_w_lt = 0, 0
     x, y, mul_y, mul_x = 0, 0, 0, 0
     truck_speed, truck_epm, T, Pv, rho = 0, 0, 0, 0, 0
-    MAX_TRUCK_SPEED, BASE_TRUCK_SPEED = 12, 1.4
-    BASE_TEMP, TEMP_FLUC_COEFF, REL_HUMIDITY = 14, 1.5, RH(isMorning, GET_MONTH_INDEX[Month])
-    QUAD_C = 74736280 / 24
-    QUAD_B = -sqrt(74736280 - QUAD_C)
-    QUAD_A = QUAD_B / -24.5872
     for i in range(len(uld)):
         if not ((uld[i] in UID_to_ind) and (vld[i] in UID_to_ind)):
             continue
@@ -340,31 +274,9 @@ def get_decomposed_network(obj):
         v_ind = UID_to_ind[vld[i]]
         if u_ind == v_ind:    # removing cyclic edges.
             continue
-        if u_ind not in hash:
-            hash[u_ind] = {}
-        hash[u_ind][v_ind] = 1
         length = round(lenld[i], max(D_PRES - 3, 0))
         sx, sy = nodesl[u_ind]
         dx, dy = nodesl[v_ind]
-        # ---------------------------
-        # Change head wind vector field below only.
-        # ---------------------------
-        fsx = (sx - 100) / 50
-        fsy = sx + sy
-        fdx = (dx - 100) / 50
-        fdy = dx + dy
-        # ---------------------------
-        delta_x = dx - sx
-        delta_y = dy - sy
-        delta_norm = sqrt(delta_x * delta_x + delta_y * delta_y)
-        fx = (fsx + fdx) / 2
-        fy = (fsy + fdy) / 2
-        fnorm = sqrt(fx * fx + fy * fy)
-        # max head wind speed: 7 m/s.
-        # print(delta_norm, fnorm)
-        V_w_hd = 7 * (fx * delta_x + fy * delta_y) / (delta_norm * fnorm)
-        # max lateral wind speed: 2 m/s.
-        V_w_lt = sin(sx + sy + dx + dy) * 2
         x = x_coeff * (sx + dx)
         y = y_coeff * (sy + dy)
         # ---------------------------
@@ -377,13 +289,7 @@ def get_decomposed_network(obj):
         truck_epm = QUAD_A * truck_speed + QUAD_B
         truck_epm *= truck_epm
         truck_epm = (truck_epm + QUAD_C) / 1000   # J/m
-        T = BASE_TEMP + TEMP_FLUC_COEFF * (sin(x) + sin(y))
-        Pv = REL_HUMIDITY * 1610.78 * exp((17.27 * T) / (T + 237.3))
-        rho = ((101325 - Pv) * 0.0034837139 + Pv * 0.0021668274) / (T + 273.15)
-        EDGE_WORK.append((u_ind, len(edgesl[u_ind]), rho, V_w_hd, V_w_lt))
         edgesl[u_ind].append((v_ind, length, truck_epm * length, truck_speed))
-    num_extra = 0
-    found = False
     for j in range(len(ulb)):
         if not ((ulb[j] in UID_to_ind) and (vlb[j] in UID_to_ind)):
             continue
@@ -391,9 +297,6 @@ def get_decomposed_network(obj):
         v_ind = UID_to_ind[vlb[j]]
         if u_ind == v_ind:    # removing cyclic edges.
             continue
-        if (u_ind in hash) and (v_ind in hash[u_ind]):
-            continue
-        num_extra += 1
         length = round(lenlb[j], max(D_PRES - 3, 0))
         sx, sy = nodesl[u_ind]
         dx, dy = nodesl[v_ind]
@@ -419,12 +322,80 @@ def get_decomposed_network(obj):
         x = x_coeff * (sx + dx)
         y = y_coeff * (sy + dy)
         T = BASE_TEMP + TEMP_FLUC_COEFF * (sin(x) + sin(y))
-        Pv = REL_HUMIDITY * 1610.78 * exp((17.27 * T) / (T + 237.3))
+        Pv = REL_HUMIDITY * 610.78 * exp((17.27 * T) / (T + 237.3))
         rho = ((101325 - Pv) * 0.0034837139 + Pv * 0.0021668274) / (T + 273.15)
         DEDGE_WORK.append((u_ind, len(dedges[u_ind]), rho, V_w_hd, V_w_lt))
         dedges[u_ind].append((v_ind, length))
-    print("Found", int(num_extra*100/len(ulb)), "percent extra edges in bike network.")
-    fill_edge_data(edgesl, dedges, EDGE_WORK, DEDGE_WORK)
+    fill_edge_data(dedges, DEDGE_WORK)
+    print("Built internal edges structure & calibrated winds!")
+    return (nodesl, edgesl, dedges, UID_to_ind, ind_to_UID)
+
+def copy_decomposed_network(obj, src_dedges):
+    xl, yl, uidl = obj.xl, obj.yl, obj.uidl
+    ulb, vlb, lenlb = obj.ulb, obj.vlb, obj.lenlb
+    uld, vld, lenld = obj.uld, obj.vld, obj.lenld
+    avg_x = round(sum(x for x in xl) / len(xl), D_PRES)
+    avg_y = round(sum(y for y in yl) / len(yl), D_PRES)
+    for i in range(len(xl)):
+        xl[i] = round((xl[i] - avg_x), max(D_PRES - 3, 0))
+    for i in range(len(yl)):
+        yl[i] = round((yl[i] - avg_y), max(D_PRES - 3, 0))
+    min_x, min_y = min(x for x in xl), min(y for y in yl)
+    max_x, max_y = max(x for x in xl), max(y for y in yl)
+    UID_to_ind = {}
+    ind_to_UID = []
+    nodesl = []
+    gc = 0
+    for i in range(len(xl)):
+        if type(uidl[i]) == list:
+            for id in uidl[i]:
+                UID_to_ind[id] = gc
+        else:
+            UID_to_ind[uidl[i]] = gc
+        ind_to_UID.append(uidl[i])
+        nodesl.append((xl[i], yl[i]))
+        gc += 1
+    print("Internal nodes structure built!\nBuilding internal edges structure & calibrating winds...")
+    edgesl, dedges = [[] for _ in range(gc)], [[] for _ in range(gc)]
+    u_ind, v_ind, length = -1, -1, -1
+    sx, sy, dx, dy = 0, 0, 0, 0
+    x_coeff = 30 / max(abs(max_x), abs(min_x))
+    y_coeff = 30 / max(abs(max_y), abs(min_y))
+    x, y, mul_y, mul_x = 0, 0, 0, 0
+    truck_speed, truck_epm = 0, 0
+    for i in range(len(uld)):
+        if not ((uld[i] in UID_to_ind) and (vld[i] in UID_to_ind)):
+            continue
+        u_ind = UID_to_ind[uld[i]]
+        v_ind = UID_to_ind[vld[i]]
+        if u_ind == v_ind:    # removing cyclic edges.
+            continue
+        length = round(lenld[i], max(D_PRES - 3, 0))
+        sx, sy = nodesl[u_ind]
+        dx, dy = nodesl[v_ind]
+        x = x_coeff * (sx + dx)
+        y = y_coeff * (sy + dy)
+        # ---------------------------
+        # Change truck velocity vector field below only.
+        # ---------------------------
+        mul_y = abs(cos(3+(y/6)))
+        mul_x = abs(cos(5+(x/6)))
+        truck_speed = round(BASE_TRUCK_SPEED + MAX_TRUCK_SPEED * 0.0003 * (mul_y * x * x + mul_x * y * y), 2)
+        # ---------------------------
+        truck_epm = QUAD_A * truck_speed + QUAD_B
+        truck_epm *= truck_epm
+        truck_epm = (truck_epm + QUAD_C) / 1000   # J/m
+        edgesl[u_ind].append((v_ind, length, truck_epm * length, truck_speed))
+    search_list = [[e[0] for e in lst] for lst in src_dedges]
+    for j in range(len(ulb)):
+        if not ((ulb[j] in UID_to_ind) and (vlb[j] in UID_to_ind)):
+            continue
+        u_ind = UID_to_ind[ulb[j]]
+        v_ind = UID_to_ind[vlb[j]]
+        if u_ind == v_ind:    # removing cyclic edges.
+            continue
+        length = round(lenlb[j], max(D_PRES - 3, 0))
+        dedges[u_ind].append((v_ind, length, src_dedges[u_ind][search_list[u_ind].index(v_ind)][2]))
     print("Built internal edges structure & calibrated winds!")
     return (nodesl, edgesl, dedges, UID_to_ind, ind_to_UID)
 
@@ -542,28 +513,20 @@ def power(rho, W, V_w_hd, V_w_lt):
   return (omegaN * QBET * 6 * 1.0145 / 0.77)
   # assumes each of the 6 motors has 77% efficiency.
 
-def fill_edge_data(edgesl, dedges, edge_work, dedge_work):
+def fill_edge_data(dedges, dedge_work):
   print("Logical number of CPUs:", cpu_count())
   p = mp.Pool(processes=cpu_count(), 
               initializer=copy_globals_energy,
               initargs=(DRONE_GROUND_SPEED,))
-  pbar = tqdm(total=(len(edge_work) + len(dedge_work)))
+  pbar = tqdm(total=len(dedge_work))
   def update(*a):
     pbar.update()
   u_ind, v_ind, length = 0, 0, 0
   rho, V_w_hd, V_w_lt = 0, 0, 0
   async_obj, ind = 0, 0
-  truck_energy, truck_speed = 0, 0
-  for i in range(len(edge_work)):
-    u_ind, ind, rho, V_w_hd, V_w_lt = edge_work[i]
-    edge_work[i] = (u_ind, ind, p.apply_async(_energy_worker, (rho, V_w_hd, V_w_lt), callback=update))
   for i in range(len(dedge_work)):
     u_ind, ind, rho, V_w_hd, V_w_lt = dedge_work[i]
     dedge_work[i] = (u_ind, ind, p.apply_async(_energy_worker, (rho, V_w_hd, V_w_lt), callback=update))
-  for i in range(len(edge_work)):
-    u_ind, ind, async_obj = edge_work[i]
-    v_ind, length, truck_energy, truck_speed = edgesl[u_ind][ind]
-    edgesl[u_ind][ind] = (v_ind, length, truck_energy, truck_speed, async_obj.get())
   for i in range(len(dedge_work)):
     u_ind, ind, async_obj = dedge_work[i]
     v_ind, length = dedges[u_ind][ind]
@@ -625,11 +588,9 @@ class EnergyHelper:
     print("Energy Helper object saved!")
   
   def load(filename='network_data.pkl'):
-    print("Loading Energy Helper object...")
     input = open(filename, 'rb')
     obj = pickle.load(input)
     input.close()
-    print("Energy Helper object loaded!")
     ehobj = EnergyHelper(obj.nodes,
                          obj.edges,
                          obj.dedges,
@@ -649,6 +610,13 @@ class EnergyHelper:
       print("WARNING: total weight not consistent between actual demand and storage.")
     return ehobj
 
+def count_non_empty_lists(lst):
+   cnt = 0
+   for i in lst:
+      if len(i) > 0:
+         cnt += 1
+   return cnt
+
 if __name__ == '__main__':
 #   eh = el.EnergyHelper.load("uoft.pkl")
 #   eh.save("manhattan-pre.pkl")
@@ -658,18 +626,46 @@ if __name__ == '__main__':
   #   init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
   #                base_temperature=14, temp_flucts_coeff=3, drone_speed=V,
   #                relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
-  
+
   #   SET_STRING = "set {}.pkl".format(1)
   #   nodes, edges, dedges, UID_to_ind, ind_to_UID = get_decomposed_network(Storage.load(SET_STRING))
   #   eh = EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID, 10**(-2))
   #   eh.save("manhattan-policy-set-{}-{}ms.pkl".format(1, V))
-  for V in range(5, 26, 5):
-    init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
-                 base_temperature=14, temp_flucts_coeff=3, drone_speed=V,
-                 relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
+  # for V in range(5, 26, 5):
+  #   init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
+  #                base_temperature=14, temp_flucts_coeff=3, drone_speed=V,
+  #                relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
   
-    SET_STRING = "set {}.pkl".format(2)
-    nodes, edges, dedges, UID_to_ind, ind_to_UID = get_decomposed_network(Storage.load(SET_STRING))
-    eh = EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID, 10**(-2))
-    eh.save("manhattan-policy-set-{}-{}ms.pkl".format(2, V))
+  #   SET_STRING = "set-{}.pkl".format(2)
+  #   nodes, edges, dedges, UID_to_ind, ind_to_UID = get_decomposed_network(Storage.load(SET_STRING))
+  #   eh = EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID, 10**(-2))
+  #   eh.save("manhattan-policy-set-{}-{}ms.pkl".format(2, V))
+  # for V in range(5, 26, 5):
+  #   init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
+  #                base_temperature=14, temp_flucts_coeff=3, drone_speed=V,
+  #                relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
+  
+  #   SET_STRING = "set-{}.pkl".format(3)
+  #   src_dedges = EnergyHelper.load("manhattan-policy-set-{}-{}ms.pkl".format(2, V)).dedges
+  #   nodes, edges, dedges, UID_to_ind, ind_to_UID = copy_decomposed_network(Storage.load(SET_STRING), src_dedges)
+  #   eh = EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID, 10**(-2))
+  #   eh.save("manhattan-policy-set-{}-{}ms.pkl".format(3, V))
+  # for V in range(5, 26, 5):
+  #   init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
+  #                base_temperature=14, temp_flucts_coeff=3, drone_speed=V,
+  #                relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
+
+  #   SET_STRING = "set-{}.pkl".format(4)
+  #   src_dedges = EnergyHelper.load("manhattan-policy-set-{}-{}ms.pkl".format(2, V)).dedges
+  #   nodes, edges, dedges, UID_to_ind, ind_to_UID = copy_decomposed_network(Storage.load(SET_STRING), src_dedges)
+  #   eh = EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID, 10**(-2))
+  #   eh.save("manhattan-policy-set-{}-{}ms.pkl".format(4, V))
+  for V in range(5, 26, 5):
+    eh = EnergyHelper.load("pickles/manhattan-policy-set-{}-{}ms.pkl".format(1, V))
+    print(1, V, count_non_empty_lists(eh.dedges), count_non_empty_lists(eh.edges), count_non_empty_lists(eh.nodes))
+  for i in range(2, 5):
+     for V in range(5, 26, 5):
+        eh = EnergyHelper.load("manhattan-policy-set-{}-{}ms.pkl".format(i, V))
+        print(i, V, count_non_empty_lists(eh.dedges), count_non_empty_lists(eh.edges), count_non_empty_lists(eh.nodes))
   exit(0)
+

@@ -334,7 +334,7 @@ def draw_functions(s_x, e_x, dx, f, p_s, p_e, dp):
       tmp = i * dx
       lx.append(tmp)
       ly.append(f(tmp, p))
-    plt.plot(lx, ly, color=(R, G, B), label=str(p))
+    plt.plot(lx, ly, color=(R, G, B), label=str(p)+"% RH")
     R += d_R
     G += d_G
     B += d_B
@@ -348,7 +348,7 @@ def draw_functions(s_x, e_x, dx, f, p_s, p_e, dp):
       tmp = i * dx
       lx.append(tmp)
       ly.append(f(tmp, p))
-    plt.plot(lx, ly, color=(R, G, B), label=str(p))
+    plt.plot(lx, ly, color=(R, G, B), label=str(p)+"% RH")
     R += d_R
     G += d_G
     B += d_B
@@ -1023,8 +1023,12 @@ class EnergyHelper:
             return False
     return True
 
+  def reset_demand(self):
+    self.demand = []
+    self.total_weight = 0
+
   def append_random_demand(self, num, cluster_num=0, cluster_jump=0, dron_min_w=0,
-                           src=None, drone_only_possible_component=0.7, num_allocs=10):
+                           src=None, drone_only_possible_component=0.7):
     """
     Demand generated ALWAYS corresponds
     to nodes reachable by the truck.
@@ -1035,6 +1039,7 @@ class EnergyHelper:
     """
     if num == 0:
       return
+    TRUCK_MAX_CAPACITY = 750
     print("Generating demand...")
     N, num_clone = len(self.nodes), num
     ind, tgt, cnt = -1, -1, -1
@@ -1120,20 +1125,23 @@ class EnergyHelper:
       w_a += 1
     print("Drone Weight Ranges:", WEIGHTS[w_a::])
     iters = [i for i in range(len(self.demand) - num_clone, len(self.demand))]
-    pure_drone = sample(iters, ceil(drone_only_possible_component * num_clone))
+    num_pure_drone = ceil(drone_only_possible_component * num_clone)
+    pure_drone = sample(iters, num_pure_drone)
+    if num_clone == num_pure_drone:
+      max_non_drone_weight = 0
+    else:
+      max_non_drone_weight = int(100 * max(2.1, (TRUCK_MAX_CAPACITY - WEIGHTS[-1] * num_pure_drone) / (num_clone - num_pure_drone)))
     for i in iters:
       w = 0
       if i in pure_drone:
         w = WEIGHTS[randint(w_a, w_b)]
       else:
-        w = 0
-        for _ in range(num_allocs):
-          w += WEIGHTS[randint(w_a, w_b)]
+        w = randint(210, max_non_drone_weight) / 100
       self.demand[i] = (self.demand[i], w)
       w_total += w
     self.total_weight += w_total
-    if self.total_weight >= 4500:
-      print("WARNING: Total demand weight exceeds 4500kg critical point.")
+    if self.total_weight >= TRUCK_MAX_CAPACITY:
+      print("WARNING: Total demand weight exceeds max capacity.")
     print("Demand generated!")
 
   def save_light(self, filename='network_data_light.pkl'):
@@ -2095,28 +2103,20 @@ def power(rho, W, V_w_hd, V_w_lt):
   return (omegaN * QBET * 6 * 1.0145 / 0.77)
   # assumes each of the 6 motors has 77% efficiency.
 
-def fill_edge_data(edgesl, dedges, edge_work, dedge_work):
+def fill_edge_data(dedges, dedge_work):
   print("Logical number of CPUs:", cpu_count())
   p = mp.Pool(processes=cpu_count(), 
               initializer=copy_globals_energy,
               initargs=(DRONE_GROUND_SPEED,))
-  pbar = tqdm(total=(len(edge_work) + len(dedge_work)))
+  pbar = tqdm(total=len(dedge_work))
   def update(*a):
     pbar.update()
   u_ind, v_ind, length = 0, 0, 0
   rho, V_w_hd, V_w_lt = 0, 0, 0
   async_obj, ind = 0, 0
-  truck_energy, truck_speed = 0, 0
-  for i in range(len(edge_work)):
-    u_ind, ind, rho, V_w_hd, V_w_lt = edge_work[i]
-    edge_work[i] = (u_ind, ind, p.apply_async(_energy_worker, (rho, V_w_hd, V_w_lt), callback=update))
   for i in range(len(dedge_work)):
     u_ind, ind, rho, V_w_hd, V_w_lt = dedge_work[i]
     dedge_work[i] = (u_ind, ind, p.apply_async(_energy_worker, (rho, V_w_hd, V_w_lt), callback=update))
-  for i in range(len(edge_work)):
-    u_ind, ind, async_obj = edge_work[i]
-    v_ind, length, truck_energy, truck_speed = edgesl[u_ind][ind]
-    edgesl[u_ind][ind] = (v_ind, length, truck_energy, truck_speed, async_obj.get())
   for i in range(len(dedge_work)):
     u_ind, ind, async_obj = dedge_work[i]
     v_ind, length = dedges[u_ind][ind]

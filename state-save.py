@@ -1,5 +1,6 @@
 import osmnx.simplification
 import osmnx.distance
+import networkx as nx
 from tqdm import tqdm
 import multiprocessing as mp
 import pickle
@@ -53,10 +54,10 @@ def remove_no_fly_zones(tgt_x_y_r, org_graph, q):
     q.put(len(tgt_x_y_r))
     for x, y, r in tgt_x_y_r:
         r += RADIUS_SHIFT
-        node, dst = osmnx.distance.nearest_nodes(org_graph, x, y, return_dist=True)
-        while dst < r:
-            org_graph.remove_node(node)
-            node, dst = osmnx.distance.nearest_nodes(org_graph, x, y, return_dist=True)
+        # node, dst = osmnx.distance.nearest_nodes(org_graph, x, y, return_dist=True)
+        # while dst < r:
+        #     org_graph.remove_node(node)
+        #     node, dst = osmnx.distance.nearest_nodes(org_graph, x, y, return_dist=True)
         edge, dst = osmnx.distance.nearest_edges(org_graph, x, y, return_dist=True)
         while dst < r:
             org_graph.remove_edge(*edge)
@@ -74,9 +75,6 @@ class Storage:
     self.xl = None
     self.yl = None
     self.uidl = None
-    self.exl = None
-    self.eyl = None
-    self.euidl = None
     self.ulb = None   # directional edges
     self.vlb = None
     self.lenlb = None
@@ -85,25 +83,22 @@ class Storage:
     self.lenld = None
 
   def save(self, filename='network_data.pkl'):
-    print("Saving Energy Helper object...")
+    print("Saving Storage object...")
     output = open(filename, 'wb')
     pickle.dump(self, output, 2)
     output.close()
-    print("Energy Helper object saved!")
+    print("Storage object saved!")
   
   def load(filename='network_data.pkl'):
-    print("Loading Energy Helper object...")
+    print("Loading Storage object...")
     input = open(filename, 'rb')
     sobj = pickle.load(input)
     input.close()
-    print("Energy Helper object loaded!")
+    print("Storage object loaded!")
     obj = Storage()
     obj.xl = sobj.xl
     obj.yl = sobj.yl
     obj.uidl = sobj.uidl
-    obj.exl = sobj.exl
-    obj.eyl = sobj.eyl
-    obj.euidl =sobj.euidl
     obj.ulb = sobj.ulb   # directional edges
     obj.vlb = sobj.vlb
     obj.lenlb = sobj.lenlb
@@ -120,29 +115,31 @@ def _osmnx_worker(no_fly_zones, index, q):
   if simplification_tolerance > 0:
       graphB = osmnx.simplification.consolidate_intersections(graphB, tolerance=simplification_tolerance)
       graphD = osmnx.simplification.consolidate_intersections(graphD, tolerance=simplification_tolerance)
+  merged_graph = nx.compose(graphD, graphB)
+  edge_data = {
+      e: min(graphB.edges[e]["length"], graphD.edges[e]["length"]) for e in graphB.edges & graphD.edges
+  }
+  nx.set_edge_attributes(merged_graph, edge_data, "length")
+  graphB = merged_graph
   q.put(0)
   remove_no_fly_zones(no_fly_zones, graphB, q)
-  remove_no_fly_zones(no_fly_zones, graphD, q)
   nodesB, edgesB = osmnx.graph_to_gdfs(graphB)
-  nodesD, edgesD = osmnx.graph_to_gdfs(graphD)
+  edgesD = osmnx.graph_to_gdfs(graphD, nodes=False, edges=True)
   obj = Storage()
   obj.xl = list(nodesB["x"].values)
   obj.yl = list(nodesB["y"].values)
   obj.uidl = list(nodesB["osmid_original"].values)
-  obj.exl = list(nodesD["x"].values)
-  obj.eyl = list(nodesD["y"].values)
-  obj.euidl = list(nodesD["osmid_original"].values)
   obj.ulb = edgesB["u_original"].values   # directional edges
   obj.vlb = edgesB["v_original"].values
   obj.lenlb = edgesB["length"].values
   obj.uld = edgesD["u_original"].values
   obj.vld = edgesD["v_original"].values
   obj.lenld = edgesD["length"].values
-  obj.save('set-' + str(index) + "-relaxed.pkl")
+  obj.save('set-' + str(index) + ".pkl")
   q.put(0)
 
 def listener(q):
-    pbar = tqdm(total = (len(TAGS) - 2) * 2)
+    pbar = tqdm(total = 1 * 2)
     while q.empty():
         continue
     upd = q.get()
@@ -163,7 +160,7 @@ def download_data_parallel(policy_object):
   proc.start()
   workers = [mp.Process(target=_osmnx_worker, 
                         args=(policy_object.REGION_POLICY['NO_FLY_ZONES']["set {}".format(i+1)], 
-                              i+1, q)) for i in range(2, len(TAGS))]
+                              i+1, q)) for i in range(0, 1)]
   for worker in workers:
     worker.start()
   for worker in workers:
