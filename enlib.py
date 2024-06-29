@@ -1283,7 +1283,8 @@ class EnergyHelper:
     n_pherm = [[NODE_BASE_PHERM for _ in range(len(nodes))] for _ in range(len(demand))]
     got = [0 for _ in range(len(nodes))]
     let_g = [float('inf') for _ in range(len(nodes))]
-    lep_g = [(-1, None) for _ in range(len(nodes))]
+    # lep_g = [(-1, None) for _ in range(len(nodes))]
+    lep_g = [-1 for _ in range(len(nodes))]
     # [0]: from demand to node, [1]: from node to demand
     q, lep, let, lep2, eng, ind, cur, prv, ed_ind = [], lep_g, let_g, None, -1, -1, -1, -1, -1
     sp_poss = [([],[]) for _ in range(len(demand))]
@@ -1299,33 +1300,35 @@ class EnergyHelper:
         if got[ind] == 1:
           continue
         got[ind] = 1
-        for n_ind, n_dst, _, _, drone_powers in edges[ind]:
-          # loading based on maximum range i.e. 0.25kg payload
-          n_eng = eng + (drone_powers[1] * n_dst / DRONE_GROUND_SPEED)
-          n_dst += dst
-          if n_eng < MAX_BATTERY_USE and n_eng < let[n_ind] and n_dst < R:
-            dth = 0
-            if lep[ind][0] >= 0:
-              ux, uy = self.nodes[lep[ind][0]]
-              vx, vy = self.nodes[ind]
-              wx, wy = self.nodes[n_ind]
-              dvux, dvuy = ux - vx, uy - vy
-              dvwx, dvwy = wx - vx, wy - vy
-              dth = abs(pi - acos(((dvux * dvwx) + (dvuy * dvwy)) * 0.99 / 
-                                    (sqrt(dvux * dvux + dvuy * dvuy) *
-                                     sqrt(dvwx * dvwx + dvwy * dvwy))))
-            if dth <= local_VLOS_tolerance:
-              let[n_ind] = n_eng
-              lep[n_ind] = (ind, True)
-              heapq.heappush(q, (n_eng, n_dst, n_ind))
+        # for n_ind, n_dst, _, _, drone_powers in edges[ind]:
+        #   # loading based on maximum range i.e. 0.25kg payload
+        #   n_eng = eng + (drone_powers[1] * n_dst / DRONE_GROUND_SPEED)
+        #   n_dst += dst
+        #   if n_eng < MAX_BATTERY_USE and n_eng < let[n_ind] and n_dst < R:
+        #     dth = 0
+        #     if lep[ind][0] >= 0:
+        #       ux, uy = self.nodes[lep[ind][0]]
+        #       vx, vy = self.nodes[ind]
+        #       wx, wy = self.nodes[n_ind]
+        #       dvux, dvuy = ux - vx, uy - vy
+        #       dvwx, dvwy = wx - vx, wy - vy
+        #       dth = abs(pi - acos(((dvux * dvwx) + (dvuy * dvwy)) * 0.99 / 
+        #                             (sqrt(dvux * dvux + dvuy * dvuy) *
+        #                              sqrt(dvwx * dvwx + dvwy * dvwy))))
+        #     if dth <= local_VLOS_tolerance:
+        #       let[n_ind] = n_eng
+        #       lep[n_ind] = (ind, True)
+        #       heapq.heappush(q, (n_eng, n_dst, n_ind))
         for n_ind, n_dst, drone_powers in dedges[ind]:
           # loading based on maximum range i.e. 0.25kg payload
           n_eng = eng + (drone_powers[1] * n_dst / DRONE_GROUND_SPEED)
           n_dst += dst
           if n_eng < MAX_BATTERY_USE and n_eng < let[n_ind] and n_dst < R:
             dth = 0
-            if lep[ind][0] >= 0:
-              ux, uy = self.nodes[lep[ind][0]]
+            # if lep[ind][0] >= 0:
+            if lep[ind] >= 0:
+              # ux, uy = self.nodes[lep[ind][0]]
+              ux, uy = self.nodes[lep[ind]]
               vx, vy = self.nodes[ind]
               wx, wy = self.nodes[n_ind]
               dvux, dvuy = ux - vx, uy - vy
@@ -1335,52 +1338,64 @@ class EnergyHelper:
                                      sqrt(dvwx * dvwx + dvwy * dvwy))))
             if dth <= local_VLOS_tolerance:
               let[n_ind] = n_eng
-              lep[n_ind] = (ind, False)
+              # lep[n_ind] = (ind, False)
+              lep[n_ind] = ind
               heapq.heappush(q, (n_eng, n_dst, n_ind))
       for j in range(len(demand)):
         if got[demand[j][0]] == 1:
           sp_poss[j][1].append(i)
           lep2 = llep_d[j][1]
           prv = demand[j][0]
-          cur, cur_ty = lep[demand[j][0]]
-          eng = let[demand[j][0]]
+          # cur, cur_ty = lep[demand[j][0]]
+          cur = lep[prv]
+          eng = let[prv]
           while cur != -1:
             # print(cur)
             # n_pherm[j][cur] += (1 - abs(1 - ((eng - let[cur]) / MAX_BATTERY_USE_HALF))) * SP_PHERM_COEFF
             ed_ind = 0
-            edge_data = edges
-            if not cur_ty:
-              edge_data = dedges
-            while edge_data[cur][ed_ind][0] != prv:
+            # edge_data = edges
+            # if not cur_ty:
+            #   edge_data = dedges
+            # while edge_data[cur][ed_ind][0] != prv:
+            while dedges[cur][ed_ind][0] != prv:
               ed_ind += 1
-            lep2[cur] = (ed_ind, cur_ty)
+            lep2[cur] = ed_ind
             prv = cur
-            cur, cur_ty = lep[cur]
+            # cur, cur_ty = lep[cur]
+            cur = lep[cur]
             # if cur in lep2:
             #   break
         if i == demand[j][0]:
           sp_poss[j][0].append(i)
           lep2 = llep_d[j][0]
           for k1 in range(len(nodes)):
-            if lep[k1][0] != -1:
+            # if lep[k1][0] != -1:
+            if lep[k1] != -1:
               sp_poss[j][0].append(k1)
               # n_pherm[j][k1] += (1 - abs(1 - (let[k1] / MAX_BATTERY_USE_HALF))) * SP_PHERM_COEFF
-              cur, cur_ty = lep[k1]
-              edge_data = edges
-              if not cur_ty:
-                edge_data = dedges
-              for k2 in range(len(edge_data[cur])):
-                if edge_data[cur][k2][0] == k1:
-                  lep2[k1] = (cur, k2, cur_ty)
+              # cur, cur_ty = lep[k1]
+              cur = lep[k1]
+              # edge_data = edges
+              # if not cur_ty:
+              #   edge_data = dedges
+              # for k2 in range(len(edge_data[cur])):
+              for k2 in range(len(dedges[cur])):
+                # if edge_data[cur][k2][0] == k1:
+                if dedges[cur][k2][0] == k1:
+                  # lep2[k1] = (cur, k2, cur_ty)
+                  lep2[k1] = (cur, k2)
                   break
       for j in range(len(nodes)):
         got[j] = 0
         let[j] = float("inf")
-        lep[j] = (-1, None)
+        # lep[j] = (-1, None)
+        lep[j] = -1
       pbar.update()
     for j in range(len(demand)):
-      llep_d[j][0][demand[j][0]] = (-1, -1, None)
-      llep_d[j][1][demand[j][0]] = (-1, None)
+      # llep_d[j][0][demand[j][0]] = (-1, -1, None)
+      # llep_d[j][1][demand[j][0]] = (-1, None)
+      llep_d[j][0][demand[j][0]] = (-1, -1)
+      llep_d[j][1][demand[j][0]] = -1
     pbar.close()
     print("Initialization for demand complete!")
     print("Finding shortest paths between all drive intersections...")
@@ -1649,7 +1664,7 @@ class EnergyHelper:
     N_PHERM_SIZE = N_PHERM_LAST + NUM_NODES
     SWP_SIZE = 2 * DEMAND_SIZE
     SJI_PHERM_SIZE = (DEMAND_SIZE + 1) * (DEMAND_SIZE + 1)
-    SJI_PHERM_INIT, DELTA_SP_COEFF, DELTA_SP_NBH_COEFF = 0.55, 1.75, 0.75
+    DELTA_SP_COEFF, DELTA_SP_NBH_COEFF = 1.75, 0.75
     n_pherm = mp.Array('f', N_PHERM_SIZE, lock=False)
     sji_pherm = mp.Array('f', SJI_PHERM_SIZE, lock=False)
     c = -1
@@ -1689,6 +1704,7 @@ class EnergyHelper:
     best_ind, j, delta, delta_sp, delta_sp_nbh, cyc_ind = -1, -1, -1, -1, -1, -1
     shft, prev_tsj = -1, False
     cycle, swp, energy, last_drone_del = None, None, None, None
+    nbh_trk = [0 for _ in range(len(nodes))]
     for p in processes:
       p.start()
     pbar = tqdm(total=K)
@@ -1721,9 +1737,25 @@ class EnergyHelper:
       j, cyc_ind, prev_tsj = 1, 0, False
       n_pherm[N_PHERM_LAST + demand[cycle[0]][0]] += delta
       if swp[0] >= 0:
+        # ----------------------------------------
+        # Increasing neighbouring phermones
+        # excatly once only.
+        # ----------------------------------------
+        nbh_trk[demand[cycle[0]][0]] = 1
+        nbh_trk[swp[0]] = 1
         n_pherm[N_PHERM_LAST + swp[0]] += delta_sp
         for e in edges[swp[0]]:
-          n_pherm[N_PHERM_LAST + e[0]] += delta_sp_nbh
+          if nbh_trk[e[0]] == 0:
+            n_pherm[N_PHERM_LAST + e[0]] += delta_sp_nbh
+            nbh_trk[e[0]] = 1
+        for e in dedges[swp[0]]:
+          if nbh_trk[e[0]] == 0:
+            n_pherm[N_PHERM_LAST + e[0]] += delta_sp_nbh
+        for e in edges[swp[0]]:
+          nbh_trk[e[0]] = 0
+        nbh_trk[demand[cycle[0]][0]] = 0
+        nbh_trk[swp[0]] = 0
+        # ----------------------------------------
         first_parent = cycle[0]
         last_drone_del = first_parent
       while j < SWP_SIZE - 1:
@@ -1746,21 +1778,56 @@ class EnergyHelper:
           else:
             sji_pherm[cycle[cyc_ind + 1] + DEMAND_SIZE * first_parent] += delta
           if swp[j+1] >= 0:
-            n_pherm[swp[j+1] + NUM_NODES * last_drone_del] += delta_sp
+            shft = NUM_NODES * last_drone_del
+            # ----------------------------------------
+            # Increasing neighbouring phermones
+            # excatly once only.
+            # ----------------------------------------
+            nbh_trk[demand[cycle[cyc_ind + 1]][0]] = 1
+            nbh_trk[swp[j+1]] = 1
+            n_pherm[swp[j+1] + shft] += delta_sp
             for e in edges[swp[j+1]]:
-              n_pherm[e[0] + shft] += delta_sp_nbh
-            last_drone_del = cycle[cyc_ind + 1]
+              if nbh_trk[e[0]] == 0:
+                n_pherm[e[0] + shft] += delta_sp_nbh
+                nbh_trk[e[0]] = 1
+            for e in dedges[swp[j+1]]:
+              if nbh_trk[e[0]] == 0:
+                n_pherm[e[0] + shft] += delta_sp_nbh
+            for e in edges[swp[j+1]]:
+              nbh_trk[e[0]] = 0
+            nbh_trk[demand[cycle[cyc_ind + 1]][0]] = 0
+            nbh_trk[swp[j+1]] = 0
+            # ----------------------------------------
+            first_parent = cycle[cyc_ind + 1]
+            last_drone_del = first_parent
           else:
+            first_parent = None
             last_drone_del = None
           prev_tsj = False
         else:
           first_parent = cycle[cyc_ind + 1]
           last_drone_del = first_parent
           shft = NUM_NODES * cycle[cyc_ind]
+          # ----------------------------------------
+          # Increasing neighbouring phermones
+          # excatly once only.
+          # ----------------------------------------
+          nbh_trk[demand[cycle[cyc_ind + 1]][0]] = 1
+          nbh_trk[swp[j+1]] = 1
           n_pherm[demand[cycle[cyc_ind + 1]][0] + shft] += delta
           n_pherm[swp[j+1] + shft] += delta_sp
           for e in edges[swp[j+1]]:
-            n_pherm[e[0] + shft] += delta_sp_nbh
+            if nbh_trk[e[0]] == 0:
+              n_pherm[e[0] + shft] += delta_sp_nbh
+              nbh_trk[e[0]] = 1
+          for e in dedges[swp[j+1]]:
+            if nbh_trk[e[0]] == 0:
+              n_pherm[e[0] + shft] += delta_sp_nbh
+          for e in edges[swp[j+1]]:
+            nbh_trk[e[0]] = 0
+          nbh_trk[demand[cycle[cyc_ind + 1]][0]] = 0
+          nbh_trk[swp[j+1]] = 0
+          # ----------------------------------------
         j += 2
         cyc_ind += 1
       # loading from top 50% of population
@@ -1777,9 +1844,25 @@ class EnergyHelper:
         j, cyc_ind, prev_tsj = 1, 0, False
         n_pherm[N_PHERM_LAST + demand[cycle[0]][0]] += delta
         if swp[0] >= 0:
+          # ----------------------------------------
+          # Increasing neighbouring phermones
+          # excatly once only.
+          # ----------------------------------------
+          nbh_trk[demand[cycle[0]][0]] = 1
+          nbh_trk[swp[0]] = 1
           n_pherm[N_PHERM_LAST + swp[0]] += delta_sp
           for e in edges[swp[0]]:
-            n_pherm[N_PHERM_LAST + e[0]] += delta_sp_nbh
+            if nbh_trk[e[0]] == 0:
+              n_pherm[N_PHERM_LAST + e[0]] += delta_sp_nbh
+              nbh_trk[e[0]] = 1
+          for e in dedges[swp[0]]:
+            if nbh_trk[e[0]] == 0:
+              n_pherm[N_PHERM_LAST + e[0]] += delta_sp_nbh
+          for e in edges[swp[0]]:
+            nbh_trk[e[0]] = 0
+          nbh_trk[demand[cycle[0]][0]] = 0
+          nbh_trk[swp[0]] = 0
+          # ----------------------------------------
           first_parent = cycle[0]
           last_drone_del = first_parent
         while j < SWP_SIZE - 1:
@@ -1802,21 +1885,56 @@ class EnergyHelper:
             else:
               sji_pherm[cycle[cyc_ind + 1] + DEMAND_SIZE * first_parent] += delta
             if swp[j+1] >= 0:
-              n_pherm[swp[j+1] + NUM_NODES * last_drone_del] += delta_sp
+              shft = NUM_NODES * last_drone_del
+              # ----------------------------------------
+              # Increasing neighbouring phermones
+              # excatly once only.
+              # ----------------------------------------
+              nbh_trk[demand[cycle[cyc_ind + 1]][0]] = 1
+              nbh_trk[swp[j+1]] = 1
+              n_pherm[swp[j+1] + shft] += delta_sp
               for e in edges[swp[j+1]]:
-                n_pherm[e[0] + shft] += delta_sp_nbh
-              last_drone_del = cycle[cyc_ind + 1]
+                if nbh_trk[e[0]] == 0:
+                  n_pherm[e[0] + shft] += delta_sp_nbh
+                  nbh_trk[e[0]] = 1
+              for e in dedges[swp[j+1]]:
+                if nbh_trk[e[0]] == 0:
+                  n_pherm[e[0] + shft] += delta_sp_nbh
+              for e in edges[swp[j+1]]:
+                nbh_trk[e[0]] = 0
+              nbh_trk[demand[cycle[cyc_ind + 1]][0]] = 0
+              nbh_trk[swp[j+1]] = 0
+              # ----------------------------------------
+              first_parent = cycle[cyc_ind + 1]
+              last_drone_del = first_parent
             else:
+              first_parent = None
               last_drone_del = None
             prev_tsj = False
           else:
             first_parent = cycle[cyc_ind + 1]
             last_drone_del = first_parent
             shft = NUM_NODES * cycle[cyc_ind]
+            # ----------------------------------------
+            # Increasing neighbouring phermones
+            # excatly once only.
+            # ----------------------------------------
+            nbh_trk[demand[cycle[cyc_ind + 1]][0]] = 1
+            nbh_trk[swp[j+1]] = 1
             n_pherm[demand[cycle[cyc_ind + 1]][0] + shft] += delta
             n_pherm[swp[j+1] + shft] += delta_sp
             for e in edges[swp[j+1]]:
-              n_pherm[e[0] + shft] += delta_sp_nbh
+              if nbh_trk[e[0]] == 0:
+                n_pherm[e[0] + shft] += delta_sp_nbh
+                nbh_trk[e[0]] = 1
+            for e in dedges[swp[j+1]]:
+              if nbh_trk[e[0]] == 0:
+                n_pherm[e[0] + shft] += delta_sp_nbh
+            for e in edges[swp[j+1]]:
+              nbh_trk[e[0]] = 0
+            nbh_trk[demand[cycle[cyc_ind + 1]][0]] = 0
+            nbh_trk[swp[j+1]] = 0
+            # ----------------------------------------
           j += 2
           cyc_ind += 1
       # updating best cycle data

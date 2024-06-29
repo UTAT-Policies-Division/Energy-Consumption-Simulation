@@ -146,8 +146,29 @@ if __name__ == '__main__':
                     base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=25,
                     relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
   eh = EnergyHelper.load("pickles/manhattan-policy-set-{}-{}ms.pkl".format(2, 20))
-  eh.plot_network(False, True, False, False, False, [], [])
-  plt.savefig("abc.png", dpi=200)
+  NUM_STOPS = 200
+  RANGE = float(3000)   # dummy for now
+  src = eh.get_top_right_node()
+  eh.append_random_demand(NUM_STOPS, cluster_num=0, cluster_jump=0, dron_min_w=0,
+                          drone_only_possible_component=0.2)
+  conflict = src in [x[0] for x in eh.demand]
+  while conflict:
+    eh.reset_demand()
+    eh.append_random_demand(NUM_STOPS, cluster_num=0, cluster_jump=0, dron_min_w=0,
+                            drone_only_possible_component=0.2)
+    conflict = src in [x[0] for x in eh.demand]
+  print("Source", src, "at", eh.nodes[src])
+  print(eh.demand)
+  eh.init_phermone_system(src, R=RANGE)
+  print("Truck + Drone:")
+  NUM_ITERATIONS = 100
+  ANTS_PER_ITERATION = 3
+  energy, cycle, swp = eh.aco(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
+  print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
+  print(cycle)
+  print(swp)
+  eh.plot_network(False, False, False, False, True, [], [])
+  plt.show()
   exit(0)
 
   print("200 Demand Points, max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24, base_temperature=14, temp_flucts_coeff=3, relative_humidity=52%")
