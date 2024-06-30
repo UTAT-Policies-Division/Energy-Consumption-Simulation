@@ -162,9 +162,9 @@ def compile_seq(filename):
 
 
 # compile_seq("data/sets-234-main.txt")
-file_list = ["data/sets-234-regen.txt", "data/set-2-run-2.txt", "data/set-2-run-3.txt"]
+# file_list = ["data/sets-234-regen.txt", "data/set-2-run-2.txt", "data/set-2-run-3.txt"]
 
-aggregator(file_list)
+aggregator(["avgd.txt"])
 
 # all_values = compile_all("special.txt")
 # all_val_sep = [all_values[i:i + 300] for i in range(0, len(all_values), 300)]

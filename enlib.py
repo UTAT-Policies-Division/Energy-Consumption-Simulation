@@ -664,11 +664,11 @@ class EnergyHelper:
           tmp_x, tmp_y = [], []
           tmp_x.append(self.nodes[swp[j+1]][0])
           tmp_y.append(self.nodes[swp[j+1]][1])
-          cur, _, _ = lep_frm[swp[j+1]]
+          cur, _ = lep_frm[swp[j+1]]
           while cur != -1:
             tmp_x.append(self.nodes[cur][0])
             tmp_y.append(self.nodes[cur][1])
-            cur, _, _ = lep_frm[cur]
+            cur, _ = lep_frm[cur]
           tmp_x.reverse()
           tmp_y.reverse()
           drone_x.extend(tmp_x)
@@ -693,11 +693,11 @@ class EnergyHelper:
         tmp_x, tmp_y = [], []
         tmp_x.append(self.nodes[swp[j]][0])
         tmp_y.append(self.nodes[swp[j]][1])
-        cur, _, _ = lep_frm[swp[j]]
+        cur, _ = lep_frm[swp[j]]
         while cur != -1:
           tmp_x.append(self.nodes[cur][0])
           tmp_y.append(self.nodes[cur][1])
-          cur, _, _ = lep_frm[cur]
+          cur, _ = lep_frm[cur]
         tmp_x.reverse()
         tmp_y.reverse()
         drone_x.extend(tmp_x)
@@ -789,11 +789,11 @@ class EnergyHelper:
       tmp_x, tmp_y = [], []
       tmp_x.append(self.nodes[swp[j]][0])
       tmp_y.append(self.nodes[swp[j]][1])
-      cur, _, _ = lep_frm[swp[j]]
+      cur, _ = lep_frm[swp[j]]
       while cur != -1:
         tmp_x.append(self.nodes[cur][0])
         tmp_y.append(self.nodes[cur][1])
-        cur, _, _ = lep_frm[cur]
+        cur, _ = lep_frm[cur]
       tmp_x.reverse()
       tmp_y.reverse()
       drone_x.extend(tmp_x)
