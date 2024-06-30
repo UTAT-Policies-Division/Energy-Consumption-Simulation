@@ -118,10 +118,10 @@ def aggregator(file_list):
        if num == 1:
            continue
        for i in range(100):
-           agg[k][0][i] /= num
-           agg[k][1][i] /= num
-       agg[k][2] /= num
-       agg[k][3] /= num
+           agg[k][0][i] = round(agg[k][0][i] / num, 2)
+           agg[k][1][i] = round(agg[k][1][i] / num, 2)
+       agg[k][2] = round(agg[k][2] / num, 2)
+       agg[k][3] = round(agg[k][3] / num, 2)
        plot_eng(k, agg[k][0], "truck + drone", agg[k][1], "truck only")
        print(k, "Num drone deliveries, num side deliveries:", (agg[k][2], agg[k][3]))
 
