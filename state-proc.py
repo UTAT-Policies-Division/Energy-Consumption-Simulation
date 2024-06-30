@@ -622,15 +622,15 @@ if __name__ == '__main__':
 #   eh.save("manhattan-pre.pkl")
   TRUCK_PROFILES = [(12, 1.4), (15, 1.6), (20, 1.8)]
 
-  for V in range(5, 26, 5):
-    init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
-                 base_temperature=14, temp_flucts_coeff=3, drone_speed=V,
-                 relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
+  # for V in range(5, 26, 5):
+  #   init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
+  #                base_temperature=14, temp_flucts_coeff=3, drone_speed=V,
+  #                relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
 
-    SET_STRING = "pickles/set-{}.pkl".format(1)
-    nodes, edges, dedges, UID_to_ind, ind_to_UID = get_decomposed_network(Storage.load(SET_STRING))
-    eh = EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID, 10**(-2))
-    eh.save("manhattan-policy-set-{}-{}ms.pkl".format(1, V))
+  #   SET_STRING = "pickles/set-{}.pkl".format(1)
+  #   nodes, edges, dedges, UID_to_ind, ind_to_UID = get_decomposed_network(Storage.load(SET_STRING))
+  #   eh = EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID, 10**(-2))
+  #   eh.save("manhattan-policy-set-{}-{}ms.pkl".format(1, V))
   # for V in range(5, 26, 5):
   #   init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
   #                base_temperature=14, temp_flucts_coeff=3, drone_speed=V,
@@ -663,9 +663,29 @@ if __name__ == '__main__':
   # for V in range(5, 26, 5):
   #   eh = EnergyHelper.load("pickles/manhattan-policy-set-{}-{}ms.pkl".format(1, V))
   #   print(1, V, count_non_empty_lists(eh.dedges), count_non_empty_lists(eh.edges), count_non_empty_lists(eh.nodes))
-  # for i in range(2, 5):
-  #    for V in range(5, 26, 5):
-  #       eh = EnergyHelper.load("manhattan-policy-set-{}-{}ms.pkl".format(i, V))
-  #       print(i, V, count_non_empty_lists(eh.dedges), count_non_empty_lists(eh.edges), count_non_empty_lists(eh.nodes))
-  # exit(0)
+  for V in range(5, 26, 5):
+    init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
+                 base_temperature=14, temp_flucts_coeff=3, drone_speed=V,
+                 relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
+
+    SET_STRING = "pickles/set-{}.pkl".format(5)
+    src_dedges = EnergyHelper.load("pickles/manhattan-policy-set-{}-{}ms.pkl".format(2, V)).dedges
+    nodes, edges, dedges, UID_to_ind, ind_to_UID = copy_decomposed_network(Storage.load(SET_STRING), src_dedges)
+    eh = EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID, 10**(-2))
+    eh.save("pickles/manhattan-policy-set-{}-{}ms.pkl".format(5, V))
+  for i in range(1, 6):
+     for V in range(5, 26, 5):
+        eh = EnergyHelper.load("manhattan-policy-set-{}-{}ms.pkl".format(i, V))
+        print(i, V, count_non_empty_lists(eh.dedges), count_non_empty_lists(eh.edges), count_non_empty_lists(eh.nodes))
+  for i in range(1, 6):
+     for V in [30]:
+        init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
+                     base_temperature=14, temp_flucts_coeff=3, drone_speed=V,
+                     relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
+
+        SET_STRING = "pickles/set-{}.pkl".format(i)
+        nodes, edges, dedges, UID_to_ind, ind_to_UID = get_decomposed_network(Storage.load(SET_STRING))
+        eh = EnergyHelper(nodes, edges, dedges, UID_to_ind, ind_to_UID, 10**(-2))
+        eh.save("manhattan-policy-set-{}-{}ms.pkl".format(i, V))
+  exit(0)
 

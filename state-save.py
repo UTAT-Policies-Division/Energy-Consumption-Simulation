@@ -2,6 +2,7 @@ import osmnx.simplification
 import osmnx.distance
 import networkx as nx
 from tqdm import tqdm
+from random import sample
 import multiprocessing as mp
 import pickle
 
@@ -26,7 +27,8 @@ TAGS = [{'amenity': 'prison'},
         {'highway': ['motorway', 'trunk'],
          'building': ['firestation', 'hospital']},
         {'amenity': ['school', 'college', 'university'],
-         'public_transport': 'station'}]
+         'public_transport': 'station'},
+        {"building": True}]
 
 class PolicyData:
     def __init__(self):
@@ -34,15 +36,20 @@ class PolicyData:
             'NO_FLY_ZONES': {'set 1': [],
                              'set 2': [],
                              'set 3': [],
-                             'set 4': []}
+                             'set 4': [],
+                             'set 5': []}
         }
 
 def no_fly_zones_init(zone, policy_object, epsg):
-    keys = ['set 1', 'set 2', 'set 3', 'set 4']
+    keys = ['set 1', 'set 2', 'set 3', 'set 4', 'set 5']
     for j in range(len(TAGS)):
         if TAGS[j]:
             geoms =  osmnx.project_gdf(osmnx.features_from_place(zone, TAGS[j]), epsg)['geometry']
-            for i in range(len(geoms)):
+            indices = list(range(len(geoms)))
+            if j == 4:
+               print("Special tag called.")
+               indices = sample(indices, int(0.15 * len(indices)))
+            for i in indices:
                 center = geoms[i].centroid
                 cx, cy = center.x, center.y
                 lx, ly, ux, uy = geoms[i].bounds
@@ -160,7 +167,7 @@ def download_data_parallel(policy_object):
   proc.start()
   workers = [mp.Process(target=_osmnx_worker, 
                         args=(policy_object.REGION_POLICY['NO_FLY_ZONES']["set {}".format(i+1)], 
-                              i+1, q)) for i in range(0, 1)]
+                              i+1, q)) for i in range(4, 5)]
   for worker in workers:
     worker.start()
   for worker in workers:
