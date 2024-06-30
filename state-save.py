@@ -3,6 +3,8 @@ import osmnx.distance
 import networkx as nx
 from tqdm import tqdm
 from random import sample
+from pandas import Series
+from math import sqrt
 import multiprocessing as mp
 import pickle
 
@@ -114,6 +116,48 @@ class Storage:
     obj.lenld = sobj.lenld
     return obj
 
+def _stro_obj_worker(no_fly_zones, q):
+    obj = Storage.load("pickles/set-{}.pkl".format(4))
+    q.put(0)
+    q.put(len(no_fly_zones))
+    ul, vl, lenl = list(obj.ulb), list(obj.vlb), list(obj.lenlb)
+    edges = []
+    for i in range(len(ul)):
+       p1_ind = -1
+       p2_ind = -1
+       for j in range(len(obj.uidl)):
+          if isinstance(obj.uidl[j], list):
+             for id in obj.uidl[j]:
+                if id == ul[i]:
+                   p1_ind = j
+                if id == vl[i]:
+                   p2_ind = j
+          else:
+             if obj.uidl[j] == ul[i]:
+                p1_ind = j
+             if obj.uidl[j] == vl[i]:
+                p2_ind = j
+       edges.append(((obj.xl[p1_ind] + obj.xl[p2_ind]) / 2, (obj.yl[p1_ind] + obj.yl[p2_ind]) / 2))
+    marked = [0 for _ in range(len(edges))]
+    for x, y, r in no_fly_zones:
+        r += RADIUS_SHIFT
+        for i in range(len(edges)):
+            tx, ty = edges[i]
+            if sqrt((x - tx)**2 + (y - ty)**2) < r:
+                marked[i] = 1
+    new_ul, new_vl, new_lenl = [], [], []
+    for i in range(len(edges)):
+        if marked[i] > 0:
+            continue
+        new_ul.append(ul[i])
+        new_vl.append(vl[i])
+        new_lenl.append(lenl[i])
+    obj.ulb = Series(new_ul).values
+    obj.vlb = Series(new_vl).values
+    obj.lenlb = Series(new_lenl).values
+    obj.save('set-5.pkl')
+    q.put(0)
+
 def _osmnx_worker(no_fly_zones, index, q):
   place_polygon = osmnx.geocode_to_gdf(place_name).to_crs(epsg)
   place_polygon["geometry"] = place_polygon.buffer(boundary_buffer_length).to_crs(OSM_CRS_EPSG)
@@ -161,6 +205,14 @@ def listener(q):
         upd = q.get()
     pbar.close()
 
+def set5_func(policy_object):
+  q = mp.Queue()
+  proc = mp.Process(target=listener, args=(q,))
+  proc.start()
+  _stro_obj_worker(policy_object.REGION_POLICY['NO_FLY_ZONES']["set 5"], q)
+  q.put(None)
+  proc.join()
+
 def download_data_parallel(policy_object):
   q = mp.Queue()
   proc = mp.Process(target=listener, args=(q,))
@@ -179,5 +231,5 @@ if __name__ == '__main__':
     print("Getting data from OSM...")
     policy_object = PolicyData()
     no_fly_zones_init(["Manhattan, United States"], policy_object, epsg)
-    download_data_parallel(policy_object)
+    set5_func(policy_object)
     print("Saved all data from OSM!")
