@@ -390,11 +390,11 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
               can_cont = True
               break
           if can_cont:
-            dem_adv = 1
-            if sp == demand[next_dem][0]:
-              dem_adv = len(sp_poss[next_dem][1])
+            # dem_adv = 1
+            # if sp == demand[next_dem][0]:
+            #   dem_adv = 1 # len(sp_poss[next_dem][1])
             nbs.append((sp, eng_to_add))
-            ws.append((n_pherm[N_PHERM_LAST + sp] * dem_adv)**ALPHA / 
+            ws.append((n_pherm[N_PHERM_LAST + sp])**ALPHA / 
                       ((let_t[src][sp] / w_coeff) + eng_to_add)**BETA)
       if len(nbs) > 0:
         sel_sp, eng_to_add = choices(nbs, weights=ws)[0]
@@ -884,11 +884,11 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
                     can_cont = True
                     break
                 if can_cont:
-                  dem_adv = 1
-                  if sp == demand[next_dem][0]:
-                    dem_adv = len(sp_poss[next_dem][1])
+                  # dem_adv = 1
+                  # if sp == demand[next_dem][0]:
+                  #   dem_adv = 1 # len(sp_poss[next_dem][1])
                   nbs.append((sp, eng_to_add, eng_at_sp))
-                  ws.append((n_pherm[sp + NUM_NODES * drone_loc] * dem_adv)**ALPHA / 
+                  ws.append((n_pherm[sp + NUM_NODES * drone_loc])**ALPHA / 
                             ((let_t[truck_loc_node][sp] / w_coeff) + eng_to_add)**BETA)
           if len(nbs) > 0:
             # print("Data: ", nbs, ws, demand[next_dem][0])
@@ -957,11 +957,11 @@ def _aco_worker(barrier, saw_zero, demand, sp_poss, n_pherm, sji_pherm, cycle,
                     can_cont = True
                     break
                 if can_cont:
-                  dem_adv = 1
-                  if sp == demand[next_dem][0]:
-                    dem_adv = len(sp_poss[next_dem][1])
+                  # dem_adv = 1
+                  # if sp == demand[next_dem][0]:
+                  #   dem_adv = 1 # len(sp_poss[next_dem][1])
                   nbs.append((sp, eng_to_add, eng_at_sp))
-                  ws.append((n_pherm[truck_loc * NUM_NODES + sp] * dem_adv)**ALPHA / 
+                  ws.append((n_pherm[truck_loc * NUM_NODES + sp])**ALPHA / 
                             (let_t[truck_loc_node][sp] / w_coeff)**BETA)
           if len(nbs) > 0:
             # print("Data: ", nbs, ws, demand[next_dem][0])
