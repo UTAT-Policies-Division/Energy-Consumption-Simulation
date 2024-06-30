@@ -11,7 +11,7 @@ from math import sin, cos, sqrt, exp
 D_PRES = 7
 PLACE_NAME = "University of Toronto"  # default place
 PADDING = 50                          # default padding
-NODE_RADIUS, RADIUS_STRENGTH = 100, 1.1
+RADIUS_BASE = 100
 OSM_CRS_EPSG = "EPSG:4326"    # OSM EPSG
                               # https://spatialreference.org/ref/epsg/?search={place_name}&srtext=Search
 
@@ -220,9 +220,7 @@ def remove_no_fly_zones(tgt_x_y_r, org_graph):
     print("Removing no-fly zones...")
     pbar = tqdm(total=len(tgt_x_y_r))
     for x, y, r in tgt_x_y_r:
-        if r < 15:
-            r = NODE_RADIUS
-        r *= RADIUS_STRENGTH
+        r += RADIUS_BASE
         node, dst = osmnx.distance.nearest_nodes(org_graph, x, y, return_dist=True)
         while dst < r:
             org_graph.remove_node(node)
