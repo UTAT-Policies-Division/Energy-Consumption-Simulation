@@ -889,13 +889,13 @@ class EnergyHelper:
     if self.line_cover_d is None:
       self.line_cover_d = self.gen_network_line_cover(self.dedges)
     plt.scatter(dx, dy, c="magenta", s=12, alpha=0.6)
-    plt.scatter(x=nx, y=ny, color=nc, s=5, alpha=0.3)
+    plt.scatter(x=nx, y=ny, color=nc, s=5, alpha=0.1)
     llx, lly, lln = self.line_cover
     for i in range(len(llx)):
-      plt.plot(llx[i], lly[i], marker="", c="red", alpha=0.17)
+      plt.plot(llx[i], lly[i], marker="", c="red", alpha=0.13)
     llx, lly, lln = self.line_cover_d
     for i in range(len(llx)):
-      plt.plot(llx[i], lly[i], marker="", c="green", alpha=0.2)
+      plt.plot(llx[i], lly[i], marker="", c="green", alpha=0.1)
     self.demand.append((src, 0))
     if save:
       plt.savefig("Pictures/{}.png".format(pic_number), dpi=500)
