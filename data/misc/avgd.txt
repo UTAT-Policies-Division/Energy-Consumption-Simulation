@@ -1,0 +1,1342 @@
+200 Demand Points, max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24, base_temperature=14, temp_flucts_coeff=3, relative_humidity=52%
+Set 2 for min weight 1.0 , 20% drone loading, and drone speed 25 m/s begins!
+Loading Energy Helper object...
+Energy Helper object loaded!
+[[(2614, 85.345, 5387899.450688053, 2.08), (4, 138.033, 8692066.178820794, 2.11), (3, 86.274, 5418978.19748373, 2.14)], [], [], [(6, 137.839, 8628540.588207638, 2.18), (2036, 80.117, 5002466.3917524535, 2.21), (0, 86.274, 5418978.19748373, 2.14)], [(5, 86.149, 5443252.076927899, 2.07), (6, 85.968, 5399757.953511849, 2.14), (0, 138.033, 8692066.178820794, 2.11), (7, 134.771, 8501017.235659353, 2.09)]]
+Generating demand...
+Quick Directional BFS discovered 4032  nodes, about  63.08 percent of stored nodes.
+Drone Weight Ranges: [1, 1.25, 1.5, 1.75, 2]
+Demand generated!
+Source 2690 at (4966.7024, 11275.8729)
+[(4678, 1.5), (2421, 2.82), (2710, 1.5), (2381, 1), (6274, 3.03), (4698, 3.56), (2306, 2.3), (3403, 2.87), (2003, 2.26), (1267, 2.79), (5275, 2.3), (3345, 4.02), (2661, 3.1), (402, 1.75), (3424, 3.77), (4529, 4.01), (5420, 4.11), (3751, 3.7), (3911, 2.18), (2193, 3.09), (3494, 2.54), (1082, 2.43), (2146, 2.3), (4198, 2.13), (4087, 2.17), (4019, 2), (3715, 4.18), (1751, 1), (268, 1), (703, 1.25), (2802, 3.81), (1911, 4.02), (258, 4.02), (1441, 2.77), (2459, 2.12), (2107, 3.04), (3537, 3.76), (1813, 2.17), (378, 3.7), (455, 2.17), (20, 1), (2379, 2.35), (2676, 3.36), (822, 2), (1398, 3.49), (1835, 2.54), (2163, 3.33), (4101, 3.47), (520, 2.9), (1598, 3.51), (2928, 2.25), (4911, 1.25), (2198, 2.33), (343, 2.13), (518, 3.86), (4672, 2), (1756, 4.05), (4224, 1.75), (1586, 2.16), (3474, 2.68), (3820, 2.99), (163, 2.68), (751, 2.93), (2266, 3.17), (1795, 2), (443, 3.93), (3632, 3.85), (4302, 2), (312, 1.5), (4360, 3.21), (2165, 4.1), (1879, 3.27), (1518, 3.71), (4334, 2.7), (5216, 3.84), (3498, 1.25), (3140, 2.25), (4154, 3.02), (4025, 2.6), (1962, 3.85), (1695, 2.7), (3211, 3.65), (3062, 1), (3670, 2.82), (4425, 4.06), (388, 2.81), (4802, 2.81), (2883, 1.25), (183, 2.52), (316, 3.7), (1677, 2.21), (3221, 2.67), (4732, 1), (5338, 2.77), (186, 2.48), (624, 2.57), (2671, 1), (1875, 4.06), (3119, 2), (1705, 3.58), (1620, 1.75), (1318, 3.44), (4321, 2), (4776, 3.96), (336, 2.82), (3980, 3.16), (1643, 2.39), (2445, 4.1), (4021, 3.72), (2519, 1.75), (2229, 1.75), (2848, 2.61), (494, 2.58), (3989, 4.17), (2100, 3.68), (4661, 2.25), (3991, 2.85), (252, 2.53), (1383, 3.67), (3160, 2.63), (3333, 4.18), (4603, 2.92), (3673, 3.3), (2507, 2.64), (3465, 3.99), (5425, 2.57), (1723, 2.69), (4956, 2.34), (1619, 1.5), (4842, 3.81), (736, 4.04), (999, 2.9), (1645, 2.57), (1687, 2.6), (1521, 2.6), (1198, 2.46), (3044, 1.75), (3955, 3.0), (3752, 3.46), (383, 1.5), (5984, 3.91), (1244, 2.44), (5641, 2.47), (1122, 3.5), (416, 3.63), (4253, 2.18), (1188, 3.29), (4247, 3.96), (2565, 1.5), (978, 1.75), (941, 2.42), (2277, 3.49), (2057, 3.95), (3206, 3.19), (2589, 3.13), (1575, 3.08), (2823, 2.92), (4706, 3.6), (2533, 1.25), (1113, 2.99), (5997, 2.83), (649, 2.45), (4985, 2.42), (970, 2.69), (3125, 2.82), (2035, 2.5), (2504, 2.31), (2094, 2.87), (5225, 2), (4721, 3.67), (4210, 3.68), (4463, 3.65), (345, 3.98), (647, 3.16), (2981, 3.22), (2595, 3.49), (1736, 4.18), (2955, 2), (1754, 3.82), (2726, 2.79), (939, 3.37), (2722, 3.16), (3093, 3.72), (818, 2.51), (782, 3.55), (2807, 3.06), (3064, 1), (1693, 4.03), (920, 2), (1495, 1.5), (2369, 2.38), (2036, 3.79), (3387, 3.96), (5037, 1.25), (2054, 3.23), (2651, 3.52), (2319, 1.5), (15, 1), (2775, 2.56), (1914, 2.32)]
+Initializng phermone system...
+Initializing switch point possibilities & local best paths around demands...
+Initialization for demand complete!
+Finding shortest paths between all drive intersections...
+Complete!
+Verifying connections and setting phermones...
+Verified connections and set phermones!
+Phermone system initialized!
+NOTE: Demand structures now hold source vertex with 0 weight.
+Truck Only:
+Initializing ACO child workers...
+Initialized ACO child workers!
+Starting ACO...
+
+Update: best energy cycle found so far: 25621.63 MJ
+
+Update: best energy cycle found so far: 25621.63 MJ
+
+Update: best energy cycle found so far: 25621.63 MJ
+
+Update: best energy cycle found so far: 25621.63 MJ
+
+Update: best energy cycle found so far: 25424.26 MJ
+
+Update: best energy cycle found so far: 25424.26 MJ
+
+Update: best energy cycle found so far: 24630.25 MJ
+
+Update: best energy cycle found so far: 23875.6 MJ
+
+Update: best energy cycle found so far: 23243.02 MJ
+
+Update: best energy cycle found so far: 20916.06 MJ
+
+Update: best energy cycle found so far: 20264.53 MJ
+
+Update: best energy cycle found so far: 18544.87 MJ
+
+Update: best energy cycle found so far: 17903.32 MJ
+
+Update: best energy cycle found so far: 17140.86 MJ
+
+Update: best energy cycle found so far: 14973.21 MJ
+
+Update: best energy cycle found so far: 14973.21 MJ
+
+Update: best energy cycle found so far: 13898.94 MJ
+
+Update: best energy cycle found so far: 13297.61 MJ
+
+Update: best energy cycle found so far: 13290.3 MJ
+
+Update: best energy cycle found so far: 10933.79 MJ
+
+Update: best energy cycle found so far: 10933.79 MJ
+
+Update: best energy cycle found so far: 10933.79 MJ
+
+Update: best energy cycle found so far: 10219.35 MJ
+
+Update: best energy cycle found so far: 10219.35 MJ
+
+Update: best energy cycle found so far: 10219.35 MJ
+
+Update: best energy cycle found so far: 9718.08 MJ
+
+Update: best energy cycle found so far: 9718.08 MJ
+
+Update: best energy cycle found so far: 9718.08 MJ
+
+Update: best energy cycle found so far: 9179.27 MJ
+
+Update: best energy cycle found so far: 9179.27 MJ
+
+Update: best energy cycle found so far: 9179.27 MJ
+
+Update: best energy cycle found so far: 9179.27 MJ
+
+Update: best energy cycle found so far: 9179.27 MJ
+
+Update: best energy cycle found so far: 9179.27 MJ
+
+Update: best energy cycle found so far: 9179.27 MJ
+
+Update: best energy cycle found so far: 9179.27 MJ
+
+Update: best energy cycle found so far: 9179.27 MJ
+
+Update: best energy cycle found so far: 9179.27 MJ
+
+Update: best energy cycle found so far: 9179.27 MJ
+
+Update: best energy cycle found so far: 9179.27 MJ
+
+Update: best energy cycle found so far: 9179.27 MJ
+
+Update: best energy cycle found so far: 9179.27 MJ
+
+Update: best energy cycle found so far: 9179.27 MJ
+
+Update: best energy cycle found so far: 9179.27 MJ
+
+Update: best energy cycle found so far: 9179.27 MJ
+
+Update: best energy cycle found so far: 9179.27 MJ
+
+Update: best energy cycle found so far: 9179.27 MJ
+
+Update: best energy cycle found so far: 9179.27 MJ
+
+Update: best energy cycle found so far: 9179.27 MJ
+
+Update: best energy cycle found so far: 9179.27 MJ
+
+Update: best energy cycle found so far: 9179.27 MJ
+
+Update: best energy cycle found so far: 9179.27 MJ
+
+Update: best energy cycle found so far: 9179.27 MJ
+
+Update: best energy cycle found so far: 9179.27 MJ
+
+Update: best energy cycle found so far: 9043.42 MJ
+
+Update: best energy cycle found so far: 9043.42 MJ
+
+Update: best energy cycle found so far: 9043.42 MJ
+
+Update: best energy cycle found so far: 9043.42 MJ
+
+Update: best energy cycle found so far: 9043.42 MJ
+
+Update: best energy cycle found so far: 9043.42 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8862.35 MJ
+
+Update: best energy cycle found so far: 8123.42 MJ
+
+Update: best energy cycle found so far: 8123.42 MJ
+
+Update: best energy cycle found so far: 8123.42 MJ
+
+Update: best energy cycle found so far: 8123.42 MJ
+
+Update: best energy cycle found so far: 8123.42 MJ
+
+Update: best energy cycle found so far: 8123.42 MJ
+
+Update: best energy cycle found so far: 8123.42 MJ
+ACO complete!
+Energy of plotted cycle in MJ: 8123.42
+[0, 55, 157, 124, 165, 195, 77, 133, 54, 48, 70, 61, 115, 104, 171, 148, 143, 120, 60, 68, 22, 131, 89, 46, 172, 53, 166, 123, 87, 169, 149, 34, 163, 6, 198, 114, 35, 11, 30, 150, 180, 168, 193, 39, 76, 99, 80, 141, 116, 24, 147, 7, 190, 142, 154, 145, 86, 103, 127, 28, 125, 16, 185, 92, 5, 191, 69, 126, 117, 63, 173, 40, 161, 137, 175, 140, 153, 64, 102, 105, 194, 152, 14, 8, 170, 113, 130, 62, 155, 51, 106, 132, 129, 4, 88, 134, 72, 65, 109, 107, 144, 135, 159, 178, 90, 27, 56, 49, 58, 111, 45, 164, 9, 66, 122, 83, 81, 108, 25, 52, 19, 15, 78, 93, 184, 118, 38, 156, 139, 85, 12, 79, 31, 13, 32, 98, 71, 146, 97, 3, 41, 100, 128, 182, 119, 74, 174, 176, 67, 91, 23, 136, 121, 101, 112, 29, 43, 183, 138, 17, 199, 82, 44, 186, 151, 181, 179, 33, 2, 162, 1, 192, 59, 18, 94, 177, 21, 96, 196, 20, 75, 42, 57, 50, 37, 160, 189, 158, 73, 84, 47, 95, 26, 197, 188, 187, 10, 167, 36, 110]
+Initializng phermone system...
+Initializing switch point possibilities & local best paths around demands...
+Initialization for demand complete!
+Finding shortest paths between all drive intersections...
+Complete!
+Verifying connections and setting phermones...
+Verified connections and set phermones!
+Phermone system initialized!
+NOTE: Demand structures now hold source vertex with 0 weight.
+Truck + Drone:
+Initializing ACO child workers...
+Initializing corner overheads...
+Initialized corner overheads!
+Initialized ACO child workers!
+Starting ACO...
+
+Update: best energy cycle found so far: 25703.44 MJ
+
+Update: best energy cycle found so far: 24632.68 MJ
+
+Update: best energy cycle found so far: 24087.9 MJ
+
+Update: best energy cycle found so far: 24087.9 MJ
+
+Update: best energy cycle found so far: 23254.4 MJ
+
+Update: best energy cycle found so far: 21390.52 MJ
+
+Update: best energy cycle found so far: 18787.82 MJ
+
+Update: best energy cycle found so far: 16234.72 MJ
+
+Update: best energy cycle found so far: 13614.57 MJ
+
+Update: best energy cycle found so far: 11670.03 MJ
+
+Update: best energy cycle found so far: 10852.96 MJ
+
+Update: best energy cycle found so far: 10518.24 MJ
+
+Update: best energy cycle found so far: 9361.63 MJ
+
+Update: best energy cycle found so far: 9361.63 MJ
+
+Update: best energy cycle found so far: 9226.09 MJ
+
+Update: best energy cycle found so far: 9226.09 MJ
+
+Update: best energy cycle found so far: 9091.04 MJ
+
+Update: best energy cycle found so far: 9091.04 MJ
+
+Update: best energy cycle found so far: 9091.04 MJ
+
+Update: best energy cycle found so far: 9091.04 MJ
+
+Update: best energy cycle found so far: 9091.04 MJ
+
+Update: best energy cycle found so far: 9091.04 MJ
+
+Update: best energy cycle found so far: 9091.04 MJ
+
+Update: best energy cycle found so far: 9091.04 MJ
+
+Update: best energy cycle found so far: 8839.42 MJ
+
+Update: best energy cycle found so far: 8682.45 MJ
+
+Update: best energy cycle found so far: 8682.45 MJ
+
+Update: best energy cycle found so far: 8682.45 MJ
+
+Update: best energy cycle found so far: 8682.45 MJ
+
+Update: best energy cycle found so far: 8682.45 MJ
+
+Update: best energy cycle found so far: 8682.45 MJ
+
+Update: best energy cycle found so far: 8682.45 MJ
+
+Update: best energy cycle found so far: 8682.45 MJ
+
+Update: best energy cycle found so far: 8682.45 MJ
+
+Update: best energy cycle found so far: 8682.45 MJ
+
+Update: best energy cycle found so far: 8682.45 MJ
+
+Update: best energy cycle found so far: 8682.45 MJ
+
+Update: best energy cycle found so far: 8682.45 MJ
+
+Update: best energy cycle found so far: 8682.45 MJ
+
+Update: best energy cycle found so far: 8682.45 MJ
+
+Update: best energy cycle found so far: 8682.45 MJ
+
+Update: best energy cycle found so far: 8682.45 MJ
+
+Update: best energy cycle found so far: 8682.45 MJ
+
+Update: best energy cycle found so far: 8682.45 MJ
+
+Update: best energy cycle found so far: 8682.45 MJ
+
+Update: best energy cycle found so far: 8682.45 MJ
+
+Update: best energy cycle found so far: 8682.45 MJ
+
+Update: best energy cycle found so far: 8643.54 MJ
+
+Update: best energy cycle found so far: 8643.54 MJ
+
+Update: best energy cycle found so far: 8643.54 MJ
+
+Update: best energy cycle found so far: 8643.54 MJ
+
+Update: best energy cycle found so far: 8643.54 MJ
+
+Update: best energy cycle found so far: 8643.54 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+
+Update: best energy cycle found so far: 7966.19 MJ
+ACO complete!
+Energy of plotted cycle in MJ: 7966.19
+[200, 0, 55, 157, 77, 133, 54, 48, 195, 165, 124, 46, 172, 53, 115, 104, 171, 22, 131, 89, 68, 60, 120, 110, 143, 148, 61, 70, 87, 166, 123, 149, 163, 34, 11, 30, 150, 180, 168, 193, 141, 116, 154, 190, 142, 7, 24, 80, 99, 76, 39, 187, 10, 26, 197, 188, 191, 69, 126, 117, 63, 173, 40, 161, 137, 175, 62, 130, 179, 8, 14, 170, 113, 33, 2, 181, 88, 134, 72, 65, 109, 107, 159, 178, 90, 27, 82, 56, 49, 58, 111, 199, 44, 186, 3, 151, 17, 164, 9, 71, 146, 97, 45, 41, 100, 128, 43, 183, 38, 184, 118, 139, 85, 12, 79, 31, 66, 122, 83, 81, 108, 25, 19, 15, 78, 52, 192, 13, 32, 98, 1, 67, 23, 121, 136, 91, 59, 176, 182, 119, 74, 174, 162, 105, 37, 160, 140, 153, 64, 102, 194, 152, 129, 155, 51, 106, 132, 4, 29, 112, 144, 135, 101, 138, 156, 93, 57, 50, 20, 75, 21, 177, 96, 196, 42, 95, 94, 18, 73, 84, 47, 158, 189, 147, 145, 103, 86, 127, 28, 92, 185, 125, 16, 5, 6, 198, 114, 167, 36, 169, 35]
+[-1, -1, 2690, 4672, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 316, 3820, -1, -2, -1, -1, 3333, 1122, -1, -1, 1122, 163, -1, -2, -1, -1, 2165, 354, -1, -2, -1, -1, 329, 970, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 939, 5037, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 16, 2036, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 647, 647, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 443, 2519, -1, -2, -1, -2, -1, -2, -1, -1, 1677, -2, 2835, -2, -2, 1829, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 1398, -2, 1875, 4634, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 1620, 1620, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 4021, 4016, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 3387, 258, -1, -1, 258, 2421, -1, -2, -1, -2, -1, -2, -1, -1, 4603, 3611, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 3206, 4321, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 2596, 2928, -1, -2, -1, -2, -1, -2, -1, -1, 1082, 4660, -1, -1, 2671, 2676, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 4101, 1495, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 4956, -2, 5457, 2807, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1]
+Set 2 for min weight 1.0 , 20% drone loading, and drone speed 25 m/s has ended.
+
+200 Demand Points, max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24, base_temperature=14, temp_flucts_coeff=3, relative_humidity=52%
+Set 2 for min weight 1.0 , 20% drone loading, and drone speed 25 m/s begins!
+Loading Energy Helper object...
+Energy Helper object loaded!
+[[(2614, 85.345, 5387899.450688053, 2.08), (4, 138.033, 8692066.178820794, 2.11), (3, 86.274, 5418978.19748373, 2.14)], [], [], [(6, 137.839, 8628540.588207638, 2.18), (2036, 80.117, 5002466.3917524535, 2.21), (0, 86.274, 5418978.19748373, 2.14)], [(5, 86.149, 5443252.076927899, 2.07), (6, 85.968, 5399757.953511849, 2.14), (0, 138.033, 8692066.178820794, 2.11), (7, 134.771, 8501017.235659353, 2.09)]]
+Generating demand...
+Quick Directional BFS discovered 4032  nodes, about  63.08 percent of stored nodes.
+Drone Weight Ranges: [1, 1.25, 1.5, 1.75, 2]
+Demand generated!
+Source 2690 at (4966.7024, 11275.8729)
+[(4423, 4.03), (1707, 3.63), (1352, 4.1), (919, 2.27), (4312, 2.45), (788, 3.55), (5425, 3.3), (2835, 2), (3224, 1.5), (2158, 3.76), (5599, 3.89), (324, 2.99), (3447, 2.69), (5531, 1.25), (491, 3.03), (2625, 2), (4075, 2.89), (3517, 1.25), (2782, 2.1), (1820, 2.96), (2870, 2.39), (2661, 2.22), (2114, 1.5), (1598, 1.25), (726, 3.24), (4678, 2.96), (988, 2.11), (2160, 3.57), (1517, 3.52), (3347, 1.25), (4400, 1.75), (2492, 1.75), (4416, 2.68), (3535, 2.63), (5198, 4.03), (1046, 3.08), (2999, 2.66), (5217, 2), (730, 1), (91, 3.41), (1018, 4.05), (3407, 3.71), (880, 2.52), (2903, 3.58), (6125, 3.0), (1010, 2.79), (1959, 2), (865, 3.79), (3225, 2.33), (3158, 1.25), (2676, 1.5), (4368, 3.36), (1376, 2.46), (2139, 2.5), (1424, 2.56), (4146, 3.06), (2669, 2.25), (5415, 2.61), (1877, 3.95), (4433, 2.29), (3059, 4.04), (3096, 2.49), (2774, 4.06), (5291, 1.75), (2357, 3.59), (1731, 3.57), (620, 3.22), (2994, 2), (3787, 3.99), (4409, 2.14), (2612, 3.13), (4352, 3.39), (3422, 2.2), (1284, 3.11), (779, 2.37), (20, 2.64), (3596, 2.52), (718, 3.35), (1285, 3.74), (3051, 1.75), (1193, 2), (2542, 2.68), (3254, 2.13), (1253, 1.75), (3483, 1), (2115, 3.26), (2200, 3.48), (3834, 2.77), (5063, 3.7), (668, 2.4), (3280, 2.84), (5343, 3.52), (680, 3.54), (70, 3.08), (2484, 2.44), (2959, 2.16), (4083, 4.14), (2832, 2.73), (1161, 4.01), (5400, 3.52), (1139, 3.78), (1521, 2.9), (5132, 2.69), (1468, 2.36), (2116, 2.28), (1748, 2.39), (1025, 4.07), (3632, 2.68), (2802, 3.43), (2151, 2.34), (133, 2.82), (842, 3.61), (4919, 1.25), (564, 2.7), (4046, 2.33), (2129, 3.3), (1607, 3.82), (651, 2.72), (887, 3.52), (3227, 2.59), (1789, 3.24), (2003, 3.93), (211, 2), (4921, 3.81), (93, 3.2), (4032, 2.61), (3300, 2.39), (2852, 3.02), (341, 3.09), (3730, 3.83), (4481, 2.42), (2992, 2.84), (1314, 1.5), (454, 1), (2177, 3.11), (5134, 2), (4663, 2.62), (1676, 2.82), (3202, 3.17), (3663, 3.08), (2224, 1.75), (2658, 1), (1613, 3.64), (2090, 2.34), (4210, 3.37), (2585, 2.68), (4007, 1.75), (2683, 3.41), (3263, 3.54), (4426, 1), (1788, 3.5), (4840, 2.2), (2381, 3.97), (4705, 3.92), (5216, 2.6), (451, 2.2), (900, 4.02), (3933, 3.17), (2950, 3.3), (3945, 3.93), (2712, 3.67), (514, 2.81), (438, 2.71), (1120, 2.45), (30, 3.19), (926, 3.96), (533, 3.81), (5507, 4.12), (1124, 2.54), (5039, 1.5), (1755, 1.25), (3820, 2), (2702, 3.52), (3492, 2), (2356, 1.75), (2958, 2.9), (4622, 3.1), (1118, 3.03), (2437, 3.72), (67, 1.5), (2408, 2.52), (2677, 2.8), (4305, 1.5), (2847, 3.51), (3053, 2.64), (3144, 2), (2311, 3.09), (1417, 1), (1975, 4.16), (3451, 4.1), (4013, 2.31), (1997, 3.88), (1802, 3.16), (4127, 3.37), (2380, 1.75), (3481, 2.83), (728, 2.2), (3641, 3.99), (3499, 3.02), (104, 3.61)]
+Initializng phermone system...
+Initializing switch point possibilities & local best paths around demands...
+Initialization for demand complete!
+Finding shortest paths between all drive intersections...
+Complete!
+Verifying connections and setting phermones...
+Verified connections and set phermones!
+Phermone system initialized!
+NOTE: Demand structures now hold source vertex with 0 weight.
+Truck Only:
+Initializing ACO child workers...
+Initialized ACO child workers!
+Starting ACO...
+
+Update: best energy cycle found so far: 26003.5 MJ
+
+Update: best energy cycle found so far: 26003.5 MJ
+
+Update: best energy cycle found so far: 26003.5 MJ
+
+Update: best energy cycle found so far: 25578.22 MJ
+
+Update: best energy cycle found so far: 24215.79 MJ
+
+Update: best energy cycle found so far: 24215.79 MJ
+
+Update: best energy cycle found so far: 24215.79 MJ
+
+Update: best energy cycle found so far: 23672.03 MJ
+
+Update: best energy cycle found so far: 22043.36 MJ
+
+Update: best energy cycle found so far: 21368.43 MJ
+
+Update: best energy cycle found so far: 19565.15 MJ
+
+Update: best energy cycle found so far: 18885.43 MJ
+
+Update: best energy cycle found so far: 17814.69 MJ
+
+Update: best energy cycle found so far: 16326.93 MJ
+
+Update: best energy cycle found so far: 15373.23 MJ
+
+Update: best energy cycle found so far: 13405.6 MJ
+
+Update: best energy cycle found so far: 12292.9 MJ
+
+Update: best energy cycle found so far: 12219.94 MJ
+
+Update: best energy cycle found so far: 12219.94 MJ
+
+Update: best energy cycle found so far: 10995.8 MJ
+
+Update: best energy cycle found so far: 10133.02 MJ
+
+Update: best energy cycle found so far: 10133.02 MJ
+
+Update: best energy cycle found so far: 9326.76 MJ
+
+Update: best energy cycle found so far: 9326.76 MJ
+
+Update: best energy cycle found so far: 9326.76 MJ
+
+Update: best energy cycle found so far: 9326.76 MJ
+
+Update: best energy cycle found so far: 9326.76 MJ
+
+Update: best energy cycle found so far: 9172.5 MJ
+
+Update: best energy cycle found so far: 9172.5 MJ
+
+Update: best energy cycle found so far: 9172.5 MJ
+
+Update: best energy cycle found so far: 9172.5 MJ
+
+Update: best energy cycle found so far: 9172.5 MJ
+
+Update: best energy cycle found so far: 8670.89 MJ
+
+Update: best energy cycle found so far: 8670.89 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+
+Update: best energy cycle found so far: 8454.61 MJ
+ACO complete!
+Energy of plotted cycle in MJ: 8454.61
+[19, 12, 113, 166, 96, 25, 153, 35, 161, 134, 106, 40, 128, 2, 9, 27, 168, 163, 109, 45, 11, 51, 171, 26, 135, 126, 120, 85, 22, 178, 29, 186, 108, 133, 83, 30, 185, 188, 67, 36, 94, 136, 189, 131, 31, 145, 17, 34, 157, 100, 57, 64, 6, 55, 99, 125, 143, 155, 169, 179, 93, 165, 102, 137, 68, 70, 122, 159, 32, 158, 114, 175, 95, 50, 198, 181, 66, 56, 41, 192, 138, 71, 123, 112, 10, 124, 39, 16, 146, 101, 28, 177, 170, 59, 20, 105, 187, 116, 23, 127, 183, 52, 60, 21, 195, 88, 13, 82, 147, 78, 73, 87, 58, 81, 91, 180, 90, 173, 97, 43, 7, 110, 76, 142, 69, 167, 86, 140, 74, 98, 5, 48, 8, 141, 46, 119, 107, 152, 194, 61, 49, 37, 154, 63, 79, 184, 65, 92, 80, 54, 162, 172, 160, 77, 121, 0, 144, 190, 176, 139, 130, 197, 103, 38, 196, 24, 199, 148, 191, 47, 72, 117, 164, 75, 42, 118, 156, 151, 89, 53, 33, 115, 182, 150, 104, 15, 1, 3, 129, 174, 111, 44, 149, 14, 132, 193, 4, 62, 84, 18]
+Initializng phermone system...
+Initializing switch point possibilities & local best paths around demands...
+Initialization for demand complete!
+Finding shortest paths between all drive intersections...
+Complete!
+Verifying connections and setting phermones...
+Verified connections and set phermones!
+Phermone system initialized!
+NOTE: Demand structures now hold source vertex with 0 weight.
+Truck + Drone:
+Initializing ACO child workers...
+Initializing corner overheads...
+Initialized corner overheads!
+Initialized ACO child workers!
+Starting ACO...
+
+Update: best energy cycle found so far: 24603.17 MJ
+
+Update: best energy cycle found so far: 24603.17 MJ
+
+Update: best energy cycle found so far: 24603.17 MJ
+
+Update: best energy cycle found so far: 23412.69 MJ
+
+Update: best energy cycle found so far: 23381.82 MJ
+
+Update: best energy cycle found so far: 17829.66 MJ
+
+Update: best energy cycle found so far: 17829.66 MJ
+
+Update: best energy cycle found so far: 16339.59 MJ
+
+Update: best energy cycle found so far: 13877.04 MJ
+
+Update: best energy cycle found so far: 12385.62 MJ
+
+Update: best energy cycle found so far: 11102.7 MJ
+
+Update: best energy cycle found so far: 10874.98 MJ
+
+Update: best energy cycle found so far: 10484.08 MJ
+
+Update: best energy cycle found so far: 10027.14 MJ
+
+Update: best energy cycle found so far: 9798.59 MJ
+
+Update: best energy cycle found so far: 9025.72 MJ
+
+Update: best energy cycle found so far: 9025.72 MJ
+
+Update: best energy cycle found so far: 9025.72 MJ
+
+Update: best energy cycle found so far: 9025.72 MJ
+
+Update: best energy cycle found so far: 9025.72 MJ
+
+Update: best energy cycle found so far: 9025.72 MJ
+
+Update: best energy cycle found so far: 9025.72 MJ
+
+Update: best energy cycle found so far: 9025.72 MJ
+
+Update: best energy cycle found so far: 9025.72 MJ
+
+Update: best energy cycle found so far: 8320.23 MJ
+
+Update: best energy cycle found so far: 8320.23 MJ
+
+Update: best energy cycle found so far: 8320.23 MJ
+
+Update: best energy cycle found so far: 8320.23 MJ
+
+Update: best energy cycle found so far: 8320.23 MJ
+
+Update: best energy cycle found so far: 8320.23 MJ
+
+Update: best energy cycle found so far: 8320.23 MJ
+
+Update: best energy cycle found so far: 8320.23 MJ
+
+Update: best energy cycle found so far: 8320.23 MJ
+
+Update: best energy cycle found so far: 8320.23 MJ
+
+Update: best energy cycle found so far: 8320.23 MJ
+
+Update: best energy cycle found so far: 8254.29 MJ
+
+Update: best energy cycle found so far: 8254.29 MJ
+
+Update: best energy cycle found so far: 8254.29 MJ
+
+Update: best energy cycle found so far: 8254.29 MJ
+
+Update: best energy cycle found so far: 8254.29 MJ
+
+Update: best energy cycle found so far: 8254.29 MJ
+
+Update: best energy cycle found so far: 8254.29 MJ
+
+Update: best energy cycle found so far: 8254.29 MJ
+
+Update: best energy cycle found so far: 8254.29 MJ
+
+Update: best energy cycle found so far: 8254.29 MJ
+
+Update: best energy cycle found so far: 8193.69 MJ
+
+Update: best energy cycle found so far: 8193.69 MJ
+
+Update: best energy cycle found so far: 8193.69 MJ
+
+Update: best energy cycle found so far: 8193.69 MJ
+
+Update: best energy cycle found so far: 8193.69 MJ
+
+Update: best energy cycle found so far: 8193.69 MJ
+
+Update: best energy cycle found so far: 8193.69 MJ
+
+Update: best energy cycle found so far: 8189.58 MJ
+
+Update: best energy cycle found so far: 8189.58 MJ
+
+Update: best energy cycle found so far: 8189.58 MJ
+
+Update: best energy cycle found so far: 8189.58 MJ
+
+Update: best energy cycle found so far: 8069.71 MJ
+
+Update: best energy cycle found so far: 8069.71 MJ
+
+Update: best energy cycle found so far: 8069.71 MJ
+
+Update: best energy cycle found so far: 8069.71 MJ
+
+Update: best energy cycle found so far: 8069.71 MJ
+
+Update: best energy cycle found so far: 8069.71 MJ
+
+Update: best energy cycle found so far: 8069.71 MJ
+
+Update: best energy cycle found so far: 8069.71 MJ
+
+Update: best energy cycle found so far: 8069.71 MJ
+
+Update: best energy cycle found so far: 8069.71 MJ
+
+Update: best energy cycle found so far: 8069.71 MJ
+
+Update: best energy cycle found so far: 8069.71 MJ
+
+Update: best energy cycle found so far: 8069.71 MJ
+
+Update: best energy cycle found so far: 8069.71 MJ
+
+Update: best energy cycle found so far: 7898.33 MJ
+
+Update: best energy cycle found so far: 7898.33 MJ
+
+Update: best energy cycle found so far: 7898.33 MJ
+
+Update: best energy cycle found so far: 7898.33 MJ
+
+Update: best energy cycle found so far: 7898.33 MJ
+
+Update: best energy cycle found so far: 7898.33 MJ
+
+Update: best energy cycle found so far: 7898.33 MJ
+
+Update: best energy cycle found so far: 7898.33 MJ
+
+Update: best energy cycle found so far: 7898.33 MJ
+
+Update: best energy cycle found so far: 7898.33 MJ
+
+Update: best energy cycle found so far: 7898.33 MJ
+
+Update: best energy cycle found so far: 7882.22 MJ
+
+Update: best energy cycle found so far: 7882.22 MJ
+
+Update: best energy cycle found so far: 7882.22 MJ
+
+Update: best energy cycle found so far: 7882.22 MJ
+
+Update: best energy cycle found so far: 7882.22 MJ
+
+Update: best energy cycle found so far: 7508.76 MJ
+
+Update: best energy cycle found so far: 7508.76 MJ
+
+Update: best energy cycle found so far: 7508.76 MJ
+
+Update: best energy cycle found so far: 7508.76 MJ
+
+Update: best energy cycle found so far: 7508.76 MJ
+
+Update: best energy cycle found so far: 7508.76 MJ
+
+Update: best energy cycle found so far: 7508.76 MJ
+
+Update: best energy cycle found so far: 7508.76 MJ
+
+Update: best energy cycle found so far: 7508.76 MJ
+
+Update: best energy cycle found so far: 7508.76 MJ
+
+Update: best energy cycle found so far: 7508.76 MJ
+
+Update: best energy cycle found so far: 7508.76 MJ
+
+Update: best energy cycle found so far: 7508.76 MJ
+
+Update: best energy cycle found so far: 7508.76 MJ
+ACO complete!
+Energy of plotted cycle in MJ: 7508.76
+[200, 19, 12, 113, 166, 96, 25, 153, 161, 35, 134, 106, 40, 128, 2, 9, 27, 168, 163, 109, 45, 11, 51, 53, 33, 115, 182, 171, 26, 135, 126, 150, 104, 120, 85, 22, 178, 29, 186, 108, 129, 174, 169, 179, 93, 165, 3, 102, 68, 137, 156, 118, 42, 44, 122, 70, 30, 15, 1, 185, 188, 67, 36, 94, 136, 189, 131, 31, 149, 159, 32, 158, 114, 175, 95, 181, 198, 50, 66, 192, 130, 139, 176, 121, 144, 0, 190, 4, 193, 132, 14, 184, 63, 79, 65, 92, 80, 54, 116, 23, 127, 97, 43, 7, 60, 52, 173, 21, 195, 119, 8, 48, 141, 46, 5, 74, 98, 110, 76, 142, 69, 167, 86, 140, 13, 82, 107, 147, 78, 73, 87, 58, 88, 91, 81, 180, 152, 194, 61, 49, 37, 154, 187, 38, 90, 196, 16, 24, 77, 160, 101, 28, 162, 172, 59, 20, 105, 170, 177, 183, 103, 111, 124, 39, 123, 112, 10, 191, 47, 72, 117, 164, 75, 148, 199, 146, 18, 151, 89, 57, 62, 84, 133, 64, 6, 100, 34, 157, 145, 17, 125, 99, 143, 155, 83, 55, 56, 41, 138, 71, 197]
+[-1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 2129, 3820, -1, -2, -1, -1, 986, 5223, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 2115, 2437, -1, -1, 2437, 2311, -1, -2, -1, -2, -1, -1, 3730, 5039, -1, -1, 5039, 70, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 6125, 2612, -1, -1, 2612, 1690, -1, -2, -1, -1, 1707, 2296, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 2992, 4426, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 3499, 620, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 4127, 491, -1, -2, -1, -1, 3053, 3051, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 2903, 3059, -1, -2, -1, -1, 1395, 800, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 3302, 5341, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 2381, 3094, -1, -2, -1, -2, -1, -2, -1, -1, 829, -2, 701, -2, -2, 730, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 1748, 1118, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 104, 4267, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 2774, -2, 3550, 2357, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 2585, 4032, -1, -2, -1, -2, -1, -2, -1, -1, 451, 4146, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1]
+Set 2 for min weight 1.0 , 20% drone loading, and drone speed 25 m/s has ended.
+200 Demand Points, max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24, base_temperature=14, temp_flucts_coeff=3, relative_humidity=52%
+Set 2 for min weight 1.0 , 20% drone loading, and drone speed 25 m/s begins!
+Loading Energy Helper object...
+Energy Helper object loaded!
+[[(2614, 85.345, 5387899.450688053, 2.08), (4, 138.033, 8692066.178820794, 2.11), (3, 86.274, 5418978.19748373, 2.14)], [], [], [(6, 137.839, 8628540.588207638, 2.18), (2036, 80.117, 5002466.3917524535, 2.21), (0, 86.274, 5418978.19748373, 2.14)], [(5, 86.149, 5443252.076927899, 2.07), (6, 85.968, 5399757.953511849, 2.14), (0, 138.033, 8692066.178820794, 2.11), (7, 134.771, 8501017.235659353, 2.09)]]
+Generating demand...
+Quick Directional BFS discovered 4032  nodes, about  63.08 percent of stored nodes.
+Drone Weight Ranges: [1, 1.25, 1.5, 1.75, 2]
+Demand generated!
+Source 2690 at (4966.7024, 11275.8729)
+[(5267, 3.9), (1892, 3.78), (1259, 1), (5053, 3.29), (2056, 2.55), (2661, 4.09), (1426, 1), (1609, 1), (1707, 3.02), (1648, 1), (1696, 3.36), (3341, 1.25), (1954, 2.83), (684, 2), (658, 3.54), (847, 2.69), (724, 2.48), (2808, 3.47), (1799, 2.18), (213, 3.67), (2628, 4.14), (653, 3.09), (3225, 3.38), (3406, 1.25), (952, 4.1), (3724, 4.08), (4719, 2.49), (3516, 3.48), (3398, 4.17), (1541, 3.93), (2397, 3.39), (4087, 4.02), (2414, 2.21), (1263, 1.75), (2993, 3.95), (3422, 1), (1299, 2.7), (2782, 1), (1915, 3.95), (2430, 1.5), (1048, 3.64), (954, 1.25), (5416, 3.03), (3703, 3.0), (751, 1.75), (2206, 4.13), (3651, 3.8), (1903, 3.78), (1835, 3.95), (4250, 1.5), (3905, 4.04), (452, 3.12), (3869, 2.63), (3501, 2.98), (1794, 2.27), (5336, 3.88), (1471, 2.31), (2914, 2.73), (1133, 4.13), (3513, 1), (3088, 3.14), (2917, 1.75), (4101, 3.76), (2602, 3.72), (689, 3.5), (4684, 3.56), (1823, 3.64), (5421, 4.06), (1063, 3.76), (1057, 1.75), (3557, 2.78), (303, 3.47), (1360, 3.69), (2765, 2.19), (2178, 3.25), (1030, 2.77), (4343, 3.5), (2195, 3.9), (4748, 2.99), (1597, 3.66), (5245, 3.25), (3953, 2.91), (3610, 2.41), (526, 3.56), (2128, 3.63), (1361, 2.92), (529, 3.22), (3652, 2.52), (2905, 3.41), (951, 3.74), (4337, 1.25), (1897, 1.5), (3781, 1.75), (3994, 3.15), (4347, 2.65), (533, 3.57), (1677, 2.49), (2401, 1.25), (2376, 3.55), (1851, 2.59), (4272, 1.75), (3271, 3.18), (2031, 2.6), (5415, 2.84), (2692, 4.07), (1762, 3.34), (1232, 1.75), (3572, 3.63), (2624, 1), (364, 1.25), (1290, 3.23), (183, 3.42), (984, 3.41), (2019, 3.58), (1591, 3.39), (326, 1.5), (3660, 2.69), (3843, 2.23), (4267, 1), (1230, 2.35), (3959, 4.04), (1334, 3.67), (1253, 2.28), (337, 3.26), (94, 2.46), (4457, 3.41), (5311, 3.0), (2080, 4.09), (2094, 2.76), (5136, 3.2), (161, 2.61), (5715, 4.0), (2266, 1.25), (3353, 2.73), (155, 3.65), (959, 4.13), (1511, 4.18), (974, 1.75), (603, 2.31), (540, 2.29), (5371, 3.51), (663, 3.06), (1913, 2.88), (3258, 4.03), (2396, 3.81), (728, 3.07), (193, 2.8), (1473, 3.57), (3443, 2.51), (1950, 2), (282, 1.5), (60, 2.19), (3512, 2.31), (2943, 2.45), (4224, 2.22), (1338, 3.66), (5037, 3.9), (2462, 2.35), (3048, 1), (3268, 2.14), (142, 2.39), (2795, 4.0), (4576, 4.0), (31, 2.11), (1241, 2.81), (5405, 3.78), (484, 4.02), (1006, 2), (1734, 2.33), (549, 2.33), (1130, 2.41), (145, 1.25), (3672, 1.25), (1891, 4.1), (6272, 2.57), (3578, 2.95), (134, 2.78), (3956, 4.16), (502, 3.27), (1417, 1.5), (1943, 2.99), (701, 1.75), (1227, 3.62), (6219, 2.15), (3584, 4.14), (1155, 2.56), (5291, 1.75), (1724, 1.5), (559, 3.74), (3233, 1.5), (3019, 3.1), (2413, 3.08), (3682, 2.89), (4921, 4.04), (4439, 4.06), (1800, 3.16), (1119, 3.5), (1821, 3.43), (942, 2.16), (3631, 2.95)]
+Initializng phermone system...
+Initializing switch point possibilities & local best paths around demands...
+Initialization for demand complete!
+Finding shortest paths between all drive intersections...
+Complete!
+Verifying connections and setting phermones...
+Verified connections and set phermones!
+Phermone system initialized!
+NOTE: Demand structures now hold source vertex with 0 weight.
+Truck Only:
+Initializing ACO child workers...
+Initialized ACO child workers!
+Starting ACO...
+
+Update: best energy cycle found so far: 26750.13 MJ
+
+Update: best energy cycle found so far: 24524.11 MJ
+
+Update: best energy cycle found so far: 24265.94 MJ
+
+Update: best energy cycle found so far: 24265.94 MJ
+
+Update: best energy cycle found so far: 23955.17 MJ
+
+Update: best energy cycle found so far: 22984.26 MJ
+
+Update: best energy cycle found so far: 22984.26 MJ
+
+Update: best energy cycle found so far: 22612.42 MJ
+
+Update: best energy cycle found so far: 22265.66 MJ
+
+Update: best energy cycle found so far: 21810.77 MJ
+
+Update: best energy cycle found so far: 21013.44 MJ
+
+Update: best energy cycle found so far: 19330.46 MJ
+
+Update: best energy cycle found so far: 17639.6 MJ
+
+Update: best energy cycle found so far: 15436.8 MJ
+
+Update: best energy cycle found so far: 13694.86 MJ
+
+Update: best energy cycle found so far: 13694.86 MJ
+
+Update: best energy cycle found so far: 13146.34 MJ
+
+Update: best energy cycle found so far: 12685.09 MJ
+
+Update: best energy cycle found so far: 12375.42 MJ
+
+Update: best energy cycle found so far: 11078.13 MJ
+
+Update: best energy cycle found so far: 10727.42 MJ
+
+Update: best energy cycle found so far: 10727.42 MJ
+
+Update: best energy cycle found so far: 10357.69 MJ
+
+Update: best energy cycle found so far: 9874.25 MJ
+
+Update: best energy cycle found so far: 9521.52 MJ
+
+Update: best energy cycle found so far: 8898.45 MJ
+
+Update: best energy cycle found so far: 8898.45 MJ
+
+Update: best energy cycle found so far: 8898.45 MJ
+
+Update: best energy cycle found so far: 8898.45 MJ
+
+Update: best energy cycle found so far: 8898.45 MJ
+
+Update: best energy cycle found so far: 8770.12 MJ
+
+Update: best energy cycle found so far: 8770.12 MJ
+
+Update: best energy cycle found so far: 8770.12 MJ
+
+Update: best energy cycle found so far: 8770.12 MJ
+
+Update: best energy cycle found so far: 8770.12 MJ
+
+Update: best energy cycle found so far: 8770.12 MJ
+
+Update: best energy cycle found so far: 8770.12 MJ
+
+Update: best energy cycle found so far: 8770.12 MJ
+
+Update: best energy cycle found so far: 8770.12 MJ
+
+Update: best energy cycle found so far: 8770.12 MJ
+
+Update: best energy cycle found so far: 8581.8 MJ
+
+Update: best energy cycle found so far: 8581.8 MJ
+
+Update: best energy cycle found so far: 8581.8 MJ
+
+Update: best energy cycle found so far: 8581.8 MJ
+
+Update: best energy cycle found so far: 8581.8 MJ
+
+Update: best energy cycle found so far: 8581.8 MJ
+
+Update: best energy cycle found so far: 8581.8 MJ
+
+Update: best energy cycle found so far: 8581.8 MJ
+
+Update: best energy cycle found so far: 8581.8 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+
+Update: best energy cycle found so far: 8148.23 MJ
+ACO complete!
+Energy of plotted cycle in MJ: 8148.23
+[197, 188, 119, 182, 106, 60, 68, 95, 86, 83, 69, 18, 195, 40, 55, 166, 74, 75, 141, 123, 115, 149, 167, 180, 84, 71, 169, 139, 39, 70, 165, 67, 37, 11, 17, 103, 73, 128, 51, 148, 127, 122, 175, 8, 150, 10, 164, 152, 59, 93, 31, 28, 49, 42, 94, 27, 76, 34, 97, 50, 90, 62, 144, 30, 53, 154, 72, 85, 23, 61, 100, 138, 153, 121, 54, 155, 146, 46, 87, 190, 4, 105, 147, 56, 184, 107, 145, 102, 29, 111, 118, 9, 133, 21, 35, 63, 193, 81, 15, 124, 44, 158, 194, 134, 125, 16, 178, 6, 181, 162, 64, 13, 129, 82, 187, 168, 98, 117, 191, 32, 140, 189, 173, 1, 48, 2, 33, 91, 5, 12, 22, 161, 172, 47, 199, 110, 151, 143, 66, 45, 114, 131, 142, 88, 38, 192, 136, 36, 99, 170, 58, 77, 171, 109, 160, 176, 174, 183, 126, 179, 7, 79, 196, 96, 57, 104, 116, 186, 52, 3, 25, 163, 80, 14, 130, 65, 0, 26, 137, 157, 41, 24, 135, 89, 198, 156, 43, 20, 108, 101, 185, 92, 159, 120, 19, 177, 132, 113, 78, 112]
+Initializng phermone system...
+Initializing switch point possibilities & local best paths around demands...
+Initialization for demand complete!
+Finding shortest paths between all drive intersections...
+Complete!
+Verifying connections and setting phermones...
+Verified connections and set phermones!
+Phermone system initialized!
+NOTE: Demand structures now hold source vertex with 0 weight.
+Truck + Drone:
+Initializing ACO child workers...
+Initializing corner overheads...
+Initialized corner overheads!
+Initialized ACO child workers!
+Starting ACO...
+
+Update: best energy cycle found so far: 24929.43 MJ
+
+Update: best energy cycle found so far: 24929.43 MJ
+
+Update: best energy cycle found so far: 24181.58 MJ
+
+Update: best energy cycle found so far: 23400.32 MJ
+
+Update: best energy cycle found so far: 23400.32 MJ
+
+Update: best energy cycle found so far: 21777.57 MJ
+
+Update: best energy cycle found so far: 18687.37 MJ
+
+Update: best energy cycle found so far: 14283.05 MJ
+
+Update: best energy cycle found so far: 13671.15 MJ
+
+Update: best energy cycle found so far: 12026.53 MJ
+
+Update: best energy cycle found so far: 10721.36 MJ
+
+Update: best energy cycle found so far: 10328.89 MJ
+
+Update: best energy cycle found so far: 10184.26 MJ
+
+Update: best energy cycle found so far: 9926.71 MJ
+
+Update: best energy cycle found so far: 9366.2 MJ
+
+Update: best energy cycle found so far: 9366.2 MJ
+
+Update: best energy cycle found so far: 9366.2 MJ
+
+Update: best energy cycle found so far: 9366.2 MJ
+
+Update: best energy cycle found so far: 9265.52 MJ
+
+Update: best energy cycle found so far: 9265.52 MJ
+
+Update: best energy cycle found so far: 9265.52 MJ
+
+Update: best energy cycle found so far: 9265.52 MJ
+
+Update: best energy cycle found so far: 9265.52 MJ
+
+Update: best energy cycle found so far: 9265.52 MJ
+
+Update: best energy cycle found so far: 9265.52 MJ
+
+Update: best energy cycle found so far: 9265.52 MJ
+
+Update: best energy cycle found so far: 8917.83 MJ
+
+Update: best energy cycle found so far: 8900.68 MJ
+
+Update: best energy cycle found so far: 8900.68 MJ
+
+Update: best energy cycle found so far: 8900.68 MJ
+
+Update: best energy cycle found so far: 8900.68 MJ
+
+Update: best energy cycle found so far: 8900.68 MJ
+
+Update: best energy cycle found so far: 8900.68 MJ
+
+Update: best energy cycle found so far: 8900.68 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 8223.42 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+
+Update: best energy cycle found so far: 7918.66 MJ
+ACO complete!
+Energy of plotted cycle in MJ: 7918.66
+[200, 197, 188, 106, 119, 182, 60, 68, 95, 86, 83, 69, 55, 166, 74, 75, 141, 123, 115, 130, 180, 149, 167, 71, 112, 169, 139, 39, 84, 14, 80, 163, 40, 18, 195, 65, 0, 26, 113, 78, 34, 76, 150, 10, 164, 152, 94, 27, 93, 31, 28, 49, 42, 128, 51, 148, 127, 122, 175, 8, 108, 20, 43, 156, 198, 89, 24, 41, 135, 157, 137, 25, 3, 73, 103, 17, 70, 165, 67, 37, 59, 11, 134, 194, 158, 118, 162, 64, 13, 129, 187, 168, 82, 196, 96, 57, 104, 45, 114, 131, 142, 88, 38, 192, 5, 2, 6, 91, 33, 116, 126, 79, 66, 179, 7, 178, 181, 151, 110, 199, 47, 172, 136, 36, 12, 22, 161, 58, 99, 170, 160, 176, 174, 183, 171, 77, 109, 143, 186, 32, 191, 117, 98, 140, 48, 189, 173, 1, 125, 52, 87, 46, 146, 153, 155, 121, 54, 138, 100, 72, 85, 23, 61, 154, 53, 144, 30, 50, 90, 62, 97, 101, 159, 120, 19, 177, 92, 185, 21, 132, 9, 133, 81, 15, 124, 44, 107, 145, 102, 29, 111, 16, 184, 190, 4, 105, 147, 56, 193, 63, 35]
+[-1, -2, -1, -2, -1, -1, 559, 1230, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 526, 5336, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 337, 161, -1, -2, -1, -1, 1943, 1950, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 540, 2128, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 952, 6099, -1, -2, -1, -1, 2462, 3724, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 5421, -2, 5414, 3341, -1, -2, -1, -2, -1, -1, 4439, -2, 2720, 711, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 1928, -2, 2862, -2, -2, -2, -2, 1730, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 2515, 1425, -1, -2, -1, -2, -1, -2, -1, -1, 1903, 385, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 1734, 1730, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 3836, 1891, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 1361, 2917, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 4101, 4231, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 653, 1653, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 94, 3572, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1]
+Set 2 for min weight 1.0 , 20% drone loading, and drone speed 25 m/s has ended.
