@@ -1596,7 +1596,9 @@ class EnergyHelper:
         print("\nUpdate: best energy cycle found so far:", round(best_energy / 10**6, 2), "MJ")
       if iter <= 0.5 * K:
         # Dynamic initial delta loading.
-        q = 0.03 * max_phm * best_energy
+        q = 0.05 * max_phm * best_energy      # < 0.02 : decay
+      else:
+        q = 0.015 * max_phm * best_energy
       pbar.update()
       c = 1
       while c > 0:

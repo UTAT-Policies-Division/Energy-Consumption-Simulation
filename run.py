@@ -1,7 +1,7 @@
 # import geolib as gl
 from enlib import EnergyHelper, init_globals, power, RPM_coeff, WEIGHTS, draw_function, draw_functions, kph_to_mps
 import matplotlib.pyplot as plt
-from math import exp, pi
+from math import exp, pi, sqrt, cos
 # from PolicyStorage import no_fly_zones, PolicyData
 
 UOFT = "University of Toronto"
@@ -83,6 +83,37 @@ if __name__ == '__main__':
 #   policy_object = PolicyData()
   DS_POLICY = 10
   DS_OPTIMAL = 16
+#   QUAD_C = 74736280 / 24
+#   QUAD_B = -sqrt(74736280 - QUAD_C)
+#   QUAD_A = QUAD_B / -24.5872
+#   for i in range(1,6):
+#       for V in range(5, 26, 5):
+#           eh = EnergyHelper.load("pickles/manhattan-policy-set-{}-{}ms.pkl".format(i, V))
+#           min_x, min_y = min(x for x,_ in eh.nodes), min(y for _,y in eh.nodes)
+#           max_x, max_y = max(x for x,_ in eh.nodes), max(y for _,y in eh.nodes)
+#           x_coeff = 30 / max(abs(max_x), abs(min_x))
+#           y_coeff = 30 / max(abs(max_y), abs(min_y))
+#           tepm_old, tepm_new, count = 0, 0, 0
+#           for k1 in range(len(eh.edges)):
+#               for k2 in range(len(eh.edges[k1])):
+#                   count += 1
+#                   v_ind, length, old_eng, _ = eh.edges[k1][k2]
+#                   tepm_old += old_eng / length
+#                   sx, sy = eh.nodes[k1]
+#                   dx, dy = eh.nodes[k2]
+#                   x = x_coeff * (sx + dx)
+#                   y = y_coeff * (sy + dy)
+#                   mul_y = abs(cos(3+(y/6)))
+#                   mul_x = abs(cos(5+(x/6)))
+#                   truck_speed = round(10 + 7 * 0.0003 * (mul_y * x * x + mul_x * y * y), 2)
+#                   truck_epm = QUAD_A * truck_speed + QUAD_B
+#                   truck_epm *= truck_epm
+#                   truck_epm = (truck_epm + QUAD_C) / 1000   # J/m
+#                   tepm_new += truck_epm
+#                   eh.edges[k1][k2] = (v_ind, length, truck_epm * length, truck_speed)
+#           print(round(tepm_old / count, 2), round(tepm_new / count, 2))
+#           eh.save("pickles_truck_scaled/manhattan-policy-set-{}-{}ms.pkl".format(i, V))
+#   exit(0)
 #   init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
 #                   base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=DS_OPTIMAL,
 #                   relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
@@ -175,23 +206,22 @@ if __name__ == '__main__':
 #   print(swp)
 #   eh.plot_network(False, False, False, False, True, [], [])
 #   plt.show()
-  print("200 Demand Points, max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24, base_temperature=14, temp_flucts_coeff=3, relative_humidity=52%")
-  init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
-                        base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=20,
-                        relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
-  eh = EnergyHelper.load("pickles/manhattan-policy-set-{}-{}ms.pkl".format(2, 20))
-  src = eh.get_top_right_node()
-  eh.demand = [(2057, 3.07), (2460, 4.17), (3516, 3.4), (563, 3.41), (1407, 2.16), (5162, 1.25), (4138, 2.81), (5011, 2.43), (2958, 3.43), (5124, 3.55), (2874, 4.08), (2986, 3.34), (3279, 1.25), (5038, 3.66), (4703, 3.19), (3004, 2.89), (3673, 3.5), (2459, 3.21), (3554, 3.95), (3186, 3.22), (1129, 2.47), (1794, 2.45), (5758, 1.75), (265, 1), (1890, 3.23), (1007, 1), (2017, 2.92), (3245, 3.49), (1617, 4.17), (2672, 1), (737, 2.32), (240, 2.55), (3876, 2), (2624, 1.75), (5729, 1), (640, 2.44), (1420, 2.76), (2028, 2.13), (5531, 3.58), (2243, 3.71), (768, 3.75), (3550, 3.39), (4475, 2.48), (185, 1), (3785, 3.04), (5367, 2.72), (2930, 3.08), (1932, 3.18), (2341, 3.19), (1223, 3.37), (2604, 2), (1181, 3.84), (2854, 1), (3005, 3.23), (865, 1.25), (1879, 2.24), (3432, 2.92), (309, 1.5), (3503, 2.55), (2313, 4.18), (401, 2.38), (4174, 3.79), (1389, 2), (2307, 3.85), (3149, 2.7), (4789, 3.5), (6204, 3.59), (5275, 1.5), (2803, 1.25), (341, 4.11), (4375, 4.16), (4397, 3.62), (5232, 2.12), (3225, 3.85), (4958, 2.81), (2123, 1.75), (5089, 2.37), (1673, 3.28), (1937, 1), (5243, 2.81), (346, 3.84), (807, 3.2), (2196, 3.32), (1145, 1), (5217, 4.01), (4961, 2.7), (5353, 3.89), (3452, 1.75), (984, 2.37), (1328, 2.66), (3956, 3.51), (795, 2.24), (1570, 3.17), (3017, 2.67), (306, 1.25), (2040, 1.25), (2855, 2), (1076, 3.74), (2137, 4.02), (3132, 3.9), (873, 1.25), (2387, 2.51), (3978, 2.65), (443, 2), (2734, 3.3), (3258, 1), (1220, 3.59), (2145, 3.53), (1449, 3.52), (4449, 3.32), (3906, 3.32), (3933, 4.03), (3633, 2.36), (3584, 2.79), (177, 3.06), (4627, 1.25), (1947, 2.17), (200, 3.04), (5103, 3.9), (2976, 3.84), (5063, 2.67), (2943, 4.06), (79, 4.06), (2777, 3.78), (2149, 3.43), (3645, 3.45), (2254, 3.53), (876, 4.11), (1379, 3.61), (882, 2.6), (1597, 1.25), (3545, 2.87), (896, 3.55), (241, 2.13), (806, 3.5), (5276, 2.45), (2844, 2.95), (5344, 3.81), (133, 3.5), (2773, 3.98), (2292, 2.96), (1306, 2.84), (1411, 3.98), (5527, 2.85), (1441, 2.74), (634, 3.01), (1952, 3.63), (1966, 3.88), (2187, 3.32), (5727, 2.98), (4316, 2.48), (4791, 3.23), (4320, 2.91), (3843, 2), (3177, 2.87), (3386, 3.14), (2487, 1), (311, 3.5), (889, 2), (5628, 3.83), (5034, 3.79), (1565, 3.55), (3731, 2), (3581, 3.07), (3852, 2.18), (1372, 1), (1180, 1), (5125, 4.03), (2696, 3.62), (1961, 1.75), (1656, 1.75), (1743, 3.84), (3766, 2), (4003, 2.52), (1896, 3.12), (3811, 2.63), (5234, 2.54), (1635, 3.6), (1446, 2.75), (5670, 3.74), (801, 3.75), (5168, 2.76), (3771, 1.75), (3482, 3.24), (1176, 3.01), (2119, 3.39), (2981, 3.1), (2000, 3.28), (3385, 2.13), (2574, 2.53), (248, 3.31), (4400, 1), (404, 3.91), (548, 3.33), (3173, 2.52), (4478, 3.65), (1592, 2.55), (484, 4.08), (4649, 2.17), (5222, 2.39)]
-  eh.demand.append((src, 0))
-  eh.init_phermone_system(src, 3000)
-  cycle = [200, 97, 3, 89, 14, 151, 65, 197, 12, 80, 69, 20, 25, 116, 124, 107, 98, 157, 57, 94, 88, 185, 193, 75, 85, 74, 26, 181, 5, 18, 83, 156, 41, 191, 23, 131, 182, 50, 90, 172, 132, 158, 129, 100, 127, 101, 27, 140, 190, 37, 30, 104, 86, 0, 195, 179, 121, 114, 106, 46, 21, 102, 152, 93, 198, 48, 32, 150, 56, 125, 113, 108, 178, 144, 42, 61, 119, 164, 186, 84, 22, 105, 177, 19, 24, 60, 192, 55, 45, 154, 194, 153, 137, 147, 6, 81, 134, 180, 91, 62, 159, 196, 49, 4, 109, 28, 171, 36, 168, 78, 47, 142, 130, 96, 52, 166, 128, 70, 169, 120, 184, 51, 16, 126, 38, 173, 112, 155, 188, 82, 71, 40, 138, 10, 122, 141, 146, 73, 39, 174, 136, 103, 117, 66, 176, 72, 54, 187, 170, 9, 167, 92, 161, 115, 165, 110, 8, 29, 58, 145, 118, 34, 43, 149, 87, 53, 15, 11, 2, 111, 76, 143, 13, 17, 1, 183, 175, 68, 59, 162, 123, 139, 63, 199, 79, 163, 189, 148, 31, 133, 160, 7, 135, 67, 77, 44, 95, 64, 33, 99, 35]
-  swp = [-1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 484, 346, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 311, 306, -1, -2, -1, -2, -1, -2, -1, -1, 548, 4961, -1, -2, -1, -2, -1, -2, -1, -1, 5168, 3554, -1, -1, 3554, -2, 5522, 3550, -1, -1, 3550, -2, 68, -2, -2, 3771, -1, -1, 3771, 3956, -1, -1, 3776, -2, -2, 889, -1, -2, -1, -1, 882, 115, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 2341, 3876, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 3173, 3170, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 2855, -2, 2835, 2846, -1, -2, -1, -1, 1897, 5063, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 5628, 2732, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 2000, 1653, -1, -2, -1, -2, -1, -2, -1, -1, 3648, 1372, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 5103, 185, -1, -2, -1, -1, 5727, 3005, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 3811, 2313, -1, -1, 2313, 2777, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 911, 3149, -1, -2, -1, -2, -1, -2, -1, -1]
-  eh.plot_cycle(100, cycle, swp)
-  plt.show()
-  exit(0)
+#   print("200 Demand Points, max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24, base_temperature=14, temp_flucts_coeff=3, relative_humidity=52%")
+#   init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
+#                         base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=20,
+#                         relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
+#   eh = EnergyHelper.load("pickles/manhattan-policy-set-{}-{}ms.pkl".format(2, 20))
+#   src = eh.get_top_right_node()
+#   eh.demand = [(2057, 3.07), (2460, 4.17), (3516, 3.4), (563, 3.41), (1407, 2.16), (5162, 1.25), (4138, 2.81), (5011, 2.43), (2958, 3.43), (5124, 3.55), (2874, 4.08), (2986, 3.34), (3279, 1.25), (5038, 3.66), (4703, 3.19), (3004, 2.89), (3673, 3.5), (2459, 3.21), (3554, 3.95), (3186, 3.22), (1129, 2.47), (1794, 2.45), (5758, 1.75), (265, 1), (1890, 3.23), (1007, 1), (2017, 2.92), (3245, 3.49), (1617, 4.17), (2672, 1), (737, 2.32), (240, 2.55), (3876, 2), (2624, 1.75), (5729, 1), (640, 2.44), (1420, 2.76), (2028, 2.13), (5531, 3.58), (2243, 3.71), (768, 3.75), (3550, 3.39), (4475, 2.48), (185, 1), (3785, 3.04), (5367, 2.72), (2930, 3.08), (1932, 3.18), (2341, 3.19), (1223, 3.37), (2604, 2), (1181, 3.84), (2854, 1), (3005, 3.23), (865, 1.25), (1879, 2.24), (3432, 2.92), (309, 1.5), (3503, 2.55), (2313, 4.18), (401, 2.38), (4174, 3.79), (1389, 2), (2307, 3.85), (3149, 2.7), (4789, 3.5), (6204, 3.59), (5275, 1.5), (2803, 1.25), (341, 4.11), (4375, 4.16), (4397, 3.62), (5232, 2.12), (3225, 3.85), (4958, 2.81), (2123, 1.75), (5089, 2.37), (1673, 3.28), (1937, 1), (5243, 2.81), (346, 3.84), (807, 3.2), (2196, 3.32), (1145, 1), (5217, 4.01), (4961, 2.7), (5353, 3.89), (3452, 1.75), (984, 2.37), (1328, 2.66), (3956, 3.51), (795, 2.24), (1570, 3.17), (3017, 2.67), (306, 1.25), (2040, 1.25), (2855, 2), (1076, 3.74), (2137, 4.02), (3132, 3.9), (873, 1.25), (2387, 2.51), (3978, 2.65), (443, 2), (2734, 3.3), (3258, 1), (1220, 3.59), (2145, 3.53), (1449, 3.52), (4449, 3.32), (3906, 3.32), (3933, 4.03), (3633, 2.36), (3584, 2.79), (177, 3.06), (4627, 1.25), (1947, 2.17), (200, 3.04), (5103, 3.9), (2976, 3.84), (5063, 2.67), (2943, 4.06), (79, 4.06), (2777, 3.78), (2149, 3.43), (3645, 3.45), (2254, 3.53), (876, 4.11), (1379, 3.61), (882, 2.6), (1597, 1.25), (3545, 2.87), (896, 3.55), (241, 2.13), (806, 3.5), (5276, 2.45), (2844, 2.95), (5344, 3.81), (133, 3.5), (2773, 3.98), (2292, 2.96), (1306, 2.84), (1411, 3.98), (5527, 2.85), (1441, 2.74), (634, 3.01), (1952, 3.63), (1966, 3.88), (2187, 3.32), (5727, 2.98), (4316, 2.48), (4791, 3.23), (4320, 2.91), (3843, 2), (3177, 2.87), (3386, 3.14), (2487, 1), (311, 3.5), (889, 2), (5628, 3.83), (5034, 3.79), (1565, 3.55), (3731, 2), (3581, 3.07), (3852, 2.18), (1372, 1), (1180, 1), (5125, 4.03), (2696, 3.62), (1961, 1.75), (1656, 1.75), (1743, 3.84), (3766, 2), (4003, 2.52), (1896, 3.12), (3811, 2.63), (5234, 2.54), (1635, 3.6), (1446, 2.75), (5670, 3.74), (801, 3.75), (5168, 2.76), (3771, 1.75), (3482, 3.24), (1176, 3.01), (2119, 3.39), (2981, 3.1), (2000, 3.28), (3385, 2.13), (2574, 2.53), (248, 3.31), (4400, 1), (404, 3.91), (548, 3.33), (3173, 2.52), (4478, 3.65), (1592, 2.55), (484, 4.08), (4649, 2.17), (5222, 2.39)]
+#   eh.demand.append((src, 0))
+#   eh.init_phermone_system(src, 3000)
+#   cycle = [200, 97, 3, 89, 14, 151, 65, 197, 12, 80, 69, 20, 25, 116, 124, 107, 98, 157, 57, 94, 88, 185, 193, 75, 85, 74, 26, 181, 5, 18, 83, 156, 41, 191, 23, 131, 182, 50, 90, 172, 132, 158, 129, 100, 127, 101, 27, 140, 190, 37, 30, 104, 86, 0, 195, 179, 121, 114, 106, 46, 21, 102, 152, 93, 198, 48, 32, 150, 56, 125, 113, 108, 178, 144, 42, 61, 119, 164, 186, 84, 22, 105, 177, 19, 24, 60, 192, 55, 45, 154, 194, 153, 137, 147, 6, 81, 134, 180, 91, 62, 159, 196, 49, 4, 109, 28, 171, 36, 168, 78, 47, 142, 130, 96, 52, 166, 128, 70, 169, 120, 184, 51, 16, 126, 38, 173, 112, 155, 188, 82, 71, 40, 138, 10, 122, 141, 146, 73, 39, 174, 136, 103, 117, 66, 176, 72, 54, 187, 170, 9, 167, 92, 161, 115, 165, 110, 8, 29, 58, 145, 118, 34, 43, 149, 87, 53, 15, 11, 2, 111, 76, 143, 13, 17, 1, 183, 175, 68, 59, 162, 123, 139, 63, 199, 79, 163, 189, 148, 31, 133, 160, 7, 135, 67, 77, 44, 95, 64, 33, 99, 35]
+#   swp = [-1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 484, 346, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 311, 306, -1, -2, -1, -2, -1, -2, -1, -1, 548, 4961, -1, -2, -1, -2, -1, -2, -1, -1, 5168, 3554, -1, -1, 3554, -2, 5522, 3550, -1, -1, 3550, -2, 68, -2, -2, 3771, -1, -1, 3771, 3956, -1, -1, 3776, -2, -2, 889, -1, -2, -1, -1, 882, 115, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 2341, 3876, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 3173, 3170, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 2855, -2, 2835, 2846, -1, -2, -1, -1, 1897, 5063, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 5628, 2732, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 2000, 1653, -1, -2, -1, -2, -1, -2, -1, -1, 3648, 1372, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 5103, 185, -1, -2, -1, -1, 5727, 3005, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 3811, 2313, -1, -1, 2313, 2777, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 911, 3149, -1, -2, -1, -2, -1, -2, -1, -1]
+#   eh.plot_cycle(100, cycle, swp)
+#   plt.show()
+#   exit(0)
 #  eh = EnergyHelper.load("pickles/manhattan-policy-set-{}-{}ms.pkl".format(2, 10))
 #   print(eh.dedges[:5])
-  exit(0)
 #   # --------------------------------
 #   # Loading Manhattan Set + Generating Demand, Source
 #   # --------------------------------
@@ -405,9 +435,9 @@ if __name__ == '__main__':
 
 
 
-#   for i in [2]:
-#     for min_w in [0.0, 1.0]:
-#         for V in [10, 20]:
+#   for i in [2, 2, 2]:
+#     for min_w in [0.0]:
+#         for V in [20]:
 #           # --------------------------------
 #           # Loading Manhattan Set + Generating Demand, Source
 #           # --------------------------------
@@ -447,6 +477,7 @@ if __name__ == '__main__':
 #           # --------------------------------
 #           # Truck + Drone ACO Setup & Run
 #           # --------------------------------
+#           eh.demand.pop()
 #           eh.init_phermone_system(src, R=RANGE)
 #           print("BVLOS Truck + Drone:")
 #           NUM_ITERATIONS = 100
@@ -460,6 +491,7 @@ if __name__ == '__main__':
 #           # --------------------------------
 #           # Truck + Drone ACO Setup & Run
 #           # --------------------------------
+#           eh.demand.pop()
 #           eh.init_phermone_system(src, R=RANGE, local_VLOS_tolerance=0.2)
 #           print("VLOS Truck + Drone:")
 #           NUM_ITERATIONS = 100
@@ -481,20 +513,88 @@ if __name__ == '__main__':
 #   cycle = [97, 3, 89, 14, 151, 65, 197, 12, 80, 69, 20, 25, 116, 124, 107, 98, 157, 57, 94, 88, 185, 193, 75, 85, 74, 26, 181, 5, 18, 83, 156, 41, 191, 23, 131, 182, 50, 90, 172, 132, 158, 129, 100, 127, 101, 27, 140, 190, 37, 30, 104, 86, 0, 195, 179, 121, 114, 106, 46, 21, 102, 152, 93, 198, 48, 32, 150, 56, 125, 113, 108, 178, 144, 42, 61, 119, 164, 186, 84, 22, 105, 177, 19, 24, 60, 192, 55, 45, 154, 194, 153, 137, 147, 6, 81, 134, 180, 91, 62, 159, 196, 49, 4, 109, 28, 171, 36, 168, 78, 47, 142, 130, 96, 52, 166, 128, 70, 169, 120, 184, 51, 16, 126, 38, 173, 112, 155, 188, 82, 71, 40, 138, 10, 122, 141, 146, 73, 39, 174, 136, 103, 117, 66, 176, 72, 54, 187, 170, 9, 167, 92, 161, 115, 165, 110, 8, 29, 58, 145, 118, 34, 43, 149, 87, 53, 15, 11, 2, 111, 76, 143, 13, 17, 1, 183, 175, 68, 59, 162, 123, 139, 63, 199, 79, 163, 189, 148, 31, 133, 160, 7, 135, 67, 77, 44, 95, 64, 33, 99, 35]
 #   swp = [-1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 484, 346, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 311, 306, -1, -2, -1, -2, -1, -2, -1, -1, 548, 4961, -1, -2, -1, -2, -1, -2, -1, -1, 5168, 3554, -1, -1, 3554, -2, 5522, 3550, -1, -1, 3550, -2, 68, -2, -2, 3771, -1, -1, 3771, 3956, -1, -1, 3776, -2, -2, 889, -1, -2, -1, -1, 882, 115, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 2341, 3876, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 3173, 3170, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 2855, -2, 2835, 2846, -1, -2, -1, -1, 1897, 5063, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 5628, 2732, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 2000, 1653, -1, -2, -1, -2, -1, -2, -1, -1, 3648, 1372, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 5103, 185, -1, -2, -1, -1, 5727, 3005, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 3811, 2313, -1, -1, 2313, 2777, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -2, -1, -1, 911, 3149, -1, -2, -1, -2, -1, -2, -1, -1]
 #   eh.plot_cycle(100, cycle, swp)
-#   exit(0)
-  
-  for _ in [1, 2]:
-    for i in [3, 4, 5]:
+
+  for _ in [1, 2, 3, 4, 5]:
+    for i in [2]:
       for min_w in [1.0]:
-          for V in [20]:
+          # --------------------------------
+          # Loading Manhattan Set + Generating Demand, Source
+          # --------------------------------
+          print("Set", i, " spec for min weight", min_w, ", 20% drone loading, and drone speed", 20, "m/s begins!")
+          init_globals(max_truck_speed=7, base_truck_speed=10, truck_city_mpg=24,
+                      base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=20,
+                      relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
+          eh = EnergyHelper.load("pickles_truck_scaled/manhattan-policy-set-{}-{}ms.pkl".format(i, 20))
+          print(eh.edges[:5])  # confirming calibration
+          NUM_STOPS = 200
+          RANGE = float(3000)   # dummy for now
+          src = eh.get_top_right_node()
+          eh.append_random_demand(NUM_STOPS, cluster_num=0, cluster_jump=0, dron_min_w=min_w,
+                                  drone_only_possible_component=0.2)
+          conflict = src in [x[0] for x in eh.demand]
+          while conflict:
+            eh.reset_demand()
+            eh.append_random_demand(NUM_STOPS, cluster_num=0, cluster_jump=0, dron_min_w=min_w,
+                                    drone_only_possible_component=0.2)
+            conflict = src in [x[0] for x in eh.demand]
+          print("Source", src, "at", eh.nodes[src])
+          print(eh.demand)
+          # --------------------------------
+      
+          # --------------------------------
+          # Truck Only ACO Setup & Run
+          # --------------------------------
+          eh.init_phermone_system(src, R=RANGE)
+          print("Truck Only:")
+          NUM_ITERATIONS = 100
+          ANTS_PER_ITERATION = 45
+          energy, cycle = eh.aco_truck_only(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
+          print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
+          print(cycle)
+          # --------------------------------
+      
+          # --------------------------------
+          # Truck + Drone ACO Setup & Run
+          # --------------------------------
+          eh.demand.pop()
+          eh.init_phermone_system(src, R=RANGE)
+          print("BVLOS Truck + Drone:")
+          NUM_ITERATIONS = 100
+          ANTS_PER_ITERATION = 45
+          energy, cycle, swp = eh.aco(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
+          print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
+          print(cycle)
+          print(swp)
+          # --------------------------------
+
+          # --------------------------------
+          # Truck + Drone ACO Setup & Run
+          # --------------------------------
+          eh.demand.pop()
+          eh.init_phermone_system(src, R=RANGE, local_VLOS_tolerance=0.2)
+          print("VLOS Truck + Drone:")
+          NUM_ITERATIONS = 100
+          ANTS_PER_ITERATION = 45
+          energy, cycle, swp = eh.aco(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
+          print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
+          print(cycle)
+          print(swp)
+          # --------------------------------
+  
+          print("Set", i, " spec for min weight", min_w, ", 20% drone loading, and drone speed", 20, "m/s has ended.")
+  exit(0)
+  for _ in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
+    for i in [2]:
+      for min_w in [1.0]:
+          for V in [10]:
             # --------------------------------
             # Loading Manhattan Set + Generating Demand, Source
             # --------------------------------
             print("Set", i, "for min weight", min_w, ", 20% drone loading, and drone speed", V, "m/s begins!")
-            init_globals(max_truck_speed=12, base_truck_speed=1.4, truck_city_mpg=24,
+            init_globals(max_truck_speed=7, base_truck_speed=10, truck_city_mpg=24,
                         base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=V,
                         relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
-            eh = EnergyHelper.load("pickles/manhattan-policy-set-{}-{}ms.pkl".format(i, V))
+            eh = EnergyHelper.load("pickles_truck_scaled/manhattan-policy-set-{}-{}ms.pkl".format(i, V))
             print(eh.edges[:5])  # confirming calibration
             NUM_STOPS = 200
             RANGE = float(3000)   # dummy for now
@@ -538,7 +638,231 @@ if __name__ == '__main__':
             # --------------------------------
     
             print("Set", i, "for min weight", min_w, ", 20% drone loading, and drone speed", V, "m/s has ended.")
-#   exit(0)
+  print("ABCDEFGHIJKLMNOPQRST")
+  for _ in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
+    for i in [2]:
+      for min_w in [1.0]:
+          for V in [15]:
+            # --------------------------------
+            # Loading Manhattan Set + Generating Demand, Source
+            # --------------------------------
+            print("Set", i, "for min weight", min_w, ", 20% drone loading, and drone speed", V, "m/s begins!")
+            init_globals(max_truck_speed=7, base_truck_speed=10, truck_city_mpg=24,
+                        base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=V,
+                        relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
+            eh = EnergyHelper.load("pickles_truck_scaled/manhattan-policy-set-{}-{}ms.pkl".format(i, V))
+            print(eh.edges[:5])  # confirming calibration
+            NUM_STOPS = 200
+            RANGE = float(3000)   # dummy for now
+            src = eh.get_top_right_node()
+            eh.append_random_demand(NUM_STOPS, cluster_num=0, cluster_jump=0, dron_min_w=min_w,
+                                    drone_only_possible_component=0.2)
+            conflict = src in [x[0] for x in eh.demand]
+            while conflict:
+              eh.reset_demand()
+              eh.append_random_demand(NUM_STOPS, cluster_num=0, cluster_jump=0, dron_min_w=min_w,
+                                      drone_only_possible_component=0.2)
+              conflict = src in [x[0] for x in eh.demand]
+            print("Source", src, "at", eh.nodes[src])
+            print(eh.demand)
+            # --------------------------------
+        
+            # --------------------------------
+            # Truck Only ACO Setup & Run
+            # --------------------------------
+            eh.init_phermone_system(src, R=RANGE)
+            print("Truck Only:")
+            NUM_ITERATIONS = 100
+            ANTS_PER_ITERATION = 45
+            energy, cycle = eh.aco_truck_only(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
+            print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
+            print(cycle)
+            # --------------------------------
+        
+            # --------------------------------
+            # Truck + Drone ACO Setup & Run
+            # --------------------------------
+            eh.demand.pop()
+            eh.init_phermone_system(src, R=RANGE)
+            print("Truck + Drone:")
+            NUM_ITERATIONS = 100
+            ANTS_PER_ITERATION = 45
+            energy, cycle, swp = eh.aco(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
+            print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
+            print(cycle)
+            print(swp)
+            # --------------------------------
+    
+            print("Set", i, "for min weight", min_w, ", 20% drone loading, and drone speed", V, "m/s has ended.")
+  print("ABCDEFGHIJKLMNOPQRST")
+  for _ in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
+    for i in [2]:
+      for min_w in [1.0]:
+          for V in [25]:
+            # --------------------------------
+            # Loading Manhattan Set + Generating Demand, Source
+            # --------------------------------
+            print("Set", i, "for min weight", min_w, ", 20% drone loading, and drone speed", V, "m/s begins!")
+            init_globals(max_truck_speed=7, base_truck_speed=10, truck_city_mpg=24,
+                        base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=V,
+                        relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
+            eh = EnergyHelper.load("pickles_truck_scaled/manhattan-policy-set-{}-{}ms.pkl".format(i, V))
+            print(eh.edges[:5])  # confirming calibration
+            NUM_STOPS = 200
+            RANGE = float(3000)   # dummy for now
+            src = eh.get_top_right_node()
+            eh.append_random_demand(NUM_STOPS, cluster_num=0, cluster_jump=0, dron_min_w=min_w,
+                                    drone_only_possible_component=0.2)
+            conflict = src in [x[0] for x in eh.demand]
+            while conflict:
+              eh.reset_demand()
+              eh.append_random_demand(NUM_STOPS, cluster_num=0, cluster_jump=0, dron_min_w=min_w,
+                                      drone_only_possible_component=0.2)
+              conflict = src in [x[0] for x in eh.demand]
+            print("Source", src, "at", eh.nodes[src])
+            print(eh.demand)
+            # --------------------------------
+        
+            # --------------------------------
+            # Truck Only ACO Setup & Run
+            # --------------------------------
+            eh.init_phermone_system(src, R=RANGE)
+            print("Truck Only:")
+            NUM_ITERATIONS = 100
+            ANTS_PER_ITERATION = 45
+            energy, cycle = eh.aco_truck_only(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
+            print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
+            print(cycle)
+            # --------------------------------
+        
+            # --------------------------------
+            # Truck + Drone ACO Setup & Run
+            # --------------------------------
+            eh.demand.pop()
+            eh.init_phermone_system(src, R=RANGE)
+            print("Truck + Drone:")
+            NUM_ITERATIONS = 100
+            ANTS_PER_ITERATION = 45
+            energy, cycle, swp = eh.aco(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
+            print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
+            print(cycle)
+            print(swp)
+            # --------------------------------
+    
+            print("Set", i, "for min weight", min_w, ", 20% drone loading, and drone speed", V, "m/s has ended.")
+  print("ABCDEFGHIJKLMNOPQRST")
+  for _ in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
+    for i in [2]:
+      for min_w in [0.0]:
+          for V in [20]:
+            # --------------------------------
+            # Loading Manhattan Set + Generating Demand, Source
+            # --------------------------------
+            print("Set", i, "for min weight", min_w, ", 20% drone loading, and drone speed", V, "m/s begins!")
+            init_globals(max_truck_speed=7, base_truck_speed=10, truck_city_mpg=24,
+                        base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=V,
+                        relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
+            eh = EnergyHelper.load("pickles_truck_scaled/manhattan-policy-set-{}-{}ms.pkl".format(i, V))
+            print(eh.edges[:5])  # confirming calibration
+            NUM_STOPS = 200
+            RANGE = float(3000)   # dummy for now
+            src = eh.get_top_right_node()
+            eh.append_random_demand(NUM_STOPS, cluster_num=0, cluster_jump=0, dron_min_w=min_w,
+                                    drone_only_possible_component=0.2)
+            conflict = src in [x[0] for x in eh.demand]
+            while conflict:
+              eh.reset_demand()
+              eh.append_random_demand(NUM_STOPS, cluster_num=0, cluster_jump=0, dron_min_w=min_w,
+                                      drone_only_possible_component=0.2)
+              conflict = src in [x[0] for x in eh.demand]
+            print("Source", src, "at", eh.nodes[src])
+            print(eh.demand)
+            # --------------------------------
+        
+            # --------------------------------
+            # Truck Only ACO Setup & Run
+            # --------------------------------
+            eh.init_phermone_system(src, R=RANGE)
+            print("Truck Only:")
+            NUM_ITERATIONS = 100
+            ANTS_PER_ITERATION = 45
+            energy, cycle = eh.aco_truck_only(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
+            print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
+            print(cycle)
+            # --------------------------------
+        
+            # --------------------------------
+            # Truck + Drone ACO Setup & Run
+            # --------------------------------
+            eh.demand.pop()
+            eh.init_phermone_system(src, R=RANGE)
+            print("Truck + Drone:")
+            NUM_ITERATIONS = 100
+            ANTS_PER_ITERATION = 45
+            energy, cycle, swp = eh.aco(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
+            print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
+            print(cycle)
+            print(swp)
+            # --------------------------------
+    
+            print("Set", i, "for min weight", min_w, ", 20% drone loading, and drone speed", V, "m/s has ended.")
+  print("ABCDEFGHIJKLMNOPQRST")
+  for _ in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
+    for i in [2]:
+      for min_w in [2.0]:
+          for V in [20]:
+            # --------------------------------
+            # Loading Manhattan Set + Generating Demand, Source
+            # --------------------------------
+            print("Set", i, "for min weight", min_w, ", 20% drone loading, and drone speed", V, "m/s begins!")
+            init_globals(max_truck_speed=7, base_truck_speed=10, truck_city_mpg=24,
+                        base_temperature=TEMPERATURE, temp_flucts_coeff=3, drone_speed=V,
+                        relative_humidity=RH(isMorning,GET_MONTH_INDEX[Month]))
+            eh = EnergyHelper.load("pickles_truck_scaled/manhattan-policy-set-{}-{}ms.pkl".format(i, V))
+            print(eh.edges[:5])  # confirming calibration
+            NUM_STOPS = 200
+            RANGE = float(3000)   # dummy for now
+            src = eh.get_top_right_node()
+            eh.append_random_demand(NUM_STOPS, cluster_num=0, cluster_jump=0, dron_min_w=min_w,
+                                    drone_only_possible_component=0.2)
+            conflict = src in [x[0] for x in eh.demand]
+            while conflict:
+              eh.reset_demand()
+              eh.append_random_demand(NUM_STOPS, cluster_num=0, cluster_jump=0, dron_min_w=min_w,
+                                      drone_only_possible_component=0.2)
+              conflict = src in [x[0] for x in eh.demand]
+            print("Source", src, "at", eh.nodes[src])
+            print(eh.demand)
+            # --------------------------------
+        
+            # --------------------------------
+            # Truck Only ACO Setup & Run
+            # --------------------------------
+            eh.init_phermone_system(src, R=RANGE)
+            print("Truck Only:")
+            NUM_ITERATIONS = 100
+            ANTS_PER_ITERATION = 45
+            energy, cycle = eh.aco_truck_only(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
+            print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
+            print(cycle)
+            # --------------------------------
+        
+            # --------------------------------
+            # Truck + Drone ACO Setup & Run
+            # --------------------------------
+            eh.demand.pop()
+            eh.init_phermone_system(src, R=RANGE)
+            print("Truck + Drone:")
+            NUM_ITERATIONS = 100
+            ANTS_PER_ITERATION = 45
+            energy, cycle, swp = eh.aco(K=NUM_ITERATIONS, ants_per_iter=ANTS_PER_ITERATION)
+            print("Energy of plotted cycle in MJ:", round(energy / 10**6, 2))
+            print(cycle)
+            print(swp)
+            # --------------------------------
+    
+            print("Set", i, "for min weight", min_w, ", 20% drone loading, and drone speed", V, "m/s has ended.")
+  exit(0)
 #   for i in range(2, 3):
 #       for V in range(15, 21, 5):
 #         # --------------------------------
