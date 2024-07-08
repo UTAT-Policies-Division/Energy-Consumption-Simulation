@@ -999,11 +999,11 @@ class EnergyHelper:
     if show_for_all_edges:
       llx, lly, lln = self.line_cover
       for i in range(len(llx)):
-        plt.plot(llx[i], lly[i], marker="", c="mediumblue", alpha=0.4)
+        plt.plot(llx[i], lly[i], marker="", c="limegreen", alpha=0.4)
     if show_drone_only_edges:
       llx, lly, lln = self.line_cover_d
       for i in range(len(llx)):
-        plt.plot(llx[i], lly[i], marker="", c="limegreen", alpha=0.4)
+        plt.plot(llx[i], lly[i], marker="", c="mediumblue", alpha=0.3)
     for i in spec_ind:
       plt.scatter(x=self.nodes[i][0], y=self.nodes[i][1], c='black', s=15)
     path_x, path_y = None, None
